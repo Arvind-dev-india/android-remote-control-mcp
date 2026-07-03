@@ -545,6 +545,9 @@ class ScreenIntrospectionToolsTest {
                 assertTrue(text.contains("page:2/2"))
                 // cursor path must NOT re-capture: getAccessibilityWindows called only by the fresh call
                 verify(exactly = 1) { mockAccessibilityServiceProvider.getAccessibilityWindows() }
+                // ...and it must NOT clear the framework cache: serving a stored page performs no
+                // fresh read, so the only clear is the one from the initial fresh capture.
+                verify(exactly = 1) { mockAccessibilityServiceProvider.clearFrameworkNodeCache() }
             }
 
         @Test

@@ -232,25 +232,38 @@ class UtilityToolsTest {
         @Test
         fun `clears the framework node cache before the raw poll read`() =
             runTest {
-                // wait_for_node's Phase-1 raw check reads the tree directly (not via
+                // wait_for_node's Phase-1 raw check (rawNodeExists) reads the tree directly (not via
                 // get_screen_state), so on a JS-mutated WebView it would otherwise poll a stale
-                // framework cache and never see a freshly-added node. The clear MUST precede the read.
-                every { mockRootNode.text } returns "Result"
-                every {
-                    mockElementFinder.findElements(sampleWindows, FindBy.TEXT, "Result", false)
-                } returns listOf(sampleElementInfo)
-                val params =
-                    buildJsonObject {
-                        put("by", "text")
-                        put("value", "Result")
-                        put("timeout", 5000)
+                // framework cache and never see a freshly-added node. The clear MUST precede that read.
+                //
+                // The node is deliberately ABSENT so the raw check stays false and Phase 2
+                // (getFreshWindows, which ALSO clears) never runs — otherwise a subsequence
+                // verifyOrder would be satisfied by Phase 2 alone and this test would still pass even
+                // if the rawNodeExists clear were removed. SystemClock is mocked so the poll loop
+                // times out immediately instead of blocking for the real timeout.
+                mockkStatic(SystemClock::class)
+                try {
+                    var clockMs = 0L
+                    every { SystemClock.elapsedRealtime() } answers {
+                        val current = clockMs
+                        clockMs += 200L
+                        current
                     }
+                    val params =
+                        buildJsonObject {
+                            put("by", "text")
+                            put("value", "Missing")
+                            put("timeout", 2000)
+                        }
 
-                tool.execute(params)
+                    tool.execute(params)
 
-                verifyOrder {
-                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
-                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                    verifyOrder {
+                        mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                        mockAccessibilityServiceProvider.getAccessibilityWindows()
+                    }
+                } finally {
+                    unmockkStatic(SystemClock::class)
                 }
             }
 
