@@ -309,6 +309,18 @@ class McpAccessibilityService : AccessibilityService() {
     @Suppress("FunctionOnlyReturningConstant")
     fun canTakeScreenshot(): Boolean = true
 
+    /**
+     * Drops the framework's accessibility node cache for this service via [clearCache] (public
+     * since API 33; minSdk is 33). See [AccessibilityServiceProvider.clearFrameworkNodeCache] for
+     * why this is needed to defeat stale WebView reads after JavaScript DOM changes.
+     *
+     * This is distinct from [invalidateCache], which flushes our own id→node [nodeCache]; this
+     * clears the framework-side cache that backs [rootInActiveWindow]/[getWindows] traversal.
+     */
+    fun clearFrameworkNodeCache() {
+        clearCache()
+    }
+
     class McpInputMethod(
         service: AccessibilityService,
     ) : InputMethod(service)
