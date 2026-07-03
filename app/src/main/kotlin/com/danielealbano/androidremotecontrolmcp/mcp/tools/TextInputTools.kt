@@ -1221,6 +1221,13 @@ internal fun findFocusedEditableNode(accessibilityServiceProvider: Accessibility
         )
     }
 
+    // Drop the framework's accessibility node cache before this live read. Chromium WebView
+    // suppresses/throttles the content-changed events that invalidate that cache, so the focused
+    // node's text could be stale — and DEL/TAB/SPACE (which read focusedNode.text to build the
+    // ACTION_SET_TEXT payload) would then edit off a stale value, corrupting a WebView input whose
+    // value changed via JavaScript. See AccessibilityServiceProvider.clearFrameworkNodeCache.
+    accessibilityServiceProvider.clearFrameworkNodeCache()
+
     // Search across all windows for the focused editable node.
     // Uses a found-node variable to avoid returning from inside the try/finally block,
     // ensuring all AccessibilityWindowInfo objects are properly recycled before the
