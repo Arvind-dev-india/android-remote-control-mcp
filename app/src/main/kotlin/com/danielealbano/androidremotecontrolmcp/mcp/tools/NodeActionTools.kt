@@ -634,6 +634,14 @@ internal fun getFreshWindows(
         )
     }
 
+    // Drop the framework's accessibility node cache before reading. Chromium WebView
+    // suppresses/throttles the content-changed events that invalidate that cache, so a JavaScript
+    // DOM change (e.g. updated text) would otherwise read back stale — and node.refresh() cannot
+    // re-fetch what the cache still serves as current. Clearing here — the single choke point for
+    // every fresh read — makes get_screen_state, find_nodes, and the action tools' re-reads all
+    // round-trip live and populate the node cache with live nodes. See AccessibilityServiceProvider.
+    accessibilityServiceProvider.clearFrameworkNodeCache()
+
     // Accumulate real AccessibilityNodeInfo references from ALL windows for cache population.
     // This map is passed to each parseTree call and populated during tree traversal.
     // We populate the cache ONCE after all windows are parsed to avoid the multi-window

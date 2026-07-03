@@ -20,6 +20,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import io.mockk.verifyOrder
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
@@ -104,6 +105,7 @@ class NodeActionToolsTest {
     @BeforeEach
     fun setUp() {
         every { mockAccessibilityServiceProvider.isReady() } returns true
+        every { mockAccessibilityServiceProvider.clearFrameworkNodeCache() } returns Unit
         every { mockWindowInfo.id } returns 0
         every { mockWindowInfo.root } returns mockRootNode
         every { mockWindowInfo.type } returns AccessibilityWindowInfo.TYPE_APPLICATION
@@ -161,6 +163,29 @@ class NodeActionToolsTest {
                 val elements = parsed["nodes"]!!.jsonArray
                 assertEquals(1, elements.size)
                 assertEquals("node_abc", elements[0].jsonObject["node_id"]?.jsonPrimitive?.content)
+            }
+
+        @Test
+        fun `clears the framework node cache before reading windows on the find path`() =
+            runTest {
+                // find_nodes reads the tree directly via getFreshWindows with NO prior
+                // get_screen_state, so this is the path where a WebView change since the last read
+                // would otherwise be served stale. The clear MUST precede the window read.
+                every {
+                    mockElementFinder.findElements(sampleWindows, FindBy.TEXT, "7", false)
+                } returns listOf(sampleElementInfo)
+                val params =
+                    buildJsonObject {
+                        put("by", "text")
+                        put("value", "7")
+                    }
+
+                tool.execute(params)
+
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
             }
 
         @Test

@@ -100,6 +100,7 @@ class UtilityToolsTest {
     @BeforeEach
     fun setUp() {
         every { mockAccessibilityServiceProvider.isReady() } returns true
+        every { mockAccessibilityServiceProvider.clearFrameworkNodeCache() } returns Unit
         every { mockWindowInfo.id } returns 0
         every { mockWindowInfo.root } returns mockRootNode
         every { mockWindowInfo.type } returns AccessibilityWindowInfo.TYPE_APPLICATION

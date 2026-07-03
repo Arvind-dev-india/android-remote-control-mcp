@@ -24,6 +24,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.mockk.verifyOrder
 import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
@@ -180,6 +181,36 @@ class ScreenIntrospectionToolsTest {
                 assertEquals(1, result.content.size)
                 val textContent = result.content[0] as TextContent
                 assertEquals(sampleCompactOutput, stripUntrustedWarning(textContent.text))
+            }
+
+        @Test
+        @DisplayName("clears the framework node cache before reading windows on a fresh request")
+        fun clearsFrameworkNodeCacheBeforeFreshRead() =
+            runTest {
+                setupReadyService()
+
+                handler.execute(null)
+
+                // The cache clear MUST precede the tree read, otherwise the read still serves stale
+                // WebView nodes from the framework cache (the whole point of the fix).
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
+            }
+
+        @Test
+        @DisplayName("does not clear the framework node cache on a paged (cursor) request")
+        fun doesNotClearFrameworkNodeCacheOnPagedRequest() =
+            runTest {
+                setupReadyService()
+
+                // A cursor request is served from the snapshot cache and performs no fresh tree
+                // read, so there is nothing to un-stale — clearing the framework cache would be
+                // pointless work.
+                handler.execute(buildJsonObject { put("cursor", "missing.2") })
+
+                verify(exactly = 0) { mockAccessibilityServiceProvider.clearFrameworkNodeCache() }
             }
 
         @Test
