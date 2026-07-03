@@ -9,6 +9,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementFinder
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.FindBy
@@ -357,8 +358,20 @@ class WaitForNodeTool
  * @throws McpToolException.PermissionDenied if accessibility service is not ready.
  * @throws McpToolException.ActionFailed if no windows or root nodes are available.
  */
-@Suppress("ThrowsCount", "ReturnCount", "NestedBlockDepth")
 internal fun rawNodeExists(
+    findBy: FindBy,
+    value: String,
+    accessibilityServiceProvider: AccessibilityServiceProvider,
+): Boolean =
+    // Serialize the clear+read critical section against concurrent MCP requests (see
+    // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework tree
+    // mid-traversal of this poll read.
+    synchronized(AccessibilityTreeLock.monitor) {
+        rawNodeExistsLocked(findBy, value, accessibilityServiceProvider)
+    }
+
+@Suppress("ThrowsCount", "ReturnCount", "NestedBlockDepth")
+private fun rawNodeExistsLocked(
     findBy: FindBy,
     value: String,
     accessibilityServiceProvider: AccessibilityServiceProvider,
@@ -566,8 +579,16 @@ class WaitForIdleTool
             return McpToolUtils.untrustedTextResult(Json.encodeToString(resultJson))
         }
 
+        private fun generateCurrentFingerprint(): IntArray =
+            // Serialize the clear+read critical section against concurrent MCP requests (see
+            // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework
+            // tree mid-traversal of this fingerprint read.
+            synchronized(AccessibilityTreeLock.monitor) {
+                generateCurrentFingerprintLocked()
+            }
+
         @Suppress("ThrowsCount")
-        private fun generateCurrentFingerprint(): IntArray {
+        private fun generateCurrentFingerprintLocked(): IntArray {
             if (!accessibilityServiceProvider.isReady()) {
                 throw McpToolException.PermissionDenied(
                     "Accessibility service not enabled or not ready. " +

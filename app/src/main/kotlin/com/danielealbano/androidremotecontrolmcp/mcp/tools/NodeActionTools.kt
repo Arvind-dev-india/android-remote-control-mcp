@@ -9,6 +9,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionExecutor
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.CachedNode
@@ -621,8 +622,20 @@ internal fun mapFindBy(by: String): FindBy? =
  * @throws McpToolException.PermissionDenied if accessibility service is not connected.
  * @throws McpToolException.ActionFailed if no windows and no root node are available.
  */
-@Suppress("LongMethod", "NestedBlockDepth", "ThrowsCount")
 internal fun getFreshWindows(
+    treeParser: AccessibilityTreeParser,
+    accessibilityServiceProvider: AccessibilityServiceProvider,
+    nodeCache: AccessibilityNodeCache,
+): MultiWindowResult =
+    // Serialize the entire clear+read+populate critical section against concurrent MCP requests:
+    // clearing the shared framework node cache mid-traversal of another request would yield a torn
+    // tree and flaky node-id resolution. See AccessibilityTreeLock.
+    synchronized(AccessibilityTreeLock.monitor) {
+        getFreshWindowsLocked(treeParser, accessibilityServiceProvider, nodeCache)
+    }
+
+@Suppress("LongMethod", "NestedBlockDepth", "ThrowsCount")
+private fun getFreshWindowsLocked(
     treeParser: AccessibilityTreeParser,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     nodeCache: AccessibilityNodeCache,

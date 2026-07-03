@@ -10,6 +10,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionExecutor
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.TypeInputController
@@ -1207,6 +1208,15 @@ fun registerTextInputTools(
  * @return The focused [AccessibilityNodeInfo], or null if no editable node is focused.
  *         The caller is responsible for recycling the returned node.
  */
+@Suppress("MaxLineLength")
+internal fun findFocusedEditableNode(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? =
+    // Serialize the clear+read critical section against concurrent MCP requests (see
+    // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework tree
+    // mid-traversal of this focused-node lookup.
+    synchronized(AccessibilityTreeLock.monitor) {
+        findFocusedEditableNodeLocked(accessibilityServiceProvider)
+    }
+
 @Suppress(
     "ReturnCount",
     "NestedBlockDepth",
@@ -1214,7 +1224,7 @@ fun registerTextInputTools(
     "LoopWithTooManyJumpStatements",
     "MaxLineLength",
 )
-internal fun findFocusedEditableNode(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? {
+private fun findFocusedEditableNodeLocked(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? {
     if (!accessibilityServiceProvider.isReady()) {
         throw McpToolException.PermissionDenied(
             "Accessibility service is not enabled",
