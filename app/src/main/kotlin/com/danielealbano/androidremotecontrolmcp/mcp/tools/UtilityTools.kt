@@ -370,6 +370,13 @@ internal fun rawNodeExists(
         )
     }
 
+    // Drop the framework's accessibility node cache before this poll read. Chromium WebView
+    // suppresses/throttles the content-changed events that invalidate that cache, so a node added
+    // by a JavaScript DOM change would otherwise never appear here (refresh() cannot re-fetch what
+    // the cache still serves as current) and wait_for_node would time out on present content. See
+    // AccessibilityServiceProvider.clearFrameworkNodeCache.
+    accessibilityServiceProvider.clearFrameworkNodeCache()
+
     val accessibilityWindows = accessibilityServiceProvider.getAccessibilityWindows()
 
     if (accessibilityWindows.isNotEmpty()) {
@@ -567,6 +574,13 @@ class WaitForIdleTool
                         "Please enable it in Android Settings > Accessibility.",
                 )
             }
+
+            // Drop the framework's accessibility node cache before fingerprinting. Chromium WebView
+            // suppresses/throttles the content-changed events that invalidate that cache, so without
+            // this the fingerprint would be computed from a stale tree that never reflects ongoing
+            // JavaScript DOM changes — reporting the UI as idle while it is still mutating. See
+            // AccessibilityServiceProvider.clearFrameworkNodeCache.
+            accessibilityServiceProvider.clearFrameworkNodeCache()
 
             val accessibilityWindows = accessibilityServiceProvider.getAccessibilityWindows()
 

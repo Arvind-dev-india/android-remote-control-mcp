@@ -26,6 +26,7 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import io.mockk.verifyOrder
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
@@ -226,6 +227,31 @@ class UtilityToolsTest {
                         ?.jsonPrimitive
                         ?.content,
                 )
+            }
+
+        @Test
+        fun `clears the framework node cache before the raw poll read`() =
+            runTest {
+                // wait_for_node's Phase-1 raw check reads the tree directly (not via
+                // get_screen_state), so on a JS-mutated WebView it would otherwise poll a stale
+                // framework cache and never see a freshly-added node. The clear MUST precede the read.
+                every { mockRootNode.text } returns "Result"
+                every {
+                    mockElementFinder.findElements(sampleWindows, FindBy.TEXT, "Result", false)
+                } returns listOf(sampleElementInfo)
+                val params =
+                    buildJsonObject {
+                        put("by", "text")
+                        put("value", "Result")
+                        put("timeout", 5000)
+                    }
+
+                tool.execute(params)
+
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
             }
 
         @Test
@@ -700,6 +726,24 @@ class UtilityToolsTest {
                 val parsed = Json.parseToJsonElement(stripUntrustedWarning(text)).jsonObject
                 assertTrue(parsed["message"]?.jsonPrimitive?.content?.contains("idle") == true)
                 assertEquals(100, parsed["similarity"]?.jsonPrimitive?.int)
+            }
+
+        @Test
+        fun `clears the framework node cache before fingerprinting`() =
+            runTest {
+                // wait_for_idle fingerprints the raw tree directly, so on a JS-mutated WebView a
+                // stale framework cache would make the fingerprint look unchanged and report idle
+                // while content is still updating. The clear MUST precede the read.
+                val stableRoot = mockRawNode()
+                every { mockWindowInfo.root } returns stableRoot
+
+                val params = buildJsonObject { put("timeout", 5000) }
+                tool.execute(params)
+
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
             }
 
         @Test
