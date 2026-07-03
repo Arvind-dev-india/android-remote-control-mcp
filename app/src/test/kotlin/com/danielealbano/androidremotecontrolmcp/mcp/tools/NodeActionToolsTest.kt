@@ -20,6 +20,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import io.mockk.verifyOrder
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
@@ -37,6 +38,9 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 @DisplayName("NodeActionTools")
 class NodeActionToolsTest {
@@ -104,6 +108,7 @@ class NodeActionToolsTest {
     @BeforeEach
     fun setUp() {
         every { mockAccessibilityServiceProvider.isReady() } returns true
+        every { mockAccessibilityServiceProvider.clearFrameworkNodeCache() } returns Unit
         every { mockWindowInfo.id } returns 0
         every { mockWindowInfo.root } returns mockRootNode
         every { mockWindowInfo.type } returns AccessibilityWindowInfo.TYPE_APPLICATION
@@ -131,6 +136,48 @@ class NodeActionToolsTest {
     @AfterEach
     fun tearDown() {
         unmockkAll()
+    }
+
+    @Test
+    @DisplayName("getFreshWindows serializes concurrent reads (no overlapping tree traversal)")
+    fun getFreshWindowsSerializesConcurrentReads() {
+        // Regression guard for the framework-cache-clear concurrency fix: getFreshWindows clears the
+        // shared framework node cache then traverses it, so parallel MCP requests MUST NOT overlap
+        // inside that critical section (an overlap could wipe the cache mid-traversal → torn tree).
+        // getAccessibilityWindows (invoked inside the section) records the peak number of threads
+        // simultaneously inside; with the synchronized(AccessibilityTreeLock) wrapper it must stay 1.
+        // Remove the wrapper and 4 barrier-released threads would overlap, driving maxObserved > 1.
+        val threadCount = 4
+        val active = AtomicInteger(0)
+        val maxObserved = AtomicInteger(0)
+        val provider = mockk<AccessibilityServiceProvider>(relaxed = true)
+        every { provider.isReady() } returns true
+        every { provider.getAccessibilityWindows() } answers {
+            val now = active.incrementAndGet()
+            maxObserved.updateAndGet { m -> maxOf(m, now) }
+            Thread.sleep(40)
+            active.decrementAndGet()
+            // Empty -> getFreshWindows falls to the getRootNode fallback (null -> throws), but the
+            // overlap has already been sampled above; the throw is caught per-thread below.
+            emptyList()
+        }
+        every { provider.getRootNode() } returns null
+
+        val barrier = CyclicBarrier(threadCount)
+        val workers =
+            (1..threadCount).map {
+                thread {
+                    barrier.await()
+                    runCatching { getFreshWindows(mockTreeParser, provider, mockNodeCache) }
+                }
+            }
+        workers.forEach { it.join() }
+
+        assertEquals(
+            1,
+            maxObserved.get(),
+            "concurrent getFreshWindows reads overlapped the framework-cache critical section",
+        )
     }
 
     @Nested
@@ -161,6 +208,29 @@ class NodeActionToolsTest {
                 val elements = parsed["nodes"]!!.jsonArray
                 assertEquals(1, elements.size)
                 assertEquals("node_abc", elements[0].jsonObject["node_id"]?.jsonPrimitive?.content)
+            }
+
+        @Test
+        fun `clears the framework node cache before reading windows on the find path`() =
+            runTest {
+                // find_nodes reads the tree directly via getFreshWindows with NO prior
+                // get_screen_state, so this is the path where a WebView change since the last read
+                // would otherwise be served stale. The clear MUST precede the window read.
+                every {
+                    mockElementFinder.findElements(sampleWindows, FindBy.TEXT, "7", false)
+                } returns listOf(sampleElementInfo)
+                val params =
+                    buildJsonObject {
+                        put("by", "text")
+                        put("value", "7")
+                    }
+
+                tool.execute(params)
+
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
             }
 
         @Test

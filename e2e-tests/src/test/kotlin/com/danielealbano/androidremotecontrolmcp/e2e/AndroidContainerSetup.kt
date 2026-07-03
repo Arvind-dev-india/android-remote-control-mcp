@@ -430,6 +430,16 @@ object AndroidContainerSetup {
     }
 
     /**
+     * Force-stops the compose test app so the next launch starts a fresh process. Used to shed the
+     * heavy WebView page that E2EWebViewNodeReductionTest leaves loaded in the shared activity,
+     * which otherwise blocks the activity's main thread on launch and leaves the WebView's virtual
+     * a11y nodes stuck for later simple-page tests.
+     */
+    fun forceStopComposeTestApp() {
+        execAdb("shell", "am", "force-stop", COMPOSE_TEST_PACKAGE)
+    }
+
+    /**
      * Launch the WebView test activity using am start.
      */
     fun launchWebViewTestApp() {

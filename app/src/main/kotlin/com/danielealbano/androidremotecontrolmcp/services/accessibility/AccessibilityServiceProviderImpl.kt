@@ -31,4 +31,8 @@ class AccessibilityServiceProviderImpl
         override fun isReady(): Boolean = McpAccessibilityService.instance?.isReady() == true
 
         override fun getContext(): Context? = McpAccessibilityService.instance
+
+        override fun clearFrameworkNodeCache() {
+            McpAccessibilityService.instance?.clearFrameworkNodeCache()
+        }
     }

@@ -10,6 +10,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionExecutor
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.TypeInputController
@@ -1207,6 +1208,15 @@ fun registerTextInputTools(
  * @return The focused [AccessibilityNodeInfo], or null if no editable node is focused.
  *         The caller is responsible for recycling the returned node.
  */
+@Suppress("MaxLineLength")
+internal fun findFocusedEditableNode(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? =
+    // Serialize the clear+read critical section against concurrent MCP requests (see
+    // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework tree
+    // mid-traversal of this focused-node lookup.
+    synchronized(AccessibilityTreeLock.monitor) {
+        findFocusedEditableNodeLocked(accessibilityServiceProvider)
+    }
+
 @Suppress(
     "ReturnCount",
     "NestedBlockDepth",
@@ -1214,12 +1224,19 @@ fun registerTextInputTools(
     "LoopWithTooManyJumpStatements",
     "MaxLineLength",
 )
-internal fun findFocusedEditableNode(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? {
+private fun findFocusedEditableNodeLocked(accessibilityServiceProvider: AccessibilityServiceProvider): AccessibilityNodeInfo? {
     if (!accessibilityServiceProvider.isReady()) {
         throw McpToolException.PermissionDenied(
             "Accessibility service is not enabled",
         )
     }
+
+    // Drop the framework's accessibility node cache before this live read. Chromium WebView
+    // suppresses/throttles the content-changed events that invalidate that cache, so the focused
+    // node's text could be stale — and DEL/TAB/SPACE (which read focusedNode.text to build the
+    // ACTION_SET_TEXT payload) would then edit off a stale value, corrupting a WebView input whose
+    // value changed via JavaScript. See AccessibilityServiceProvider.clearFrameworkNodeCache.
+    accessibilityServiceProvider.clearFrameworkNodeCache()
 
     // Search across all windows for the focused editable node.
     // Uses a found-node variable to avoid returning from inside the try/finally block,

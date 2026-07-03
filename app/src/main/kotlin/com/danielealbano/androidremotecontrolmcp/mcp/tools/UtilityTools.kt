@@ -9,6 +9,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementFinder
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.FindBy
@@ -357,8 +358,20 @@ class WaitForNodeTool
  * @throws McpToolException.PermissionDenied if accessibility service is not ready.
  * @throws McpToolException.ActionFailed if no windows or root nodes are available.
  */
-@Suppress("ThrowsCount", "ReturnCount", "NestedBlockDepth")
 internal fun rawNodeExists(
+    findBy: FindBy,
+    value: String,
+    accessibilityServiceProvider: AccessibilityServiceProvider,
+): Boolean =
+    // Serialize the clear+read critical section against concurrent MCP requests (see
+    // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework tree
+    // mid-traversal of this poll read.
+    synchronized(AccessibilityTreeLock.monitor) {
+        rawNodeExistsLocked(findBy, value, accessibilityServiceProvider)
+    }
+
+@Suppress("ThrowsCount", "ReturnCount", "NestedBlockDepth")
+private fun rawNodeExistsLocked(
     findBy: FindBy,
     value: String,
     accessibilityServiceProvider: AccessibilityServiceProvider,
@@ -369,6 +382,13 @@ internal fun rawNodeExists(
                 "Please enable it in Android Settings > Accessibility.",
         )
     }
+
+    // Drop the framework's accessibility node cache before this poll read. Chromium WebView
+    // suppresses/throttles the content-changed events that invalidate that cache, so a node added
+    // by a JavaScript DOM change would otherwise never appear here (refresh() cannot re-fetch what
+    // the cache still serves as current) and wait_for_node would time out on present content. See
+    // AccessibilityServiceProvider.clearFrameworkNodeCache.
+    accessibilityServiceProvider.clearFrameworkNodeCache()
 
     val accessibilityWindows = accessibilityServiceProvider.getAccessibilityWindows()
 
@@ -559,14 +579,29 @@ class WaitForIdleTool
             return McpToolUtils.untrustedTextResult(Json.encodeToString(resultJson))
         }
 
+        private fun generateCurrentFingerprint(): IntArray =
+            // Serialize the clear+read critical section against concurrent MCP requests (see
+            // AccessibilityTreeLock): a parallel request's cache clear must not wipe the framework
+            // tree mid-traversal of this fingerprint read.
+            synchronized(AccessibilityTreeLock.monitor) {
+                generateCurrentFingerprintLocked()
+            }
+
         @Suppress("ThrowsCount")
-        private fun generateCurrentFingerprint(): IntArray {
+        private fun generateCurrentFingerprintLocked(): IntArray {
             if (!accessibilityServiceProvider.isReady()) {
                 throw McpToolException.PermissionDenied(
                     "Accessibility service not enabled or not ready. " +
                         "Please enable it in Android Settings > Accessibility.",
                 )
             }
+
+            // Drop the framework's accessibility node cache before fingerprinting. Chromium WebView
+            // suppresses/throttles the content-changed events that invalidate that cache, so without
+            // this the fingerprint would be computed from a stale tree that never reflects ongoing
+            // JavaScript DOM changes — reporting the UI as idle while it is still mutating. See
+            // AccessibilityServiceProvider.clearFrameworkNodeCache.
+            accessibilityServiceProvider.clearFrameworkNodeCache()
 
             val accessibilityWindows = accessibilityServiceProvider.getAccessibilityWindows()
 

@@ -90,6 +90,9 @@ class GetScreenStateHandler
             }
 
         private suspend fun handleFreshRequest(includeScreenshot: Boolean): CallToolResult {
+            // getFreshWindows clears the framework accessibility cache before reading (see there),
+            // so this fresh capture — and the node cache it populates for element/action tools —
+            // round-trips live even for stale-prone WebView content.
             // The node cache (used by element/action tools) is populated by getFreshWindows from the
             // original tree; the merge only collapses the tree shown to the LLM. Merged anchors keep
             // their original ids, so taps still resolve.

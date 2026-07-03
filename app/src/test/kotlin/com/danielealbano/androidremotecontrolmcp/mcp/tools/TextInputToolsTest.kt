@@ -20,6 +20,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.mockk.verifyOrder
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -109,6 +110,7 @@ class TextInputToolsTest {
     @BeforeEach
     fun setUp() {
         every { mockAccessibilityServiceProvider.isReady() } returns true
+        every { mockAccessibilityServiceProvider.clearFrameworkNodeCache() } returns Unit
         every { mockWindowInfo.id } returns 0
         every { mockWindowInfo.root } returns mockRootNode
         every { mockWindowInfo.type } returns AccessibilityWindowInfo.TYPE_APPLICATION
@@ -1613,6 +1615,29 @@ class TextInputToolsTest {
                 val result = tool.execute(params)
                 val text = extractTextContent(result)
                 assertTrue(text.contains("DEL"))
+            }
+
+        @Test
+        fun `clears the framework node cache before locating the focused node`() =
+            runTest {
+                // press_key DEL/TAB/SPACE read the focused node's text to build ACTION_SET_TEXT; on a
+                // JS-mutated WebView input that text would be stale without clearing the framework
+                // cache first, corrupting the field. The clear MUST precede the tree read.
+                @Suppress("DEPRECATION")
+                every { mockRootNode.recycle() } returns Unit
+                every { mockRootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } returns mockFocusedNode
+                every { mockFocusedNode.isEditable } returns true
+                every { mockFocusedNode.text } returns "Hello"
+                every { mockFocusedNode.performAction(any(), any<Bundle>()) } returns true
+                every { mockFocusedNode.recycle() } returns Unit
+                val params = buildJsonObject { put("key", "DEL") }
+
+                tool.execute(params)
+
+                verifyOrder {
+                    mockAccessibilityServiceProvider.clearFrameworkNodeCache()
+                    mockAccessibilityServiceProvider.getAccessibilityWindows()
+                }
             }
 
         @Test
