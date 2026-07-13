@@ -11,6 +11,14 @@ The app runs directly on your Android device (or emulator) and exposes an HTTP s
 
 ---
 
+## Demo
+
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Demo of an AI model controlling an Android device through the MCP server" width="720">
+</p>
+
+<p align="center"><em>An AI model controlling an Android device through the MCP server (sped up).</em></p>
+
 ## Features
 
 ### MCP Server
