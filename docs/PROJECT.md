@@ -370,6 +370,12 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 - All node operations MUST happen on main thread
 - Use `performAction()` for element actions, `performGlobalAction()` for system actions, `dispatchGesture()` for complex touch sequences (API 24+)
 
+### `isAccessibilityTool` and `accessibilityDataSensitive` (Android 14+ / API 34)
+
+- `accessibility_service_config.xml` declares `android:isAccessibilityTool="true"`. On API 34+, apps can mark UI subtrees `accessibilityDataSensitive`; those nodes are delivered **only** to services that declare `isAccessibilityTool="true"` (and to the system `UiAutomation`). Without the flag, such subtrees are silently filtered out of the tree we receive — e.g. the GitHub app renders as an empty `main_activity_container` in `get_screen_state`/`find_nodes` even though the content is fully present in the framework tree (confirmed via `uiautomator dump`). The flag is what lets this tool introspect and control apps that mark their content sensitive.
+- **Security implication**: this intentionally bypasses the `accessibilityDataSensitive` anti-scraping protection that security-conscious apps (banking, password managers) rely on. This is acceptable for a user-installed, user-enabled remote-control tool, but is a deliberate trade-off that MUST stay documented.
+- **Google Play implication (deferred)**: Play considers only genuine assistive tools eligible to declare `isAccessibilityTool`; declaring it on a remote-control app risks rejection. Current distribution is sideload / GitHub Releases / F-Droid, where the manifest is never reviewed, so the flag is fine. If Play distribution is pursued later, split into per-distribution build variants — a `play` flavor overriding `accessibility_service_config.xml` **without** the flag (plus the required prominent disclosure/consent flow), keeping the flag only in the sideload/F-Droid variant.
+
 ### Permission Handling
 
 - **Accessibility**: User must enable manually in Settings (provide deep link). Also provides screenshot capture via `takeScreenshot()` API (Android 11+)
