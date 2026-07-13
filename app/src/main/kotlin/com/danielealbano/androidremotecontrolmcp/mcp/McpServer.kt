@@ -3,7 +3,6 @@ package com.danielealbano.androidremotecontrolmcp.mcp
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.BuildConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
-import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthAccessValidator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
@@ -11,20 +10,16 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.Netty
 import io.ktor.server.netty.NettyApplicationEngine
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.security.KeyStore
@@ -149,22 +144,16 @@ class McpServer(
     }
 
     private fun io.ktor.server.application.Application.configureApplication() {
-        // JSON serialization — required by StreamableHttpServerTransport
-        // which uses call.respond(JSONRPCResponse/Error) internally
-        install(ContentNegotiation) {
-            json(McpJson)
-        }
-
-        // CORS — MUST be installed before McpAuthPlugin so preflight OPTIONS (which carry no
-        // Authorization header) are answered by CORS instead of being failed closed by auth.
-        // Enables browser MCP clients (e.g. MCP Inspector) to reach the OAuth and /mcp endpoints.
-        configureCors()
-
+        // Base plugins in the canonical order (ContentNegotiation → CORS → auth). CORS MUST precede
+        // auth so browser preflight OPTIONS (no Authorization header) are answered by CORS instead of
+        // being failed closed by auth. The order lives in installMcpBasePlugins so it stays consistent
+        // between production and the integration tests.
+        //
         // Combined MCP authentication: static bearer OR issued OAuth access token (dual-accept).
         // Excludes /health, the unauthenticated OAuth endpoints, the /.well-known/ namespace, and the
         // /s/ capability route. Exact paths are used for the OAuth endpoints (not prefixes) so sibling
         // routes are not silently exempted.
-        install(McpAuthPlugin) {
+        installMcpBasePlugins {
             bearerTokenEnabled = config.bearerTokenEnabled
             expectedToken = config.bearerToken
             oauthEnabled = config.oauthEnabled

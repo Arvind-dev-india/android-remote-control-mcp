@@ -1,8 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.integration
 
-import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
-import com.danielealbano.androidremotecontrolmcp.mcp.configureCors
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpBasePlugins
 import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import io.ktor.client.request.get
@@ -15,16 +14,12 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -46,14 +41,12 @@ class CorsIntegrationTest {
     }
 
     /**
-     * Configures a test application mirroring the production plugin ordering in
-     * [com.danielealbano.androidremotecontrolmcp.mcp.McpServer.configureApplication]: ContentNegotiation,
-     * then [configureCors] (BEFORE auth so preflight is not failed closed), then [McpAuthPlugin], a
-     * `/health` and a stand-in `/register` route (both auth-excluded), and `/mcp`.
-     *
-     * NOTE: this replicates the production wiring rather than invoking it (McpServer builds Netty). If
-     * the production ordering or auth-exclusion set changes, this MUST be kept in sync or these tests
-     * stop protecting the real behavior.
+     * Configures a test application through the SAME [installMcpBasePlugins] the production
+     * [com.danielealbano.androidremotecontrolmcp.mcp.McpServer.configureApplication] uses, so the
+     * CORS-before-auth ordering under test is the real one (not a hand-copied replica): a production
+     * reorder would change [installMcpBasePlugins] and be caught here. Adds a `/health` and a stand-in
+     * `/register` route (both auth-excluded) plus `/mcp`. The full OAuth routes with CORS are exercised
+     * by the OAuth-flow suite via `McpIntegrationTestHelper.withOAuthTestApplication`.
      *
      * @param oauthEnabled When true, auth emits the RFC 9728 `WWW-Authenticate` discovery header on 401
      *   (the OAuth token check always denies here — only the 401 header path is under test).
@@ -66,9 +59,7 @@ class CorsIntegrationTest {
         val sdkServer = McpIntegrationTestHelper.createSdkServer(deps)
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                configureCors()
-                install(McpAuthPlugin) {
+                installMcpBasePlugins {
                     bearerTokenEnabled = true
                     expectedToken = McpIntegrationTestHelper.TEST_BEARER_TOKEN
                     this.oauthEnabled = oauthEnabled
@@ -191,8 +182,11 @@ class CorsIntegrationTest {
                         )
                     }
 
-                // Auth passed (not 401); regardless of the MCP-level outcome the CORS header must be present.
-                assertTrue(response.status != HttpStatusCode.Unauthorized, "auth should pass with valid token")
+                // Auth passed AND the MCP initialize succeeded (2xx), with the CORS header present.
+                assertTrue(
+                    response.status.value in 200..299,
+                    "authenticated initialize should succeed (2xx), was ${response.status}",
+                )
                 assertEquals("*", response.allowOrigin())
             }
         }

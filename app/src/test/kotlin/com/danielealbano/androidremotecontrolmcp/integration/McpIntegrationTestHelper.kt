@@ -7,8 +7,8 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
-import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpBasePlugins
 import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStoreImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
@@ -56,8 +56,6 @@ import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileL
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import io.mockk.every
@@ -296,8 +294,8 @@ object McpIntegrationTestHelper {
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) { expectedToken = TEST_BEARER_TOKEN }
+                // Uses the production base-plugin wiring (ContentNegotiation → CORS → auth).
+                installMcpBasePlugins { expectedToken = TEST_BEARER_TOKEN }
                 mcpStreamableHttp { sdkServer }
             }
 
@@ -350,8 +348,7 @@ object McpIntegrationTestHelper {
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) {
+                installMcpBasePlugins {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = if (bearerTokenEnabled) TEST_BEARER_TOKEN else ""
                     this.oauthEnabled = oauthEnabled
@@ -408,8 +405,9 @@ object McpIntegrationTestHelper {
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) {
+                // Full production wiring WITH CORS in front of the real OAuth routes, so the
+                // OAuth-flow tests verify OAuth and CORS coexist end-to-end.
+                installMcpBasePlugins {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = bearerToken
                     oauthEnabled = true
