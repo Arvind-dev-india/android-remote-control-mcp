@@ -155,6 +155,11 @@ class McpServer(
             json(McpJson)
         }
 
+        // CORS — MUST be installed before McpAuthPlugin so preflight OPTIONS (which carry no
+        // Authorization header) are answered by CORS instead of being failed closed by auth.
+        // Enables browser MCP clients (e.g. MCP Inspector) to reach the OAuth and /mcp endpoints.
+        configureCors()
+
         // Combined MCP authentication: static bearer OR issued OAuth access token (dual-accept).
         // Excludes /health, the unauthenticated OAuth endpoints, the /.well-known/ namespace, and the
         // /s/ capability route. Exact paths are used for the OAuth endpoints (not prefixes) so sibling

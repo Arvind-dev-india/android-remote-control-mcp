@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val TAG = "MCP:StreamableHttp"
-private const val MCP_SESSION_ID_HEADER = "mcp-session-id"
 private const val MAX_SESSIONS = 100
 private const val SESSION_CLEANUP_INTERVAL_MS = 60_000L
 private const val SESSION_IDLE_TIMEOUT_MS = 7L * 24 * 60 * 60 * 1000 // 7 days
