@@ -636,6 +636,8 @@ Tunnel architecture:
 | Device as Hotspot | Not accessible | Accessible to hotspot clients |
 | ADB Port Forward | Accessible via host | Accessible via host |
 
+**CORS (browser clients)**: The server sends permissive CORS (`Access-Control-Allow-Origin: *`, no credentials mode) so browser-based MCP clients (e.g. MCP Inspector) can complete the OAuth flow and `/mcp` exchange. This does not weaken authentication — `/mcp` still requires a bearer/OAuth token that a cross-origin page cannot obtain, and non-browser clients send no `Origin` so CORS is a no-op for them. **Trade-off**: the wildcard removes the browser same-origin barrier, so in OPEN mode (both auth methods disabled) on a network-reachable or DNS-rebindable binding, a malicious web page in the victim's browser could drive the tool surface. No `Origin`/`Host` allowlist is enforced because the device's public host is dynamic (changing IPs, Cloudflare/ngrok tunnels, `public_url_override`); any static allowlist would break remote access. Mitigation: stay on the loopback binding and keep at least one auth method enabled unless the network is trusted.
+
 ### Permission Security
 
 Only necessary permissions: `INTERNET`, `FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `QUERY_ALL_PACKAGES` (app listing), `KILL_BACKGROUND_PROCESSES` (app closing), `CAMERA` (camera tools, runtime), `RECORD_AUDIO` (video recording with audio, runtime), `ACCESS_FINE_LOCATION` (device location, runtime), `ACCESS_COARSE_LOCATION` (location fallback, declared), Accessibility Service (user-granted via Settings), SAF tree URI permissions (user-granted per storage location via system file picker). Display clear explanations before requesting.
