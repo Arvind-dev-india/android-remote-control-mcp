@@ -11,21 +11,24 @@ import org.junit.jupiter.api.Test
 @DisplayName("ToolPermissionsConfig")
 class ToolPermissionsConfigTest {
     @Test
-    fun `isToolEnabled returns true for empty disabledTools`() {
+    fun `default profile enables core control tools`() {
         val config = ToolPermissionsConfig()
         assertTrue(config.isToolEnabled("tap"))
+        assertTrue(config.isToolEnabled("take_camera_photo"))
+        assertTrue(config.isToolEnabled("get_location"))
+        assertFalse(config.isToolEnabled("read_file"))
     }
 
     @Test
-    fun `isToolEnabled returns false when tool is in disabledTools`() {
-        val config = ToolPermissionsConfig(disabledTools = setOf("tap"))
+    fun `isToolEnabled returns false when tool is not allowlisted`() {
+        val config = ToolPermissionsConfig(enabledTools = setOf("swipe"))
         assertFalse(config.isToolEnabled("tap"))
     }
 
     @Test
-    fun `isToolEnabled returns true for unknown tool names`() {
-        val config = ToolPermissionsConfig(disabledTools = setOf("nonexistent_tool"))
-        assertTrue(config.isToolEnabled("tap"))
+    fun `isToolEnabled returns false for unknown tool names`() {
+        val config = ToolPermissionsConfig()
+        assertFalse(config.isToolEnabled("nonexistent_tool"))
     }
 
     @Test
@@ -53,16 +56,16 @@ class ToolPermissionsConfigTest {
     }
 
     @Test
-    fun `toJson with empty config produces expected JSON`() {
-        val json = ToolPermissionsConfig().toJson()
-        assertEquals("{\"disabledTools\":[],\"disabledParams\":{}}", json)
+    fun `toJson with empty allowlist produces expected JSON`() {
+        val json = ToolPermissionsConfig(enabledTools = emptySet()).toJson()
+        assertEquals("{\"enabledTools\":[],\"disabledParams\":{}}", json)
     }
 
     @Test
     fun `toJson and fromJson round-trip`() {
         val original =
             ToolPermissionsConfig(
-                disabledTools = setOf("tap", "swipe"),
+                enabledTools = setOf("tap", "swipe"),
                 disabledParams = mapOf("get_screen_state" to setOf("include_screenshot")),
             )
         val json = original.toJson()
@@ -81,10 +84,10 @@ class ToolPermissionsConfigTest {
     @Test
     fun `fromJson with valid JSON`() {
         val json =
-            """{"disabledTools":["tap","swipe"],"disabledParams":{"get_screen_state":["include_screenshot"]}}"""
+            """{"enabledTools":["tap","swipe"],"disabledParams":{"get_screen_state":["include_screenshot"]}}"""
         val config = ToolPermissionsConfig.fromJson(json)
         assertNotNull(config)
-        assertEquals(setOf("tap", "swipe"), config!!.disabledTools)
+        assertEquals(setOf("tap", "swipe"), config!!.enabledTools)
         assertEquals(
             mapOf("get_screen_state" to setOf("include_screenshot")),
             config.disabledParams,
@@ -111,16 +114,25 @@ class ToolPermissionsConfigTest {
     @Test
     fun `fromJson with unknown extra JSON keys`() {
         val json =
-            """{"disabledTools":["tap"],"disabledParams":{},"unknownKey":"value"}"""
+            """{"enabledTools":["tap"],"disabledParams":{},"unknownKey":"value"}"""
         val config = ToolPermissionsConfig.fromJson(json)
         assertNotNull(config)
-        assertEquals(setOf("tap"), config!!.disabledTools)
+        assertEquals(setOf("tap"), config!!.enabledTools)
     }
 
     @Test
     fun `fromJson with partially valid JSON`() {
-        val json = """{"disabledTools":["tap"],"disabledParams":"not_an_object"}"""
+        val json = """{"enabledTools":["tap"],"disabledParams":"not_an_object"}"""
         val config = ToolPermissionsConfig.fromJson(json)
         assertNull(config)
+    }
+
+    @Test
+    fun `legacy disabledTools JSON migrates to an allowlist`() {
+        val config = ToolPermissionsConfig.fromJson("""{"disabledTools":["tap"],"disabledParams":{}}""")
+        assertNotNull(config)
+        assertFalse(config!!.isToolEnabled("tap"))
+        assertTrue(config.isToolEnabled("swipe"))
+        assertFalse(config.isToolEnabled("future_unknown_tool"))
     }
 }

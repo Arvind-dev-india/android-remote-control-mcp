@@ -258,9 +258,9 @@ class SettingsRepositoryImpl
                 val current = ToolPermissionsConfig.fromJsonOrDefault(prefs[TOOL_PERMISSIONS_KEY])
                 val updated =
                     if (enabled) {
-                        current.copy(disabledTools = current.disabledTools - toolName)
+                        current.copy(enabledTools = current.enabledTools + toolName)
                     } else {
-                        current.copy(disabledTools = current.disabledTools + toolName)
+                        current.copy(enabledTools = current.enabledTools - toolName)
                     }
                 prefs[TOOL_PERMISSIONS_KEY] = updated.toJson()
             }
@@ -495,7 +495,7 @@ class SettingsRepositoryImpl
 
             val tunnelProviderName = prefs[TUNNEL_PROVIDER_KEY] ?: TunnelProviderType.CLOUDFLARE.name
             val cloudflareTunnelModeName =
-                prefs[CLOUDFLARE_TUNNEL_MODE_KEY] ?: CloudflareTunnelMode.FREE.name
+                prefs[CLOUDFLARE_TUNNEL_MODE_KEY] ?: CloudflareTunnelMode.TOKEN.name
 
             return ServerConfig(
                 port = prefs[PORT_KEY] ?: ServerConfig.DEFAULT_PORT,
@@ -519,7 +519,7 @@ class SettingsRepositoryImpl
                 ngrokDomain = prefs[NGROK_DOMAIN_KEY] ?: "",
                 cloudflareTunnelMode =
                     CloudflareTunnelMode.entries.firstOrNull { it.name == cloudflareTunnelModeName }
-                        ?: CloudflareTunnelMode.FREE,
+                        ?: CloudflareTunnelMode.TOKEN,
                 cloudflareTunnelToken = prefs[CLOUDFLARE_TUNNEL_TOKEN_KEY] ?: "",
                 fileSizeLimitMb = prefs[FILE_SIZE_LIMIT_KEY] ?: ServerConfig.DEFAULT_FILE_SIZE_LIMIT_MB,
                 allowHttpDownloads = prefs[ALLOW_HTTP_DOWNLOADS_KEY] ?: false,
@@ -527,10 +527,10 @@ class SettingsRepositoryImpl
                 downloadTimeoutSeconds =
                     prefs[DOWNLOAD_TIMEOUT_KEY]
                         ?: ServerConfig.DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
-                deviceSlug = prefs[DEVICE_SLUG_KEY] ?: "",
-                oauthEnabled = prefs[OAUTH_ENABLED_KEY] ?: true,
+                deviceSlug = prefs[DEVICE_SLUG_KEY] ?: ServerConfig.DEFAULT_DEVICE_SLUG,
+                oauthEnabled = prefs[OAUTH_ENABLED_KEY] ?: false,
                 bearerTokenEnabled = prefs[BEARER_TOKEN_ENABLED_KEY] ?: true,
-                publicUrlOverride = prefs[PUBLIC_URL_OVERRIDE_KEY] ?: "",
+                publicUrlOverride = prefs[PUBLIC_URL_OVERRIDE_KEY] ?: ServerConfig.DEFAULT_PUBLIC_URL,
                 toolPermissionsConfig = ToolPermissionsConfig.fromJsonOrDefault(prefs[TOOL_PERMISSIONS_KEY]),
             )
         }

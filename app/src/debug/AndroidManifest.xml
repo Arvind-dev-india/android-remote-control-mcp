@@ -2,10 +2,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+        <receiver
+            android:name=".services.mcp.AdbConfigReceiver"
+            android:exported="true" />
+
+        <receiver
+            android:name=".debug.E2EConfigReceiver"
+            android:exported="true" />
+
         <!-- Debug-only: lets E2E tests approve a pending OAuth authorization. Absent from release. -->
         <receiver
             android:name=".debug.OAuthApprovalTestReceiver"
             android:exported="true" />
+
+        <activity
+            android:name=".services.mcp.AdbServiceTrampolineActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
     </application>
 
 </manifest>

@@ -89,7 +89,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.danielealbano.androidremotecontrolmcp"
+        applicationId = "com.yedhant.androidremotecontrolmcp"
         minSdk = 33
         targetSdk = 34
         versionCode = versionCodeProp

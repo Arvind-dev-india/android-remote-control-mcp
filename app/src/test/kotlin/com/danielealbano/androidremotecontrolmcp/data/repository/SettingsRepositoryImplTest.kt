@@ -91,7 +91,10 @@ class SettingsRepositoryImplTest {
                 assertEquals(TunnelProviderType.CLOUDFLARE, config.tunnelProvider)
                 assertEquals("", config.ngrokAuthtoken)
                 assertEquals("", config.ngrokDomain)
-                assertEquals("", config.deviceSlug)
+                assertEquals(ServerConfig.DEFAULT_DEVICE_SLUG, config.deviceSlug)
+                assertEquals(CloudflareTunnelMode.TOKEN, config.cloudflareTunnelMode)
+                assertFalse(config.oauthEnabled)
+                assertEquals(ServerConfig.DEFAULT_PUBLIC_URL, config.publicUrlOverride)
             }
 
         @Test
@@ -552,11 +555,11 @@ class SettingsRepositoryImplTest {
     @DisplayName("updateCloudflareTunnelMode")
     inner class UpdateCloudflareTunnelMode {
         @Test
-        fun `defaults to FREE when unset`() =
+        fun `defaults to TOKEN when unset`() =
             testScope.runTest {
                 val config = repository.getServerConfig()
 
-                assertEquals(CloudflareTunnelMode.FREE, config.cloudflareTunnelMode)
+                assertEquals(CloudflareTunnelMode.TOKEN, config.cloudflareTunnelMode)
             }
 
         @Test
@@ -569,14 +572,14 @@ class SettingsRepositoryImplTest {
             }
 
         @Test
-        fun `unknown stored mode falls back to FREE`() =
+        fun `unknown stored mode falls back to TOKEN`() =
             testScope.runTest {
                 dataStore.edit { prefs ->
                     prefs[stringPreferencesKey("cloudflare_tunnel_mode")] = "NOT_A_MODE"
                 }
                 val config = repository.getServerConfig()
 
-                assertEquals(CloudflareTunnelMode.FREE, config.cloudflareTunnelMode)
+                assertEquals(CloudflareTunnelMode.TOKEN, config.cloudflareTunnelMode)
             }
     }
 
@@ -626,7 +629,7 @@ class SettingsRepositoryImplTest {
             testScope.runTest {
                 repository.serverConfig.test {
                     val initial = awaitItem()
-                    assertEquals("", initial.deviceSlug)
+                    assertEquals(ServerConfig.DEFAULT_DEVICE_SLUG, initial.deviceSlug)
 
                     repository.updateDeviceSlug("my_phone")
                     val updated = awaitItem()
@@ -1281,13 +1284,13 @@ class SettingsRepositoryImplTest {
     @DisplayName("tool permissions")
     inner class ToolPermissions {
         @Test
-        fun `updateToolPermissionsConfig with disabled tools persists`() =
+        fun `updateToolPermissionsConfig with enabled tools persists`() =
             runTest {
-                val config = ToolPermissionsConfig(disabledTools = setOf("tap", "swipe"))
+                val config = ToolPermissionsConfig(enabledTools = setOf("tap", "swipe"))
                 repository.updateToolPermissionsConfig(config)
 
                 val result = repository.getServerConfig()
-                assertEquals(setOf("tap", "swipe"), result.toolPermissionsConfig.disabledTools)
+                assertEquals(setOf("tap", "swipe"), result.toolPermissionsConfig.enabledTools)
             }
 
         @Test
@@ -1331,11 +1334,11 @@ class SettingsRepositoryImplTest {
             runTest {
                 repository.updateToolEnabled("tap", false)
                 var result = repository.getServerConfig()
-                assertTrue(result.toolPermissionsConfig.disabledTools.contains("tap"))
+                assertFalse(result.toolPermissionsConfig.enabledTools.contains("tap"))
 
                 repository.updateToolEnabled("tap", true)
                 result = repository.getServerConfig()
-                assertFalse(result.toolPermissionsConfig.disabledTools.contains("tap"))
+                assertTrue(result.toolPermissionsConfig.enabledTools.contains("tap"))
             }
 
         @Test
@@ -1438,12 +1441,12 @@ class SettingsRepositoryImplTest {
         private val bearerTokenEnabledInitializedKey = booleanPreferencesKey("bearer_token_enabled_initialized")
 
         @Test
-        fun `fresh install enables bearer with generated token and oauth enabled`() =
+        fun `fresh install enables bearer with generated token and oauth disabled`() =
             testScope.runTest {
                 val config = repository.getServerConfig()
                 assertTrue(config.bearerTokenEnabled)
                 assertTrue(config.bearerToken.isNotEmpty())
-                assertTrue(config.oauthEnabled)
+                assertFalse(config.oauthEnabled)
             }
 
         @Test

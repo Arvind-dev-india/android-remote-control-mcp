@@ -46,16 +46,16 @@ data class ServerConfig(
     val tunnelProvider: TunnelProviderType = TunnelProviderType.CLOUDFLARE,
     val ngrokAuthtoken: String = "",
     val ngrokDomain: String = "",
-    val cloudflareTunnelMode: CloudflareTunnelMode = CloudflareTunnelMode.FREE,
+    val cloudflareTunnelMode: CloudflareTunnelMode = CloudflareTunnelMode.TOKEN,
     val cloudflareTunnelToken: String = "",
     val fileSizeLimitMb: Int = DEFAULT_FILE_SIZE_LIMIT_MB,
     val allowHttpDownloads: Boolean = false,
     val allowUnverifiedHttpsCerts: Boolean = false,
     val downloadTimeoutSeconds: Int = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
-    val deviceSlug: String = "",
-    val oauthEnabled: Boolean = true,
+    val deviceSlug: String = DEFAULT_DEVICE_SLUG,
+    val oauthEnabled: Boolean = false,
     val bearerTokenEnabled: Boolean = true,
-    val publicUrlOverride: String = "",
+    val publicUrlOverride: String = DEFAULT_PUBLIC_URL,
     val toolPermissionsConfig: ToolPermissionsConfig = ToolPermissionsConfig(),
 ) {
     companion object {
@@ -70,6 +70,12 @@ data class ServerConfig(
 
         /** Default hostname for auto-generated certificates. */
         const val DEFAULT_CERTIFICATE_HOSTNAME = "android-mcp.local"
+
+        /** Stable tool prefix for the primary phone. */
+        const val DEFAULT_DEVICE_SLUG = "phone"
+
+        /** Named Cloudflare Tunnel hostname managed by the homelab. */
+        const val DEFAULT_PUBLIC_URL = "https://phone-mcp.yedhant.com"
 
         /** Default file size limit in megabytes. */
         const val DEFAULT_FILE_SIZE_LIMIT_MB = 50

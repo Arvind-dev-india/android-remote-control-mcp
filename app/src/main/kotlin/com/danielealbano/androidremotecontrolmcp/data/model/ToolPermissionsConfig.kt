@@ -11,10 +11,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 data class ToolPermissionsConfig(
-    val disabledTools: Set<String> = emptySet(),
+    val enabledTools: Set<String> = DEFAULT_ENABLED_TOOLS,
     val disabledParams: Map<String, Set<String>> = emptyMap(),
 ) {
-    fun isToolEnabled(toolName: String): Boolean = toolName !in disabledTools
+    fun isToolEnabled(toolName: String): Boolean = toolName in enabledTools
 
     fun isParamEnabled(
         toolName: String,
@@ -23,7 +23,7 @@ data class ToolPermissionsConfig(
 
     fun toJson(): String =
         buildJsonObject {
-            put("disabledTools", buildJsonArray { disabledTools.forEach { add(it) } })
+            put("enabledTools", buildJsonArray { enabledTools.forEach { add(it) } })
             put(
                 "disabledParams",
                 buildJsonObject {
@@ -38,12 +38,29 @@ data class ToolPermissionsConfig(
         fun fromJson(json: String): ToolPermissionsConfig? =
             try {
                 val obj = Json.parseToJsonElement(json).jsonObject
-                val disabledTools =
-                    obj["disabledTools"]
-                        ?.jsonArray
-                        ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-                        ?.toSet()
-                        ?: emptySet()
+                val enabledTools =
+                    when {
+                        obj["enabledTools"] != null -> {
+                            obj
+                                .getValue("enabledTools")
+                                .jsonArray
+                                .mapNotNull { it.jsonPrimitive.contentOrNull }
+                                .toSet()
+                        }
+
+                        obj["disabledTools"] != null -> {
+                            ALL_SUPPORTED_TOOLS -
+                                obj
+                                    .getValue("disabledTools")
+                                    .jsonArray
+                                    .mapNotNull { it.jsonPrimitive.contentOrNull }
+                                    .toSet()
+                        }
+
+                        else -> {
+                            DEFAULT_ENABLED_TOOLS
+                        }
+                    }
                 val disabledParams =
                     obj["disabledParams"]
                         ?.jsonObject
@@ -51,7 +68,7 @@ data class ToolPermissionsConfig(
                             v.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }.toSet()
                         }
                         ?: emptyMap()
-                ToolPermissionsConfig(disabledTools = disabledTools, disabledParams = disabledParams)
+                ToolPermissionsConfig(enabledTools = enabledTools, disabledParams = disabledParams)
             } catch (_: kotlinx.serialization.SerializationException) {
                 null
             } catch (_: IllegalArgumentException) {
@@ -62,5 +79,102 @@ data class ToolPermissionsConfig(
 
         fun fromJsonOrDefault(json: String?): ToolPermissionsConfig =
             if (json == null) ToolPermissionsConfig() else fromJson(json) ?: ToolPermissionsConfig()
+
+        val DEFAULT_ENABLED_TOOLS: Set<String> =
+            setOf(
+                "get_screen_state",
+                "press_back",
+                "press_home",
+                "open_notifications",
+                "dismiss_keyboard",
+                "tap",
+                "swipe",
+                "scroll",
+                "find_nodes",
+                "click_node",
+                "tap_node",
+                "scroll_to_node",
+                "type_append_text",
+                "type_insert_text",
+                "type_replace_text",
+                "type_clear_text",
+                "press_key",
+                "get_clipboard",
+                "set_clipboard",
+                "wait_for_node",
+                "wait_for_idle",
+                "get_node_details",
+                "open_app",
+                "list_apps",
+                "list_cameras",
+                "list_camera_photo_resolutions",
+                "take_camera_photo",
+                "notification_list",
+                "notification_open",
+                "notification_dismiss",
+                "get_location",
+            )
+
+        val ALL_SUPPORTED_TOOLS: Set<String> =
+            setOf(
+                "get_screen_state",
+                "press_back",
+                "press_home",
+                "press_recents",
+                "open_notifications",
+                "open_quick_settings",
+                "dismiss_keyboard",
+                "get_device_logs",
+                "tap",
+                "long_press",
+                "double_tap",
+                "swipe",
+                "scroll",
+                "pinch",
+                "custom_gesture",
+                "find_nodes",
+                "click_node",
+                "long_click_node",
+                "tap_node",
+                "scroll_to_node",
+                "type_append_text",
+                "type_insert_text",
+                "type_replace_text",
+                "type_clear_text",
+                "press_key",
+                "get_clipboard",
+                "set_clipboard",
+                "wait_for_node",
+                "wait_for_idle",
+                "get_node_details",
+                "list_storage_locations",
+                "list_files",
+                "read_file",
+                "write_file",
+                "append_file",
+                "file_replace",
+                "download_from_url",
+                "delete_file",
+                "open_app",
+                "list_apps",
+                "close_app",
+                "list_cameras",
+                "list_camera_photo_resolutions",
+                "list_camera_video_resolutions",
+                "take_camera_photo",
+                "save_camera_photo",
+                "save_camera_video",
+                "send_intent",
+                "open_uri",
+                "notification_list",
+                "notification_open",
+                "notification_dismiss",
+                "notification_snooze",
+                "notification_action",
+                "notification_reply",
+                "get_location",
+                "get_shared_content",
+                "share_file_via_web",
+            )
     }
 }

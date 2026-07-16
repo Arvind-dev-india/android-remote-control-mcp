@@ -298,7 +298,7 @@ class AdbConfigHandler(
         settingsRepository.updateToolPermissionsConfig(config)
         Log.i(
             TAG,
-            "Tool permissions updated: ${config.disabledTools.size} tools disabled, " +
+            "Tool permissions updated: ${config.enabledTools.size} tools enabled, " +
                 "${config.disabledParams.size} param overrides",
         )
     }

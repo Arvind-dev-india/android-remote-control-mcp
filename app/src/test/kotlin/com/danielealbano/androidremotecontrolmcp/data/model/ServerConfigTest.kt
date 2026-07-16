@@ -80,16 +80,19 @@ class ServerConfigTest {
         }
 
         @Test
-        fun `default deviceSlug is empty`() {
+        fun `default deviceSlug identifies the primary phone`() {
             val config = ServerConfig()
-            assertEquals("", config.deviceSlug)
+            assertEquals("phone", config.deviceSlug)
         }
 
         @Test
-        fun `default toolPermissionsConfig has empty sets`() {
+        fun `default toolPermissionsConfig uses the homelab allowlist`() {
             val config = ServerConfig()
             assertEquals(ToolPermissionsConfig(), config.toolPermissionsConfig)
-            assertTrue(config.toolPermissionsConfig.disabledTools.isEmpty())
+            assertEquals(
+                ToolPermissionsConfig.DEFAULT_ENABLED_TOOLS,
+                config.toolPermissionsConfig.enabledTools,
+            )
             assertTrue(config.toolPermissionsConfig.disabledParams.isEmpty())
         }
     }

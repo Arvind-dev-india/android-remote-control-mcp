@@ -169,7 +169,8 @@ object McpIntegrationTestHelper {
         server: Server,
         deps: MockDependencies,
         deviceSlug: String = "",
-        perms: ToolPermissionsConfig = ToolPermissionsConfig(),
+        perms: ToolPermissionsConfig =
+            ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
     ) {
         val toolNamePrefix = McpToolUtils.buildToolNamePrefix(deviceSlug)
         registerScreenIntrospectionTools(
@@ -254,7 +255,8 @@ object McpIntegrationTestHelper {
     fun createSdkServer(
         deps: MockDependencies,
         deviceSlug: String = "",
-        perms: ToolPermissionsConfig = ToolPermissionsConfig(),
+        perms: ToolPermissionsConfig =
+            ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
     ): Server {
         val server =
             Server(
@@ -289,7 +291,8 @@ object McpIntegrationTestHelper {
     suspend fun withTestApplication(
         deps: MockDependencies = createMockDependencies(),
         deviceSlug: String = "",
-        perms: ToolPermissionsConfig = ToolPermissionsConfig(),
+        perms: ToolPermissionsConfig =
+            ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
         testBlock: suspend (client: Client, deps: MockDependencies) -> Unit,
     ) {
         val sdkServer = createSdkServer(deps, deviceSlug, perms)

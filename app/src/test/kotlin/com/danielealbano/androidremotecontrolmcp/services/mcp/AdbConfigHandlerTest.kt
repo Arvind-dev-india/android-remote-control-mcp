@@ -572,10 +572,10 @@ class AdbConfigHandlerTest {
             }
 
         @Test
-        @DisplayName("valid JSON with disabledTools updates config")
-        fun validJsonWithDisabledToolsUpdatesConfig() =
+        @DisplayName("valid JSON with enabledTools updates config")
+        fun validJsonWithEnabledToolsUpdatesConfig() =
             runTest {
-                val json = """{"disabledTools":["tap","swipe"],"disabledParams":{}}"""
+                val json = """{"enabledTools":["tap","swipe"],"disabledParams":{}}"""
                 val intent =
                     createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
                         string(AdbConfigHandler.EXTRA_TOOL_PERMISSIONS, json)
@@ -583,7 +583,7 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify {
                     settingsRepository.updateToolPermissionsConfig(
-                        ToolPermissionsConfig(disabledTools = setOf("tap", "swipe")),
+                        ToolPermissionsConfig(enabledTools = setOf("tap", "swipe")),
                     )
                 }
             }
@@ -593,7 +593,8 @@ class AdbConfigHandlerTest {
         fun validJsonWithDisabledParamsUpdatesConfig() =
             runTest {
                 val json =
-                    """{"disabledTools":[],"disabledParams":{"get_screen_state":["include_screenshot"]}}"""
+                    """{"enabledTools":["get_screen_state"],""" +
+                        """"disabledParams":{"get_screen_state":["include_screenshot"]}}"""
                 val intent =
                     createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
                         string(AdbConfigHandler.EXTRA_TOOL_PERMISSIONS, json)
@@ -602,6 +603,7 @@ class AdbConfigHandlerTest {
                 coVerify {
                     settingsRepository.updateToolPermissionsConfig(
                         ToolPermissionsConfig(
+                            enabledTools = setOf("get_screen_state"),
                             disabledParams = mapOf("get_screen_state" to setOf("include_screenshot")),
                         ),
                     )

@@ -62,7 +62,7 @@ class E2EConfigReceiverTest {
     @Test
     fun `ACTION_E2E_CONFIGURE constant is defined`() {
         assertEquals(
-            "com.danielealbano.androidremotecontrolmcp.debug.E2E_CONFIGURE",
+            "com.yedhant.androidremotecontrolmcp.debug.E2E_CONFIGURE",
             E2EConfigReceiver.ACTION_E2E_CONFIGURE,
         )
     }
@@ -70,7 +70,7 @@ class E2EConfigReceiverTest {
     @Test
     fun `ACTION_E2E_START_SERVER constant is defined`() {
         assertEquals(
-            "com.danielealbano.androidremotecontrolmcp.debug.E2E_START_SERVER",
+            "com.yedhant.androidremotecontrolmcp.debug.E2E_START_SERVER",
             E2EConfigReceiver.ACTION_E2E_START_SERVER,
         )
     }

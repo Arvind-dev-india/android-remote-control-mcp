@@ -28,7 +28,7 @@ object AndroidContainerSetup {
     private const val PROCESS_TIMEOUT_SECONDS = 30L
     private const val MEMORY_BYTES = 8L * 1024 * 1024 * 1024 // 8 GB
 
-    private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.debug"
+    private const val APP_PACKAGE = "com.yedhant.androidremotecontrolmcp.debug"
     private const val CALCULATOR_PACKAGE = "com.simplemobiletools.calculator"
     private const val COMPOSE_TEST_PACKAGE = "com.danielealbano.composetestapp"
     private const val CALCULATOR_APK_RESOURCE = "/simple-calculator.apk"
@@ -57,8 +57,8 @@ object AndroidContainerSetup {
      * MCP tool name prefix used by E2E tests.
      *
      * The MCP server builds tool name prefixes via `McpToolUtils.buildToolNamePrefix(deviceSlug)`.
-     * With an empty device slug (the default — E2E tests do not configure a device slug in
-     * [configureServerSettings]), the prefix is `"android_"`. For example, the base tool name
+     * E2E explicitly clears the production `phone` slug in [configureServerSettings], so
+     * the prefix is `"android_"`. For example, the base tool name
      * `"press_home"` is registered as `"android_press_home"`.
      *
      * **IMPORTANT**: If the default `device_slug` in `ServerConfig` ever changes, or if
@@ -345,6 +345,10 @@ object AndroidContainerSetup {
             "--es", "bearer_token", E2E_BEARER_TOKEN,
             "--es", "binding_address", "0.0.0.0",
             "--ei", "port", MCP_DEFAULT_PORT.toString(),
+            "--ez", "oauth_enabled", "true",
+            "--ez", "bearer_token_enabled", "true",
+            "--es", "device_slug", "",
+            "--ez", "enable_all_tools", "true",
         )
         Thread.sleep(3_000)
 

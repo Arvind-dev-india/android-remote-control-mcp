@@ -1,6 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.integration
 
 import android.util.Log
+import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
@@ -105,7 +106,10 @@ class CloudflareTunnelIntegrationTest {
                 }
 
             // Start the tunnel
-            provider.start(localPort, ServerConfig())
+            provider.start(
+                localPort,
+                ServerConfig(cloudflareTunnelMode = CloudflareTunnelMode.FREE),
+            )
 
             // Wait for the tunnel to report Connected status
             val connectedStatus =

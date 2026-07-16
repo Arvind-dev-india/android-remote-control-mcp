@@ -1212,7 +1212,7 @@ class MainViewModelTest {
             val job = launch { viewModel.toolPermissionsConfig.collect { values.add(it) } }
             advanceUntilIdle()
 
-            val updatedPerms = ToolPermissionsConfig(disabledTools = setOf("tap"))
+            val updatedPerms = ToolPermissionsConfig(enabledTools = setOf("tap"))
             configFlow.value = configFlow.value.copy(toolPermissionsConfig = updatedPerms)
             advanceUntilIdle()
 

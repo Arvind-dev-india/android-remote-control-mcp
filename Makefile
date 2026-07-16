@@ -12,8 +12,9 @@
 ANDROID_HOME ?= $(HOME)/Android/Sdk
 GRADLE := ./gradlew
 ADB := adb
-APP_ID := com.danielealbano.androidremotecontrolmcp
+APP_ID := com.yedhant.androidremotecontrolmcp
 APP_ID_DEBUG := $(APP_ID).debug
+CLASS_NAMESPACE := com.danielealbano.androidremotecontrolmcp
 EMULATOR_NAME := mcp_test_emulator
 EMULATOR_DEVICE := pixel_6
 EMULATOR_API := 34
@@ -175,12 +176,12 @@ grant-permissions: ## Grant permissions via adb (accessibility + notification li
 	@echo ""
 	@echo "1. Enabling Accessibility Service..."
 	$(ADB) shell settings put secure enabled_accessibility_services \
-		$(APP_ID_DEBUG)/com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
+		$(APP_ID_DEBUG)/$(CLASS_NAMESPACE).services.accessibility.McpAccessibilityService
 	@echo "   Done."
 	@echo ""
 	@echo "2. Enabling Notification Listener Service..."
 	$(ADB) shell cmd notification allow_listener \
-		$(APP_ID_DEBUG)/com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
+		$(APP_ID_DEBUG)/$(CLASS_NAMESPACE).services.notifications.McpNotificationListenerService
 	@echo "   Done."
 	@echo ""
 	@echo "3. Granting POST_NOTIFICATIONS permission..."
@@ -225,7 +226,7 @@ grant-permissions: ## Grant permissions via adb (accessibility + notification li
 APP_ID_TARGET ?= $(APP_ID_DEBUG)
 
 start-server: ## Launch MainActivity on device (debug build by default)
-	$(ADB) shell am start -n $(APP_ID_TARGET)/$(APP_ID).ui.MainActivity
+	$(ADB) shell am start -n $(APP_ID_TARGET)/$(CLASS_NAMESPACE).ui.MainActivity
 
 forward-port: ## Set up adb port forwarding (device -> host)
 	$(ADB) forward tcp:$(DEFAULT_PORT) tcp:$(DEFAULT_PORT)

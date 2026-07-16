@@ -48,7 +48,7 @@
 
     <application
         android:name=".McpApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -129,18 +129,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- ADB Configuration Receiver (headless setup via adb shell am broadcast) -->
-        <receiver
-            android:name=".services.mcp.AdbConfigReceiver"
-            android:exported="true">
-        </receiver>
-
-        <!-- E2E Configuration Receiver (test configuration injection via adb shell) -->
-        <receiver
-            android:name=".debug.E2EConfigReceiver"
-            android:exported="true">
-        </receiver>
-
         <!-- Event Channel Service -->
         <service
             android:name=".services.channel.EventChannelService"
@@ -151,14 +139,6 @@
         <receiver
             android:name=".services.channel.geofence.GeofenceTransitionReceiver"
             android:exported="false" />
-
-        <!-- ADB Service Trampoline (headless start/stop via adb shell am start) -->
-        <activity
-            android:name=".services.mcp.AdbServiceTrampolineActivity"
-            android:exported="true"
-            android:theme="@android:style/Theme.NoDisplay"
-            android:excludeFromRecents="true"
-            android:noHistory="true" />
 
         <activity
             android:name=".ui.ApprovalActivity"

@@ -5,6 +5,12 @@
 
 An Android application that runs as an **MCP (Model Context Protocol) server**, enabling AI models to **fully control an Android device** remotely using accessibility services and screenshot capture.
 
+> **Yedhant homelab fork:** production ADB/E2E receivers are removed, the
+> application ID is isolated, OAuth is off by default, named Cloudflare Tunnel
+> mode points to `phone-mcp.yedhant.com`, and tools start from an editable
+> allowlist. Releases contain only an Azure Key Vault-backed signed APK; debug
+> APKs are never published.
+
 The app runs directly on your Android device (or emulator) and exposes an HTTP server (with optional HTTPS) implementing the MCP protocol. AI models like Claude can connect to it and interact with any app on the device — reading UI elements, tapping buttons, typing text, swiping, capturing screenshots, managing files, launching apps, and more.
 
 > **Warning:** This software is provided "as-is" without warranty of any kind, for **research and educational purposes only**. The authors do not condone the use of this tool for any illegal, unauthorized, or unethical activities. Users are solely responsible for ensuring their use complies with all applicable laws and regulations. By using this software, you agree to use it responsibly and at your own risk.
@@ -301,8 +307,8 @@ Enable the tunnel in the app's "Remote Access" section. The public URL is displa
 The app can be fully configured and controlled from the command line without opening the UI. This is useful for automated setups, CI pipelines, or headless devices.
 
 Replace `<app-id>` with the application ID for your build:
-- **Debug**: `com.danielealbano.androidremotecontrolmcp.debug`
-- **Release**: `com.danielealbano.androidremotecontrolmcp`
+- **Debug**: `com.yedhant.androidremotecontrolmcp.debug`
+- **Release**: `com.yedhant.androidremotecontrolmcp`
 
 #### Grant Permissions
 

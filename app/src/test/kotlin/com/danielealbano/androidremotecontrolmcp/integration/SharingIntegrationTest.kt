@@ -454,7 +454,7 @@ class SharingIntegrationTest {
             FILE_SIZE_LIMIT_MB,
             { BASE_URL },
             "",
-            ToolPermissionsConfig(),
+            ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
         )
 
         testApplication {

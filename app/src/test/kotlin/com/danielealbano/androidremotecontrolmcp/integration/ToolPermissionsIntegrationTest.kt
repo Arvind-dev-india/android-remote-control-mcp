@@ -64,7 +64,7 @@ class ToolPermissionsIntegrationTest {
     @Test
     fun `disabled tool absent from tool list`() =
         runTest {
-            val perms = ToolPermissionsConfig(disabledTools = setOf("tap"))
+            val perms = ToolPermissionsConfig(enabledTools = setOf("long_press"))
 
             McpIntegrationTestHelper.withTestApplication(perms = perms) { client, _ ->
                 val result = client.listTools()
@@ -84,7 +84,7 @@ class ToolPermissionsIntegrationTest {
     @Test
     fun `all tools disabled returns empty tool list`() =
         runTest {
-            val perms = ToolPermissionsConfig(disabledTools = ALL_TOOL_NAMES)
+            val perms = ToolPermissionsConfig(enabledTools = emptySet())
 
             McpIntegrationTestHelper.withTestApplication(perms = perms) { client, _ ->
                 val result = client.listTools()
@@ -122,6 +122,7 @@ class ToolPermissionsIntegrationTest {
         runTest {
             val perms =
                 ToolPermissionsConfig(
+                    enabledTools = setOf("save_camera_video"),
                     disabledParams = mapOf("save_camera_video" to setOf("audio")),
                 )
 
@@ -150,7 +151,7 @@ class ToolPermissionsIntegrationTest {
     @Test
     fun `disabled tool call returns error`() =
         runTest {
-            val perms = ToolPermissionsConfig(disabledTools = setOf("tap"))
+            val perms = ToolPermissionsConfig(enabledTools = emptySet())
 
             McpIntegrationTestHelper.withTestApplication(perms = perms) { client, _ ->
                 val result =
@@ -229,6 +230,7 @@ class ToolPermissionsIntegrationTest {
 
             val perms =
                 ToolPermissionsConfig(
+                    enabledTools = setOf("save_camera_video"),
                     disabledParams = mapOf("save_camera_video" to setOf("audio")),
                 )
 
@@ -261,66 +263,4 @@ class ToolPermissionsIntegrationTest {
                 }
             }
         }
-
-    companion object {
-        private val ALL_TOOL_NAMES =
-            setOf(
-                "tap",
-                "long_press",
-                "double_tap",
-                "swipe",
-                "scroll",
-                "press_back",
-                "press_home",
-                "press_recents",
-                "open_notifications",
-                "open_quick_settings",
-                "dismiss_keyboard",
-                "get_device_logs",
-                "pinch",
-                "custom_gesture",
-                "find_nodes",
-                "click_node",
-                "long_click_node",
-                "tap_node",
-                "scroll_to_node",
-                "type_append_text",
-                "type_insert_text",
-                "type_replace_text",
-                "type_clear_text",
-                "press_key",
-                "get_clipboard",
-                "set_clipboard",
-                "wait_for_node",
-                "wait_for_idle",
-                "get_node_details",
-                "list_storage_locations",
-                "list_files",
-                "read_file",
-                "write_file",
-                "append_file",
-                "file_replace",
-                "download_from_url",
-                "delete_file",
-                "open_app",
-                "list_apps",
-                "close_app",
-                "list_cameras",
-                "list_camera_photo_resolutions",
-                "list_camera_video_resolutions",
-                "take_camera_photo",
-                "save_camera_photo",
-                "save_camera_video",
-                "send_intent",
-                "open_uri",
-                "notification_list",
-                "notification_open",
-                "notification_dismiss",
-                "notification_snooze",
-                "notification_action",
-                "notification_reply",
-                "get_screen_state",
-                "get_location",
-            )
-    }
 }

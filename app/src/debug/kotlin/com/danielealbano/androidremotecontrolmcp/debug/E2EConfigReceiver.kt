@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
@@ -103,6 +104,15 @@ class E2EConfigReceiver : BroadcastReceiver() {
                 Log.i(TAG, "Auto-start on boot updated to $autoStart")
             }
             applyAuthFlags(intent)
+            if (intent.hasExtra(EXTRA_DEVICE_SLUG)) {
+                val deviceSlug = intent.getStringExtra(EXTRA_DEVICE_SLUG) ?: ""
+                settingsRepository.updateDeviceSlug(deviceSlug)
+            }
+            if (intent.getBooleanExtra(EXTRA_ENABLE_ALL_TOOLS, false)) {
+                settingsRepository.updateToolPermissionsConfig(
+                    ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
+                )
+            }
             val storageLocationId = intent.getStringExtra(EXTRA_STORAGE_LOCATION_ID)
             if (!storageLocationId.isNullOrEmpty()) {
                 if (storageLocationProvider.isLocationAuthorized(storageLocationId)) {
@@ -149,14 +159,16 @@ class E2EConfigReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "E2E:ConfigReceiver"
-        const val ACTION_E2E_CONFIGURE = "com.danielealbano.androidremotecontrolmcp.debug.E2E_CONFIGURE"
-        const val ACTION_E2E_START_SERVER = "com.danielealbano.androidremotecontrolmcp.debug.E2E_START_SERVER"
+        const val ACTION_E2E_CONFIGURE = "com.yedhant.androidremotecontrolmcp.debug.E2E_CONFIGURE"
+        const val ACTION_E2E_START_SERVER = "com.yedhant.androidremotecontrolmcp.debug.E2E_START_SERVER"
         private const val EXTRA_BEARER_TOKEN = "bearer_token"
         private const val EXTRA_OAUTH_ENABLED = "oauth_enabled"
         private const val EXTRA_BEARER_TOKEN_ENABLED = "bearer_token_enabled"
         private const val EXTRA_BINDING_ADDRESS = "binding_address"
         private const val EXTRA_PORT = "port"
         private const val EXTRA_AUTO_START_ON_BOOT = "auto_start_on_boot"
+        private const val EXTRA_DEVICE_SLUG = "device_slug"
+        private const val EXTRA_ENABLE_ALL_TOOLS = "enable_all_tools"
         private const val EXTRA_STORAGE_LOCATION_ID = "storage_location_id"
         private const val EXTRA_STORAGE_ALLOW_WRITE = "storage_allow_write"
         private const val EXTRA_STORAGE_ALLOW_DELETE = "storage_allow_delete"

@@ -37,7 +37,7 @@ class CloudflareTunnelProviderTest {
                 every { mockBinaryResolver.resolve() } returns null
                 val provider = createProvider()
 
-                provider.start(8080, ServerConfig())
+                provider.start(8080, freeConfig())
                 advanceUntilIdle()
 
                 val status = provider.status.value
@@ -58,11 +58,11 @@ class CloudflareTunnelProviderTest {
                     every { mockBinaryResolver.resolve() } returns tempScript.absolutePath
 
                     val provider = createProvider()
-                    provider.start(8080, ServerConfig())
+                    provider.start(8080, freeConfig())
 
                     val ex =
                         assertThrows<IllegalStateException> {
-                            provider.start(8080, ServerConfig())
+                            provider.start(8080, freeConfig())
                         }
                     assertEquals("Tunnel is already running", ex.message)
 
@@ -161,7 +161,7 @@ class CloudflareTunnelProviderTest {
                 every { mockBinaryResolver.resolve() } returns "/tmp/nonexistent-cloudflared-binary"
                 val provider = createProvider()
 
-                provider.start(8080, ServerConfig())
+                provider.start(8080, freeConfig())
                 advanceUntilIdle()
 
                 val status = provider.status.value
@@ -207,6 +207,8 @@ class CloudflareTunnelProviderTest {
             cloudflareTunnelMode = CloudflareTunnelMode.TOKEN,
             cloudflareTunnelToken = "fake-token",
         )
+
+    private fun freeConfig() = ServerConfig(cloudflareTunnelMode = CloudflareTunnelMode.FREE)
 
     private fun fakeBinaryEmitting(vararg stderrLines: String): String {
         val script = File.createTempFile("fake-cloudflared", ".sh")

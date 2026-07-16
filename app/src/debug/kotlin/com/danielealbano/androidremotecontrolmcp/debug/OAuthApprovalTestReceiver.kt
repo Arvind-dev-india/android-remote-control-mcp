@@ -66,7 +66,7 @@ class OAuthApprovalTestReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "E2E:OAuthApproval"
-        const val ACTION_APPROVE = "com.danielealbano.androidremotecontrolmcp.debug.OAUTH_APPROVE"
+        const val ACTION_APPROVE = "com.yedhant.androidremotecontrolmcp.debug.OAUTH_APPROVE"
         const val EXTRA_APPROVAL_ID = "approval_id"
     }
 }
