@@ -57,15 +57,15 @@ object AndroidContainerSetup {
      * MCP tool name prefix used by E2E tests.
      *
      * The MCP server builds tool name prefixes via `McpToolUtils.buildToolNamePrefix(deviceSlug)`.
-     * E2E explicitly clears the production `phone` slug in [configureServerSettings], so
-     * the prefix is `"android_"`. For example, the base tool name
-     * `"press_home"` is registered as `"android_press_home"`.
+     * E2E explicitly sets the slug to `e2e` in [configureServerSettings], so
+     * the prefix is `"android_e2e_"`. For example, the base tool name
+     * `"press_home"` is registered as `"android_e2e_press_home"`.
      *
      * **IMPORTANT**: If the default `device_slug` in `ServerConfig` ever changes, or if
      * [configureServerSettings] starts configuring one, this constant MUST be updated to
      * match. Otherwise all E2E tool calls will fail with "Tool not found" errors.
      */
-    const val TOOL_NAME_PREFIX = "android_"
+    const val TOOL_NAME_PREFIX = "android_e2e_"
 
     @Volatile
     private var _adbSerial: String? = null
@@ -347,7 +347,7 @@ object AndroidContainerSetup {
             "--ei", "port", MCP_DEFAULT_PORT.toString(),
             "--ez", "oauth_enabled", "true",
             "--ez", "bearer_token_enabled", "true",
-            "--es", "device_slug", "",
+            "--es", "device_slug", "e2e",
             "--ez", "enable_all_tools", "true",
         )
         Thread.sleep(3_000)
