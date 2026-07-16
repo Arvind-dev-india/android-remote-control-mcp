@@ -229,8 +229,9 @@ jobs:
             --out "$asset" \
             unsigned/app-release-unsigned.apk
           unset key_alias
-          "$apksigner" verify --verbose --print-certs "$asset" > certificate.txt
-          actual_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' certificate.txt \
+          "$apksigner" verify --verbose --print-certs "$asset" > certificate.txt 2>&1
+          cat certificate.txt
+          actual_cert=$(awk '/certificate SHA-256 digest:/{print $NF; exit}' certificate.txt \
             | tr '[:lower:]' '[:upper:]' | tr -cd '0-9A-F')
           echo "Signer certificate SHA-256: $actual_cert"
           test "$actual_cert" = "$EXPECTED_CERT_SHA256"
