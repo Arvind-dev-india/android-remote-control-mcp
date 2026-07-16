@@ -33,6 +33,9 @@ class AccessViewModel
         private val _serverConfig = MutableStateFlow(ServerConfig())
         val serverConfig: StateFlow<ServerConfig> = _serverConfig.asStateFlow()
 
+        private val _bearerTokenInput = MutableStateFlow("")
+        val bearerTokenInput: StateFlow<String> = _bearerTokenInput.asStateFlow()
+
         private val _publicUrlOverrideInput = MutableStateFlow("")
         val publicUrlOverrideInput: StateFlow<String> = _publicUrlOverrideInput.asStateFlow()
 
@@ -48,7 +51,10 @@ class AccessViewModel
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.ensureAuthModelMigrated()
                 _publicUrlOverrideInput.value = settingsRepository.serverConfig.first().publicUrlOverride
-                settingsRepository.serverConfig.collect { _serverConfig.value = it }
+                settingsRepository.serverConfig.collect {
+                    _serverConfig.value = it
+                    _bearerTokenInput.value = it.bearerToken
+                }
             }
         }
 
@@ -84,6 +90,12 @@ class AccessViewModel
 
         fun regenerateBearerToken() {
             viewModelScope.launch(ioDispatcher) { settingsRepository.generateNewBearerToken() }
+        }
+
+        fun setBearerToken(token: String) {
+            _bearerTokenInput.value = token
+            _serverConfig.value = _serverConfig.value.copy(bearerToken = token)
+            viewModelScope.launch(ioDispatcher) { settingsRepository.updateBearerToken(token) }
         }
 
         fun setPublicUrlOverride(url: String) {

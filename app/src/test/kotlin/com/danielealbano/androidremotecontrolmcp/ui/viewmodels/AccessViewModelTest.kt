@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -93,6 +94,16 @@ class AccessViewModelTest {
         runTest {
             viewModel.regenerateBearerToken()
             coVerify { repository.generateNewBearerToken() }
+        }
+
+    @Test
+    @DisplayName("editing bearer token persists it")
+    fun editBearerToken() =
+        runTest {
+            viewModel.setBearerToken("centrally-managed-token")
+            assertEquals("centrally-managed-token", viewModel.bearerTokenInput.value)
+            assertEquals("centrally-managed-token", viewModel.serverConfig.value.bearerToken)
+            coVerify { repository.updateBearerToken("centrally-managed-token") }
         }
 
     @Test

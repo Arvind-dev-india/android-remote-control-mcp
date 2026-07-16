@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -61,6 +63,7 @@ fun AccessSettingsScreen(
 ) {
     val context = LocalContext.current
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
+    val bearerToken by viewModel.bearerTokenInput.collectAsStateWithLifecycle()
     val publicUrlOverride by viewModel.publicUrlOverrideInput.collectAsStateWithLifecycle()
     val publicUrlError by viewModel.publicUrlOverrideError.collectAsStateWithLifecycle()
     val showDisableDialog by viewModel.showDisableAuthDialog.collectAsStateWithLifecycle()
@@ -161,12 +164,16 @@ fun AccessSettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = serverConfig.bearerToken,
-                onValueChange = {},
-                readOnly = true,
+                value = bearerToken,
+                onValueChange = viewModel::setBearerToken,
                 singleLine = true,
                 enabled = serverConfig.bearerTokenEnabled,
                 label = { Text(stringResource(R.string.access_bearer_token_field_label)) },
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        autoCorrectEnabled = false,
+                    ),
                 visualTransformation =
                     if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -184,7 +191,7 @@ fun AccessSettingsScreen(
                         }
                         IconButton(
                             onClick = { viewModel.copyBearerToken(context) },
-                            enabled = serverConfig.bearerToken.isNotEmpty(),
+                            enabled = bearerToken.isNotEmpty(),
                         ) {
                             Icon(
                                 Icons.Default.ContentCopy,
