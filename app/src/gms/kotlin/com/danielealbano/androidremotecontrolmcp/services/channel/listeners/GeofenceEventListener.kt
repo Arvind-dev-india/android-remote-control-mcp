@@ -2,8 +2,8 @@ package com.danielealbano.androidremotecontrolmcp.services.channel.listeners
 
 import android.content.Context
 import android.location.Geocoder
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceChannelEventFactory
 import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceChannelConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceChannelEventFactory
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManager
 import com.danielealbano.androidremotecontrolmcp.utils.Logger

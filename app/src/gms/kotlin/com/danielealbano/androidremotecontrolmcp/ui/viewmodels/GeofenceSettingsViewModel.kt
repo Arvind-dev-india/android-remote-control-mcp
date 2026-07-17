@@ -53,8 +53,7 @@ class GeofenceSettingsViewModel
         }
 
         /** Last-known location for map centering (mirrors the previous `.lastLocation` behavior). */
-        suspend fun currentLocation(): Result<LocationData> =
-            withContext(ioDispatcher) { locationProvider.getLocation(freshFix = false) }
+        suspend fun currentLocation(): Result<LocationData> = withContext(ioDispatcher) { locationProvider.getLocation(freshFix = false) }
 
         companion object {
             private const val STOP_TIMEOUT_MS = 5000L

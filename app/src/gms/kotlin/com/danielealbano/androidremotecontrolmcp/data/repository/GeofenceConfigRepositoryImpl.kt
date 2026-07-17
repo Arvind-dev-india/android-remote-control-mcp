@@ -68,11 +68,9 @@ class GeofenceConfigRepositoryImpl
             }
         }
 
-        override suspend fun updateGeofenceChannelEnabled(enabled: Boolean) =
-            updateGeofenceConfig { it.copy(enabled = enabled) }
+        override suspend fun updateGeofenceChannelEnabled(enabled: Boolean) = updateGeofenceConfig { it.copy(enabled = enabled) }
 
-        override suspend fun addGeofenceZone(zone: GeofenceZone) =
-            updateGeofenceConfig { it.copy(zones = it.zones + zone) }
+        override suspend fun addGeofenceZone(zone: GeofenceZone) = updateGeofenceConfig { it.copy(zones = it.zones + zone) }
 
         override suspend fun removeGeofenceZone(zoneId: String) =
             updateGeofenceConfig { it.copy(zones = it.zones.filter { z -> z.id != zoneId }) }

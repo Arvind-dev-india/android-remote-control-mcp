@@ -68,5 +68,4 @@ object ChannelEventFactory {
                     put("bssid", bssid?.let { JsonPrimitive(it) } ?: JsonNull)
                 },
         )
-
 }

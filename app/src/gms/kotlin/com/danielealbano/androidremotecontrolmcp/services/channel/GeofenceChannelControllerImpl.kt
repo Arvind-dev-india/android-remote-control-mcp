@@ -54,7 +54,9 @@ class GeofenceChannelControllerImpl
                                     started = true
                                 }
 
-                                config.enabled && started -> eventListener.updateConfig(config)
+                                config.enabled && started -> {
+                                    eventListener.updateConfig(config)
+                                }
 
                                 !config.enabled && started -> {
                                     eventListener.stop()

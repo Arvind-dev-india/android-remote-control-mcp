@@ -87,7 +87,14 @@ class GeofenceConfigRepositoryTest {
             assertEquals(zone, stored.zones.first())
 
             repository.updateGeofenceZone(zone.copy(name = "Office"))
-            assertEquals("Office", repository.getGeofenceConfig().zones.first().name)
+            assertEquals(
+                "Office",
+                repository
+                    .getGeofenceConfig()
+                    .zones
+                    .first()
+                    .name,
+            )
 
             repository.removeGeofenceZone("z1")
             assertTrue(repository.getGeofenceConfig().zones.isEmpty())
@@ -164,6 +171,13 @@ class GeofenceConfigRepositoryTest {
 
             // The dedicated geofence key must be untouched — the zone survives.
             assertEquals(1, repository.getGeofenceConfig().zones.size)
-            assertEquals("z1", repository.getGeofenceConfig().zones.first().id)
+            assertEquals(
+                "z1",
+                repository
+                    .getGeofenceConfig()
+                    .zones
+                    .first()
+                    .id,
+            )
         }
 }

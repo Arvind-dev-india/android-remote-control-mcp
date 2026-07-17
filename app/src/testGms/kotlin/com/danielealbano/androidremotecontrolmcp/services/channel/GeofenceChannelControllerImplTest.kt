@@ -13,6 +13,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DisplayName
@@ -54,7 +55,7 @@ class GeofenceChannelControllerImplTest {
 
     @Test
     fun `enabled config syncs geofences`() =
-        runTest {
+        runTest(UnconfinedTestDispatcher()) {
             val manager = geofenceManager()
             val controller =
                 GeofenceChannelControllerImpl(
@@ -71,7 +72,7 @@ class GeofenceChannelControllerImplTest {
 
     @Test
     fun `disabled config removes geofences`() =
-        runTest {
+        runTest(UnconfinedTestDispatcher()) {
             val manager = geofenceManager()
             val flow = MutableStateFlow(GeofenceChannelConfig(enabled = true, zones = listOf(zone)))
             val controller = GeofenceChannelControllerImpl(context, manager, repository(flow))
@@ -86,7 +87,7 @@ class GeofenceChannelControllerImplTest {
 
     @Test
     fun `handleGeofenceIntent dispatches transition when started`() =
-        runTest {
+        runTest(UnconfinedTestDispatcher()) {
             val dispatcher = eventDispatcher()
             val controller =
                 GeofenceChannelControllerImpl(
@@ -109,7 +110,7 @@ class GeofenceChannelControllerImplTest {
 
     @Test
     fun `handleGeofenceIntent without active session is a safe no-op`() =
-        runTest {
+        runTest(UnconfinedTestDispatcher()) {
             val dispatcher = eventDispatcher()
             val controller =
                 GeofenceChannelControllerImpl(
@@ -130,7 +131,7 @@ class GeofenceChannelControllerImplTest {
 
     @Test
     fun `onChannelStopped stops listener`() =
-        runTest {
+        runTest(UnconfinedTestDispatcher()) {
             val manager = geofenceManager()
             val controller =
                 GeofenceChannelControllerImpl(
