@@ -748,9 +748,18 @@ controller. Tests are written/updated but executed only at the end of the plan.
 
 ### Task 8.2 — Strip geofence assertions from shared (`main`) tests
 - [x] **Modify** `app/src/test/kotlin/…/services/channel/EventChannelServiceTest.kt` — remove assertions about the
-      internal geofence listener; add/adjust to verify the service delegates to a mocked `GeofenceChannelController`
-      (`onChannelStarted` on start, `handleGeofenceIntent` on `ACTION_GEOFENCE_EVENT`, `onChannelStopped` on
-      stop/destroy). Keep notification/wifi coverage.
+      internal geofence listener/config shape (the `geofence` field no longer exists on `EventChannelConfig`); keep
+      notification/wifi coverage and the `ACTION_GEOFENCE_EVENT` constant test.
+      **AMENDED (review finding C53-001, user-approved):** the plan originally asked to also add tests verifying
+      `EventChannelService` delegates to a mocked `GeofenceChannelController`. This is NOT achievable in the
+      project's JVM-only unit-test approach — `EventChannelService` is an Android `Service` (`@AndroidEntryPoint`,
+      `startForeground`) that cannot be instantiated without Robolectric/instrumented tests, which the project
+      deliberately does not use (the same limitation already applies to the untested notification/WiFi listener
+      wiring in this service; the file header documents it). The `GeofenceChannelController` behavior is instead
+      fully covered by `GeofenceChannelControllerImplTest` (gms), and the service→controller routing key is covered
+      by the retained `ACTION_GEOFENCE_EVENT` constant test — consistent with the pre-existing coverage of this
+      service (this change did not reduce coverage). Adding Robolectric was declined by the user to preserve the
+      JVM-only convention.
 - [x] **Modify** `app/src/test/kotlin/…/data/model/EventChannelConfigTest.kt` — remove geofence serialization
       assertions (the field no longer exists in `main`).
 - [x] **Modify** `app/src/test/kotlin/…/data/model/ChannelEventFactoryTest.kt` — remove the geofence-event test
@@ -997,3 +1006,15 @@ Round 2 verified all Round-1 findings fully resolved (0 CRITICAL / 0 WARNING) an
 | P53-013 | INFO | US3 task numbering out of order (3.5 physically before 3.4) | Renumbered: migration seam = Task 3.4, ChannelEventFactory/ChannelViewModel = Task 3.5; references updated |
 | P53-014 | INFO | Residual intra-US6 forward ref: nav-seam task edited `SettingsScreen` to pass `navController` before the row-seam task added that param | Swapped: row seam (adds param) = Task 6.3, nav seam (uses param) = Task 6.4 |
 | P53-015 | INFO | jacoco `sourceDirectories` left main-only after `classDirectories` → `gmsDebug` rename | Task 1.2 adds `src/gms/kotlin` to `sourceDirectories` in both jacoco tasks; US10 confirms the 0.50 gate |
+
+## Review Findings — Round 3 (code-reviewer, plan compliance, post-implementation)
+
+After full implementation + all quality gates green (clean 4-variant assemble, both-flavor unit tests 0-fail,
+jacoco 0.50 gate, ktlint+detekt clean, FOSS release APK proven GMS-/geofence-free at the DEX level), the
+code-reviewer verified US1–US10 against the code and raised 1 WARNING, resolved:
+
+| ID | Sev | Finding | Resolution |
+|----|-----|---------|------------|
+| C53-001 | WARNING | Task 8.2 asked to add `EventChannelService`→`GeofenceChannelController` delegation tests, not delivered | AMENDED with user approval: infeasible in the project's JVM-only unit-test approach (Android `Service`, no Robolectric in project); controller behavior fully covered by `GeofenceChannelControllerImplTest`; service routing covered by the retained `ACTION_GEOFENCE_EVENT` constant test — consistent with pre-existing service coverage (no coverage reduction). Robolectric declined by the user. Task 8.2 wording amended accordingly. |
+
+The reviewer also positively verified: the e2e receiver-FQCN amendment is correct; the eager atomic migration + P53-001 regression test; `FossLocationProviderImpl` correctness; `GeofenceChannelControllerImpl` lifecycle/null-guard/no-leak; zero GMS/geofence residue in main+foss; manifest split; DI correctness; anti-prompt-injection unaffected; and no AI attribution.
