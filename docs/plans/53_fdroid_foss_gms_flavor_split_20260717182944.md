@@ -402,20 +402,20 @@ data/repository/UI-model code must become geofence-free.
 - [ ] `GeofenceEventListener` uses the gms `GeofenceChannelConfig` and gms `GeofenceChannelEventFactory`.
 
 ### Task 4.1 — Move the geofence manager + receiver
-- [ ] **Move** `app/src/main/kotlin/…/services/channel/geofence/GeofenceManager.kt` →
+- [x] **Move** `app/src/main/kotlin/…/services/channel/geofence/GeofenceManager.kt` →
       `app/src/gms/kotlin/…/services/channel/geofence/GeofenceManager.kt` (verbatim; now resolves the gms
       `GeofenceZone`).
-- [ ] **Move** `…/services/channel/geofence/GeofenceManagerImpl.kt` → `app/src/gms/…` (verbatim; unchanged).
-- [ ] **Move** `…/services/channel/geofence/GeofenceTransitionReceiver.kt` → `app/src/gms/…` (verbatim; it
+- [x] **Move** `…/services/channel/geofence/GeofenceManagerImpl.kt` → `app/src/gms/…` (verbatim; unchanged).
+- [x] **Move** `…/services/channel/geofence/GeofenceTransitionReceiver.kt` → `app/src/gms/…` (verbatim; it
       references `EventChannelService.ACTION_GEOFENCE_EVENT`/`EXTRA_*` which remain in `main`).
 
 **DoD:**
 - [ ] The three files exist only under `app/src/gms/` and compile against the gms `GeofenceZone`.
 
 ### Task 4.2 — Move and rewire the geofence event listener
-- [ ] **Move** `app/src/main/kotlin/…/services/channel/listeners/GeofenceEventListener.kt` →
+- [x] **Move** `app/src/main/kotlin/…/services/channel/listeners/GeofenceEventListener.kt` →
       `app/src/gms/kotlin/…/services/channel/listeners/GeofenceEventListener.kt`.
-- [ ] **Modify** the moved `GeofenceEventListener.kt` — it now resolves the gms `GeofenceChannelConfig`
+- [x] **Modify** the moved `GeofenceEventListener.kt` — it now resolves the gms `GeofenceChannelConfig`
       (import unchanged; type now gms). Replace `ChannelEventFactory.geofence(zone, transition, address)` with
       `GeofenceChannelEventFactory.geofence(zone, transition, address)` and update the import accordingly. Keep
       `start/stop/updateConfig/handleTransition` and its private `reverseGeocode` unchanged.
