@@ -24,8 +24,8 @@ class McpApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Flavor-specific one-time migrations (gms: geofence config → dedicated key), run eagerly
-        // and synchronously BEFORE any Activity/Service can issue a settings write. No-op in foss.
+        // Flavor-specific one-time migrations (gms: geofence config → dedicated key), launched eagerly
+        // on a background coroutine (non-blocking — must never stall onCreate). No-op in foss.
         runFlavorStartupMigrations(this)
         createNotificationChannels()
         configureOsmdroid()

@@ -361,11 +361,15 @@ data/repository/UI-model code must become geofence-free.
 - [x] **Create** a `main` startup seam — top-level function declared in BOTH flavors:
       `app/src/gms/kotlin/…/startup/FlavorStartup.kt` (real) and `app/src/foss/kotlin/…/startup/FlavorStartup.kt`
       (empty), signature `fun runFlavorStartupMigrations(context: android.content.Context)`.
-  - `gms` body: resolve `GeofenceConfigRepository` via a Hilt `@EntryPoint @InstallIn(SingletonComponent::class)`
-    (declared in the gms source set) using `EntryPointAccessors.fromApplication(context, …)`, then
-    `runBlocking(Dispatchers.IO) { repo.migrateIfNeeded() }`. This is a bounded, one-time-guarded startup
-    migration (a fast done-flag read afterwards) — intentionally blocking so it completes before any Activity or
-    the `EventChannelService` can issue a write.
+  - `gms` body: **CORRECTED (finding C53-003, e2e-driven):** launch the migration on a background coroutine —
+    `CoroutineScope(Dispatchers.IO).launch { EntryPointAccessors.fromApplication(context, …)
+    .geofenceConfigRepository().migrateIfNeeded() }` — mirroring the app's existing auth-model migration in
+    `McpApplication.onCreate`. The plan originally specified `runBlocking(Dispatchers.IO) { … }` (blocking), but
+    blocking inside `Application.onCreate` STALLS app initialization on-device (no components/MCP server start;
+    e2e "server never ready"). Non-blocking is safe because the data-safety guarantee (P53-001) comes from the
+    dedicated geofence DataStore key isolating geofence data from the shared blob PLUS `migrateIfNeeded()` being
+    idempotent and re-invoked defensively on every geofence-repo read/write — not from blocking onCreate. The
+    migration still runs eagerly on every startup (fixing the original lazy-only bug).
   - `foss` body: `= Unit`.
 - [x] **Modify** `app/src/main/kotlin/…/McpApplication.kt` — in `onCreate()`, AFTER `super.onCreate()` (Hilt is
       initialized there), call `runFlavorStartupMigrations(this)` before any other app initialization that could
@@ -1018,3 +1022,11 @@ code-reviewer verified US1–US10 against the code and raised 1 WARNING, resolve
 | C53-001 | WARNING | Task 8.2 asked to add `EventChannelService`→`GeofenceChannelController` delegation tests, not delivered | AMENDED with user approval: infeasible in the project's JVM-only unit-test approach (Android `Service`, no Robolectric in project); controller behavior fully covered by `GeofenceChannelControllerImplTest`; service routing covered by the retained `ACTION_GEOFENCE_EVENT` constant test — consistent with pre-existing service coverage (no coverage reduction). Robolectric declined by the user. Task 8.2 wording amended accordingly. |
 
 The reviewer also positively verified: the e2e receiver-FQCN amendment is correct; the eager atomic migration + P53-001 regression test; `FossLocationProviderImpl` correctness; `GeofenceChannelControllerImpl` lifecycle/null-guard/no-leak; zero GMS/geofence residue in main+foss; manifest split; DI correctness; anti-prompt-injection unaffected; and no AI attribution.
+
+## Review Findings — Round 4 (CI e2e, post-merge-gate)
+
+CI unit/integration tests, lint, and CodeQL passed on the first run; the E2E job failed. Root cause + fix:
+
+| ID | Sev | Finding | Resolution |
+|----|-----|---------|------------|
+| C53-003 | CRITICAL | The eager `runBlocking(Dispatchers.IO) { migrateIfNeeded() }` in `McpApplication.onCreate` (gms) BLOCKS `Application.onCreate` on-device, stalling app init so no components/MCP server start. All 8 e2e tests failed with "MCP server did not become ready" (empty LISTEN ports, no `MCP:Application initialized` log). | Changed the gms `runFlavorStartupMigrations` seam to launch the migration on a background `CoroutineScope(Dispatchers.IO)` (matching the app's existing non-blocking auth-model migration). Still eager at every startup; data safety unchanged (dedicated key + idempotent `migrateIfNeeded()` re-checked on every geofence-repo access). Task 3.4 amended. |
