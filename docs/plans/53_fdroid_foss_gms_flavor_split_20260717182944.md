@@ -439,7 +439,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
       `foss` controller is a no-op.
 
 ### Task 5.1 — Define the seam interface in `main`
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/channel/GeofenceChannelController.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/channel/GeofenceChannelController.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.services.channel
 
@@ -460,7 +460,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
 - [ ] Interface uses only `main`-visible types (`EventDispatcher`, `Intent`, `CoroutineScope`).
 
 ### Task 5.2 — Refactor `EventChannelService` to use the controller
-- [ ] **Modify** `app/src/main/kotlin/…/services/channel/EventChannelService.kt`:
+- [x] **Modify** `app/src/main/kotlin/…/services/channel/EventChannelService.kt`:
   - Remove imports `…geofence.GeofenceManager` and `…listeners.GeofenceEventListener`.
   - Replace the `@Inject lateinit var geofenceManager: GeofenceManager` with
     `@Inject lateinit var geofenceController: GeofenceChannelController`.
@@ -479,7 +479,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
 - [ ] `EventChannelService` compiles with zero geofence-type references; notification/wifi behavior unchanged.
 
 ### Task 5.3 — Implement the gms controller and foss no-op + DI
-- [ ] **Create** `app/src/gms/kotlin/…/services/channel/GeofenceChannelControllerImpl.kt`:
+- [x] **Create** `app/src/gms/kotlin/…/services/channel/GeofenceChannelControllerImpl.kt`:
   - `@Singleton class … @Inject constructor(@ApplicationContext context, geofenceManager: GeofenceManager,
     geofenceConfigRepository: GeofenceConfigRepository) : GeofenceChannelController`.
   - `onChannelStarted(dispatcher, scope)`: create `GeofenceEventListener(dispatcher, geofenceManager, scope,
@@ -496,16 +496,16 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
   - `onChannelStopped()`: `listener?.stop()`; cancel the config-collection job; clear references.
   - Thread-safety: guard listener creation/teardown so concurrent `onChannelStarted`/`onChannelStopped` cannot
     leak a listener (mirror the service's prior single-threaded Main-dispatcher usage).
-- [ ] **Create** `app/src/foss/kotlin/…/services/channel/NoOpGeofenceChannelController.kt`:
+- [x] **Create** `app/src/foss/kotlin/…/services/channel/NoOpGeofenceChannelController.kt`:
   `@Singleton class NoOpGeofenceChannelController @Inject constructor() : GeofenceChannelController` with
   empty `onChannelStarted`/`onChannelStopped`/`handleGeofenceIntent`.
-- [ ] **Modify** `app/src/main/kotlin/…/di/AppModule.kt` — remove `bindGeofenceManager(...)` and its
+- [x] **Modify** `app/src/main/kotlin/…/di/AppModule.kt` — remove `bindGeofenceManager(...)` and its
       `GeofenceManager`/`GeofenceManagerImpl` imports.
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsGeofenceModule.kt` — Hilt
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsGeofenceModule.kt` — Hilt
       module binding: `GeofenceManager` → `GeofenceManagerImpl` and `GeofenceChannelController` →
       `GeofenceChannelControllerImpl` (both `@Binds @Singleton`). (`GeofenceConfigRepository` is already bound by
       `GmsGeofenceConfigModule` in US3 Task 3.3 — do NOT re-bind it here.)
-- [ ] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/di/FossGeofenceModule.kt` — Hilt
+- [x] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/di/FossGeofenceModule.kt` — Hilt
       module binding `GeofenceChannelController` → `NoOpGeofenceChannelController` (`@Binds @Singleton`).
 
 **DoD:**

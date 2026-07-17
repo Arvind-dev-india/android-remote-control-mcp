@@ -32,8 +32,6 @@ import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcherImpl
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManager
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManagerImpl
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcherImpl
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
@@ -212,9 +210,8 @@ abstract class ServiceModule {
     @Singleton
     abstract fun bindEventDispatcher(impl: EventDispatcherImpl): EventDispatcher
 
-    @Binds
-    @Singleton
-    abstract fun bindGeofenceManager(impl: GeofenceManagerImpl): GeofenceManager
+    // GeofenceManager and GeofenceChannelController are bound per-flavor — see GmsGeofenceModule
+    // (gms) / FossGeofenceModule (foss). foss has no GeofenceManager (geofencing excluded).
 
     @Binds
     @Singleton
