@@ -6,7 +6,6 @@ package com.danielealbano.androidremotecontrolmcp.services.channel
 
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelConnectionStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceChannelConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationChannelConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.WifiChannelConfig
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,7 +93,6 @@ class EventChannelServiceTest {
                 )
             assertTrue(config.notifications.enabled)
             assertFalse(config.wifi.enabled)
-            assertFalse(config.geofence.enabled)
         }
 
         @Test
@@ -107,11 +105,10 @@ class EventChannelServiceTest {
                 )
             assertFalse(config.notifications.enabled)
             assertFalse(config.wifi.enabled)
-            assertFalse(config.geofence.enabled)
         }
 
         @Test
-        fun `config with all listeners enabled means three active sources`() {
+        fun `config with notifications and wifi enabled means two active sources`() {
             val config =
                 EventChannelConfig(
                     enabled = true,
@@ -119,11 +116,9 @@ class EventChannelServiceTest {
                     authToken = "token",
                     notifications = NotificationChannelConfig(enabled = true),
                     wifi = WifiChannelConfig(enabled = true),
-                    geofence = GeofenceChannelConfig(enabled = true),
                 )
             assertTrue(config.notifications.enabled)
             assertTrue(config.wifi.enabled)
-            assertTrue(config.geofence.enabled)
         }
 
         @Test

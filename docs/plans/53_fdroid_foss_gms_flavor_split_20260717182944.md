@@ -738,26 +738,26 @@ controller. Tests are written/updated but executed only at the end of the plan.
       gms VM, and the gms event factory.
 
 ### Task 8.1 — Relocate gms-only existing tests to `testGms`
-- [ ] **Move** these verbatim (package unchanged) into `app/src/testGms/kotlin/…`:
+- [x] **Move** these verbatim (package unchanged) into `app/src/testGms/kotlin/…`:
       `services/location/LocationProviderImplTest.kt`,
       `services/channel/geofence/GeofenceManagerImplTest.kt`,
       `services/channel/geofence/GeofenceTransitionReceiverTest.kt`,
       `services/channel/listeners/GeofenceEventListenerTest.kt`.
-- [ ] **Modify** the moved `GeofenceEventListenerTest.kt` if it asserts on `ChannelEventFactory.geofence` — repoint
+- [x] **Modify** the moved `GeofenceEventListenerTest.kt` if it asserts on `ChannelEventFactory.geofence` — repoint
       to `GeofenceChannelEventFactory`.
 
 ### Task 8.2 — Strip geofence assertions from shared (`main`) tests
-- [ ] **Modify** `app/src/test/kotlin/…/services/channel/EventChannelServiceTest.kt` — remove assertions about the
+- [x] **Modify** `app/src/test/kotlin/…/services/channel/EventChannelServiceTest.kt` — remove assertions about the
       internal geofence listener; add/adjust to verify the service delegates to a mocked `GeofenceChannelController`
       (`onChannelStarted` on start, `handleGeofenceIntent` on `ACTION_GEOFENCE_EVENT`, `onChannelStopped` on
       stop/destroy). Keep notification/wifi coverage.
-- [ ] **Modify** `app/src/test/kotlin/…/data/model/EventChannelConfigTest.kt` — remove geofence serialization
+- [x] **Modify** `app/src/test/kotlin/…/data/model/EventChannelConfigTest.kt` — remove geofence serialization
       assertions (the field no longer exists in `main`).
-- [ ] **Modify** `app/src/test/kotlin/…/data/model/ChannelEventFactoryTest.kt` — remove the geofence-event test
+- [x] **Modify** `app/src/test/kotlin/…/data/model/ChannelEventFactoryTest.kt` — remove the geofence-event test
       (moved to gms).
-- [ ] **Modify** `app/src/test/kotlin/…/data/repository/EventChannelSettingsTest.kt` — remove the geofence
+- [x] **Modify** `app/src/test/kotlin/…/data/repository/EventChannelSettingsTest.kt` — remove the geofence
       method tests (moved to gms repo).
-- [ ] **Modify** `app/src/test/kotlin/…/ui/viewmodels/ChannelViewModelTest.kt` — remove the geofence method tests
+- [x] **Modify** `app/src/test/kotlin/…/ui/viewmodels/ChannelViewModelTest.kt` — remove the geofence method tests
       (moved to the gms VM).
 
 ### Task 8.3 — Add new gms tests (`testGms`)
