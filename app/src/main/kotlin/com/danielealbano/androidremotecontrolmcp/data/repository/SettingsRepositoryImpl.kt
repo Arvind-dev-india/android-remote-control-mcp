@@ -12,7 +12,6 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -711,27 +710,6 @@ class SettingsRepositoryImpl
 
         override suspend fun updateWifiNotifyOnDisconnected(enabled: Boolean) =
             updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnDisconnected = enabled)) }
-
-        override suspend fun updateGeofenceChannelEnabled(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(geofence = it.geofence.copy(enabled = enabled)) }
-
-        override suspend fun addGeofenceZone(zone: GeofenceZone) =
-            updateEventChannelConfig { it.copy(geofence = it.geofence.copy(zones = it.geofence.zones + zone)) }
-
-        override suspend fun removeGeofenceZone(zoneId: String) =
-            updateEventChannelConfig {
-                it.copy(geofence = it.geofence.copy(zones = it.geofence.zones.filter { z -> z.id != zoneId }))
-            }
-
-        override suspend fun updateGeofenceZone(zone: GeofenceZone) =
-            updateEventChannelConfig {
-                it.copy(
-                    geofence =
-                        it.geofence.copy(
-                            zones = it.geofence.zones.map { z -> if (z.id == zone.id) zone else z },
-                        ),
-                )
-            }
 
         companion object {
             private const val TAG = "MCP:SettingsRepo"

@@ -254,11 +254,11 @@ data/repository/UI-model code must become geofence-free.
       strip the legacy `geofence` sub-object. Migration MUST run before that is possible.
 
 ### Task 3.1 — Remove the geofence config types from the shared model
-- [ ] **Modify** `app/src/main/kotlin/…/data/model/EventChannelConfig.kt` — delete the `geofence:
+- [x] **Modify** `app/src/main/kotlin/…/data/model/EventChannelConfig.kt` — delete the `geofence:
       GeofenceChannelConfig = GeofenceChannelConfig()` field from `EventChannelConfig`, and delete the
       `GeofenceChannelConfig` and `GeofenceZone` data classes from this file. Keep `notifications`/`wifi` and the
       `Json { ignoreUnknownKeys = true }` config (so legacy JSON containing a stale `geofence` key still parses).
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/GeofenceConfig.kt` —
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/GeofenceConfig.kt` —
       move the two data classes verbatim (package unchanged):
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.data.model
@@ -287,10 +287,10 @@ data/repository/UI-model code must become geofence-free.
 - [ ] `main` no longer defines or references `GeofenceChannelConfig`/`GeofenceZone`.
 
 ### Task 3.2 — Remove geofence methods from the shared repository
-- [ ] **Modify** `app/src/main/kotlin/…/data/repository/SettingsRepository.kt` — delete the four geofence method
+- [x] **Modify** `app/src/main/kotlin/…/data/repository/SettingsRepository.kt` — delete the four geofence method
       declarations (`updateGeofenceChannelEnabled`, `addGeofenceZone`, `removeGeofenceZone`, `updateGeofenceZone`)
       and the `GeofenceZone` import.
-- [ ] **Modify** `app/src/main/kotlin/…/data/repository/SettingsRepositoryImpl.kt` — delete the four
+- [x] **Modify** `app/src/main/kotlin/…/data/repository/SettingsRepositoryImpl.kt` — delete the four
       corresponding overrides (the `updateGeofenceChannelEnabled`/`addGeofenceZone`/`removeGeofenceZone`/
       `updateGeofenceZone` blocks) and the `GeofenceZone` import. Leave `EVENT_CHANNEL_CONFIG_KEY` and all
       notification/wifi logic intact.
@@ -299,7 +299,7 @@ data/repository/UI-model code must become geofence-free.
 - [ ] `main` `SettingsRepository`/Impl compile with no geofence references.
 
 ### Task 3.3 — Create the gms-only geofence config repository + one-time migration
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/GeofenceConfigRepository.kt`
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/GeofenceConfigRepository.kt`
       (interface):
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.data.repository
@@ -325,7 +325,7 @@ data/repository/UI-model code must become geofence-free.
       suspend fun updateGeofenceZone(zone: GeofenceZone)
   }
   ```
-- [ ] **Create** `app/src/gms/kotlin/…/data/repository/GeofenceConfigRepositoryImpl.kt`:
+- [x] **Create** `app/src/gms/kotlin/…/data/repository/GeofenceConfigRepositoryImpl.kt`:
   - Constructor: `@Inject constructor(private val dataStore: DataStore<Preferences>)` using the **same
     Hilt-qualified settings `DataStore<Preferences>`** that `SettingsRepositoryImpl` injects (so the migration can
     read the legacy key). Match `SettingsRepositoryImpl`'s injection qualifier exactly; if it uses an unqualified
@@ -347,7 +347,7 @@ data/repository/UI-model code must become geofence-free.
     flag). All public mutators call `migrateIfNeeded()` first (defensive).
   - Migration is NOT triggered lazily by flow collection alone — it is invoked eagerly at app startup by Task 3.4,
     which guarantees it runs BEFORE any `main` event-channel write can strip the legacy blob.
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsGeofenceConfigModule.kt` — Hilt
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsGeofenceConfigModule.kt` — Hilt
       `@Module @InstallIn(SingletonComponent::class)` binding `GeofenceConfigRepository` →
       `GeofenceConfigRepositoryImpl` (`@Binds @Singleton`). Placed in US3 so the Task 3.4 migration seam has its
       binding without a forward dependency on US5.
@@ -358,7 +358,7 @@ data/repository/UI-model code must become geofence-free.
       done.
 
 ### Task 3.4 — Run the gms migration eagerly at app startup (before any main write) via a flavor seam (P53-001)
-- [ ] **Create** a `main` startup seam — top-level function declared in BOTH flavors:
+- [x] **Create** a `main` startup seam — top-level function declared in BOTH flavors:
       `app/src/gms/kotlin/…/startup/FlavorStartup.kt` (real) and `app/src/foss/kotlin/…/startup/FlavorStartup.kt`
       (empty), signature `fun runFlavorStartupMigrations(context: android.content.Context)`.
   - `gms` body: resolve `GeofenceConfigRepository` via a Hilt `@EntryPoint @InstallIn(SingletonComponent::class)`
@@ -367,7 +367,7 @@ data/repository/UI-model code must become geofence-free.
     migration (a fast done-flag read afterwards) — intentionally blocking so it completes before any Activity or
     the `EventChannelService` can issue a write.
   - `foss` body: `= Unit`.
-- [ ] **Modify** `app/src/main/kotlin/…/McpApplication.kt` — in `onCreate()`, AFTER `super.onCreate()` (Hilt is
+- [x] **Modify** `app/src/main/kotlin/…/McpApplication.kt` — in `onCreate()`, AFTER `super.onCreate()` (Hilt is
       initialized there), call `runFlavorStartupMigrations(this)` before any other app initialization that could
       write settings. Add the import for the seam.
 
@@ -376,12 +376,12 @@ data/repository/UI-model code must become geofence-free.
       any UI/service write); on `foss` it is a no-op; subsequent launches are a cheap done-flag read.
 
 ### Task 3.5 — Make `main` `ChannelEventFactory` and `ChannelViewModel` geofence-free
-- [ ] **Modify** `app/src/main/kotlin/…/data/model/ChannelEventFactory.kt` — delete the `geofence(...)` function
+- [x] **Modify** `app/src/main/kotlin/…/data/model/ChannelEventFactory.kt` — delete the `geofence(...)` function
       and the `GeofenceZone` import. Keep `notification(...)` and `wifi(...)`.
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/GeofenceChannelEventFactory.kt`
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/GeofenceChannelEventFactory.kt`
       — a gms object with the moved `geofence(zone: GeofenceZone, transition: String, address: String? = null):
       ChannelEvent` function (verbatim body, returning the `main` `ChannelEvent` type).
-- [ ] **Modify** `app/src/main/kotlin/…/ui/viewmodels/ChannelViewModel.kt` — delete the four geofence methods
+- [x] **Modify** `app/src/main/kotlin/…/ui/viewmodels/ChannelViewModel.kt` — delete the four geofence methods
       (`updateGeofenceChannelEnabled`, `addGeofenceZone`, `removeGeofenceZone`, `updateGeofenceZone`) and the
       `GeofenceZone` import. (Geofence VM logic is provided by the gms `GeofenceSettingsViewModel` in US6.)
 
