@@ -558,10 +558,16 @@ HomeScreen contains a TopAppBar, then a scrollable layout with: ServerStatusCard
 
 ### Build Variants
 
+Two product flavors under the `distribution` dimension: **`gms`** (full app, GitHub/Play — includes Google
+Play Services location + geofencing) and **`foss`** (F-Droid — no Google Play Services; `get_location` uses the
+framework `LocationManager` and geofencing is excluded). The release applicationId is identical across flavors;
+debug builds get a per-flavor suffix so both can be installed side by side.
+
 | Variant | Application ID | Debuggable | Minify | Logging |
 |---------|---------------|-----------|--------|---------|
-| Debug | `com.danielealbano.androidremotecontrolmcp.debug` | true | false | Verbose |
-| Release | `com.danielealbano.androidremotecontrolmcp` | false | false (open source) | Info+ |
+| gmsDebug | `com.danielealbano.androidremotecontrolmcp.gms.debug` | true | false | Verbose |
+| fossDebug | `com.danielealbano.androidremotecontrolmcp.foss.debug` | true | false | Verbose |
+| gmsRelease / fossRelease | `com.danielealbano.androidremotecontrolmcp` | false | false (open source) | Info+ |
 
 ### Versioning
 
@@ -723,8 +729,8 @@ All common development tasks are accessible via `make <target>`. Run `make help`
 
 | Target | Description | Underlying Command |
 |--------|-------------|-------------------|
-| `build` | Build debug APK | `./gradlew assembleDebug` |
-| `build-release` | Build release APK | `./gradlew assembleRelease` |
+| `build` | Build gms debug APK | `./gradlew assembleGmsDebug` |
+| `build-release` | Build gms + foss release APKs | `./gradlew assembleGmsRelease assembleFossRelease` |
 | `clean` | Clean build artifacts | `./gradlew clean` |
 
 ### Testing

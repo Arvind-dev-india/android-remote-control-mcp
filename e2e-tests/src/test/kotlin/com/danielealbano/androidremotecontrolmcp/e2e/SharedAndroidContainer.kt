@@ -17,9 +17,9 @@ object SharedAndroidContainer {
 
     /**
      * Path to the debug APK, relative to the project root.
-     * Must be built before running E2E tests: `./gradlew assembleDebug`
+     * Must be built before running E2E tests: `./gradlew assembleGmsDebug`
      */
-    private const val APK_RELATIVE_PATH = "app/build/outputs/apk/debug/app-debug.apk"
+    private const val APK_RELATIVE_PATH = "app/build/outputs/apk/gms/debug/app-gms-debug.apk"
 
     /**
      * Path to the compose test app APK, relative to the project root.

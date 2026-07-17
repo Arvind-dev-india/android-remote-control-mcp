@@ -220,8 +220,8 @@ jobs:
           path: .dbip-cache
           key: dbip-csv-${{ steps.dbip-month.outputs.month }}
 
-      - name: Build debug APK (required by E2E tests)
-        run: ./gradlew assembleDebug
+      - name: Build gms debug APK (required by E2E tests)
+        run: ./gradlew assembleGmsDebug
 
       - name: Set up Android platform-tools (adb)
         run: |
@@ -360,22 +360,36 @@ jobs:
           path: .dbip-cache
           key: dbip-csv-${{ steps.dbip-month.outputs.month }}
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build debug APKs (gms + foss)
+        run: ./gradlew assembleGmsDebug assembleFossDebug
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease
+      - name: Build release APKs (gms + foss)
+        run: ./gradlew assembleGmsRelease assembleFossRelease
 
-      - name: Upload debug APK
+      - name: Upload gms debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: app-gms-debug
+          path: app/build/outputs/apk/gms/debug/app-gms-debug.apk
           retention-days: 30
 
-      - name: Upload release APK
+      - name: Upload foss debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: app-foss-debug
+          path: app/build/outputs/apk/foss/debug/app-foss-debug.apk
+          retention-days: 30
+
+      - name: Upload gms release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-gms-release
+          path: app/build/outputs/apk/gms/release/app-gms-release-unsigned.apk
+          retention-days: 30
+
+      - name: Upload foss release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-foss-release
+          path: app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk
           retention-days: 30

@@ -28,7 +28,7 @@ object AndroidContainerSetup {
     private const val PROCESS_TIMEOUT_SECONDS = 30L
     private const val MEMORY_BYTES = 8L * 1024 * 1024 * 1024 // 8 GB
 
-    private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.debug"
+    private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.gms.debug"
     private const val CALCULATOR_PACKAGE = "com.simplemobiletools.calculator"
     private const val COMPOSE_TEST_PACKAGE = "com.danielealbano.composetestapp"
     private const val CALCULATOR_APK_RESOURCE = "/simple-calculator.apk"

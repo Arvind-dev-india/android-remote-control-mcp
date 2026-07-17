@@ -847,8 +847,8 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
 - [ ] `docs/PROJECT.md` build-variants documentation reflects the flavors and per-flavor debug applicationIds.
 
 ### Task 9.1 — Re-read then update the Makefile
-- [ ] **Read** the current `Makefile` (post-#119) before editing.
-- [ ] **Modify** `Makefile`:
+- [x] **Read** the current `Makefile` (post-#119) before editing.
+- [x] **Modify** `Makefile`:
   - `build` → `assembleGmsDebug` (primary dev flavor); add `build-foss` → `assembleFossDebug`.
   - `build-release` → build both: `assembleGmsRelease assembleFossRelease`.
   - `install` → `installGmsDebug`.
@@ -861,8 +861,8 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
   - `ci` target: ensure it runs both flavors' unit tests and `build-release` (both APKs).
 
 ### Task 9.2 — Re-read then update GitHub Actions CI (`ci.yml`)
-- [ ] **Read** the current `.github/workflows/ci.yml` (post-#119) before editing.
-- [ ] **Modify** `ci.yml`:
+- [x] **Read** the current `.github/workflows/ci.yml` (post-#119) before editing.
+- [x] **Modify** `ci.yml`:
   - Unit-test job: run both flavors' unit tests (`:app:testGmsDebugUnitTest` and `:app:testFossDebugUnitTest`, or
     `:app:test`). Keep lint/detekt/ktlint gating.
   - e2e job build step (line ~224 `./gradlew assembleDebug`) → `./gradlew assembleGmsDebug` (the e2e harness uses
@@ -876,8 +876,8 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
   - Preserve existing job ordering and any #119 version-handling logic.
 
 ### Task 9.3 — Re-read then update the release workflow (`release.yml`) (P53-004)
-- [ ] **Read** the current `.github/workflows/release.yml` (post-#119) before editing.
-- [ ] **Modify** `release.yml`:
+- [x] **Read** the current `.github/workflows/release.yml` (post-#119) before editing.
+- [x] **Modify** `release.yml`:
   - Assemble step (line ~192 `./gradlew assembleDebug assembleRelease …`) → build both flavors' release (and
     per-flavor debug if the debug APK is attached to the release): e.g.
     `assembleGmsRelease assembleFossRelease` (+ `assembleGmsDebug assembleFossDebug` if needed), keeping the
@@ -888,22 +888,22 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
     asset names per flavor (e.g. `…-gms.apk`, `…-foss.apk`).
 
 ### Task 9.4 — Update the e2e harness for flavors (P53-002)
-- [ ] **Modify** `e2e-tests/src/test/kotlin/…/e2e/SharedAndroidContainer.kt`:
+- [x] **Modify** `e2e-tests/src/test/kotlin/…/e2e/SharedAndroidContainer.kt`:
   - `APK_RELATIVE_PATH` (line ~22) `"app/build/outputs/apk/debug/app-debug.apk"` →
     `"app/build/outputs/apk/gms/debug/app-gms-debug.apk"`.
   - The doc comment (line ~20) `./gradlew assembleDebug` → `./gradlew assembleGmsDebug`.
   - Leave the separate `compose-test-app` APK path unchanged (that module has no flavors).
-- [ ] **Modify** `e2e-tests/src/test/kotlin/…/e2e/AndroidContainerSetup.kt`:
+- [x] **Modify** `e2e-tests/src/test/kotlin/…/e2e/AndroidContainerSetup.kt`:
   - `APP_PACKAGE` (line ~31) `"com.danielealbano.androidremotecontrolmcp.debug"` →
     `"com.danielealbano.androidremotecontrolmcp.gms.debug"`.
   - The two hardcoded receiver FQCNs (lines ~36, ~38) `…mcp.debug.E2EConfigReceiver` /
     `…mcp.debug.OAuthApprovalTestReceiver` → `…mcp.gms.debug.…` (or derive them from `APP_PACKAGE`). The
     `$APP_PACKAGE.E2E_CONFIGURE` action (line ~339) follows `APP_PACKAGE` automatically.
-- [ ] **Modify** `e2e-tests/build.gradle.kts` (line ~57) — `dependsOn(":app:assembleDebug",
+- [x] **Modify** `e2e-tests/build.gradle.kts` (line ~57) — `dependsOn(":app:assembleDebug",
       ":compose-test-app:assembleDebug")` → `dependsOn(":app:assembleGmsDebug", ":compose-test-app:assembleDebug")`.
 
 ### Task 9.5 — Update build-variants documentation (P53-010)
-- [ ] **Modify** `docs/PROJECT.md` — the Build Variants section (~line 559-563): reflect the two flavors
+- [x] **Modify** `docs/PROJECT.md` — the Build Variants section (~line 559-563): reflect the two flavors
       (`gms`/`foss`) and the per-flavor debug applicationIds (`…mcp.gms.debug`, `…mcp.foss.debug`); the release
       applicationId stays `com.danielealbano.androidremotecontrolmcp` for both flavors. Update the `build` make-target
       command reference (~line 724) `./gradlew assembleDebug` → `./gradlew assembleGmsDebug` if present. Keep edits

@@ -54,7 +54,7 @@ dependencies {
 
 tasks.withType<Test> {
     // Ensure both the main app and compose test app APKs are built before E2E tests run.
-    dependsOn(":app:assembleDebug", ":compose-test-app:assembleDebug")
+    dependsOn(":app:assembleGmsDebug", ":compose-test-app:assembleDebug")
 
     useJUnitPlatform()
 
