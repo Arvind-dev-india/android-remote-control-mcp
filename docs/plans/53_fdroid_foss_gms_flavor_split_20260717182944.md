@@ -62,7 +62,7 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
 - [ ] Empty flavor source-set directories exist so AGP recognizes them.
 
 ### Task 1.1 — Declare flavors, per-flavor debug applicationId, and move the GMS dependency
-- [ ] **Modify** `app/build.gradle.kts` — inside `android { }`, after `defaultConfig { }`, add:
+- [x] **Modify** `app/build.gradle.kts` — inside `android { }`, after `defaultConfig { }`, add:
   ```kotlin
   flavorDimensions += "distribution"
   productFlavors {
@@ -70,9 +70,9 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
       create("foss") { dimension = "distribution" }
   }
   ```
-- [ ] **Modify** `app/build.gradle.kts` — in `buildTypes { debug { } }`, REMOVE `applicationIdSuffix = ".debug"`
+- [x] **Modify** `app/build.gradle.kts` — in `buildTypes { debug { } }`, REMOVE `applicationIdSuffix = ".debug"`
       (the per-flavor debug id is set via the variant API below so release stays identical across flavors).
-- [ ] **Modify** `app/build.gradle.kts` — extend the existing `androidComponents { }` block (the one wiring
+- [x] **Modify** `app/build.gradle.kts` — extend the existing `androidComponents { }` block (the one wiring
       `generateLocationDb`) to also set the debug applicationId per flavor:
   ```kotlin
   androidComponents {
@@ -87,7 +87,7 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
   }
   ```
       Note: the existing `onVariants { … assets … }` body is preserved verbatim; only the debug-id selector is added.
-- [ ] **Modify** `app/build.gradle.kts` — change the Google Play Services dependency line from
+- [x] **Modify** `app/build.gradle.kts` — change the Google Play Services dependency line from
       `implementation(libs.play.services.location)` to `"gmsImplementation"(libs.play.services.location)`
       (string-quoted configuration name; the flavor configuration is created by AGP).
 
@@ -96,13 +96,13 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
 - [ ] `fossReleaseRuntimeClasspath` does NOT contain `play-services-location` (verified in US10).
 
 ### Task 1.2 — Repair jacoco tasks for the renamed flavor unit-test task/paths
-- [ ] **Modify** `app/build.gradle.kts` — in `jacocoTestReport`: change `dependsOn("testDebugUnitTest")` to
+- [x] **Modify** `app/build.gradle.kts` — in `jacocoTestReport`: change `dependsOn("testDebugUnitTest")` to
       `dependsOn("testGmsDebugUnitTest")`; change the classes tree path
       `"${layout.buildDirectory.get()}/tmp/kotlin-classes/debug"` to `…/tmp/kotlin-classes/gmsDebug`; change the
       execution-data include `"jacoco/testDebugUnitTest.exec"` to `"jacoco/testGmsDebugUnitTest.exec"`; and add
       `src/gms/kotlin` to `sourceDirectories` (currently `files("src/main/kotlin")` → `files("src/main/kotlin",
       "src/gms/kotlin")`) so the measured gms-only classes have matching sources (P53-015).
-- [ ] **Modify** `app/build.gradle.kts` — apply the same FOUR changes in `jacocoTestCoverageVerification`
+- [x] **Modify** `app/build.gradle.kts` — apply the same FOUR changes in `jacocoTestCoverageVerification`
       (including the `sourceDirectories` addition). (Coverage is measured on the `gms` flavor because it is the
       superset of code.)
 
@@ -112,7 +112,7 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
       universe).
 
 ### Task 1.3 — Create empty flavor source-set directories
-- [ ] **Create** placeholder dirs (empty, no committed placeholder files needed once real files land in later
+- [x] **Create** placeholder dirs (empty, no committed placeholder files needed once real files land in later
       stories): `app/src/gms/kotlin`, `app/src/foss/kotlin`, `app/src/gms/res/values`,
       `app/src/testGms/kotlin`, `app/src/testFoss/kotlin`. These are populated by later user stories.
 
