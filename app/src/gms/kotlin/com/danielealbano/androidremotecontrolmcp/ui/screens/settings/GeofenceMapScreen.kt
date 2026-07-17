@@ -2,8 +2,6 @@
 
 package com.danielealbano.androidremotecontrolmcp.ui.screens.settings
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -60,12 +58,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
-import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
-import com.google.android.gms.location.LocationServices
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.GeofenceSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,12 +121,12 @@ private fun formatRadius(meters: Float): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeofenceMapScreen(
-    viewModel: ChannelViewModel,
+    viewModel: GeofenceSettingsViewModel,
     zoneId: String?,
     onNavigateBack: () -> Unit,
 ) {
-    val config by viewModel.eventChannelConfig.collectAsStateWithLifecycle()
-    val existingZone = zoneId?.let { id -> config.geofence.zones.find { it.id == id } }
+    val config by viewModel.geofenceConfig.collectAsStateWithLifecycle()
+    val existingZone = zoneId?.let { id -> config.zones.find { it.id == id } }
 
     var name by rememberSaveable { mutableStateOf(existingZone?.name ?: "") }
     var latitude by rememberSaveable { mutableDoubleStateOf(existingZone?.latitude ?: 0.0) }
@@ -290,20 +286,10 @@ fun GeofenceMapScreen(
                             if (existingZone != null) {
                                 controller.setCenter(GeoPoint(existingZone.latitude, existingZone.longitude))
                             } else {
-                                val hasPerm =
-                                    ContextCompat.checkSelfPermission(
-                                        ctx,
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                if (hasPerm) {
-                                    LocationServices
-                                        .getFusedLocationProviderClient(ctx)
-                                        .lastLocation
-                                        .addOnSuccessListener { loc ->
-                                            if (loc != null) {
-                                                controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
-                                            }
-                                        }
+                                coroutineScope.launch {
+                                    viewModel.currentLocation().onSuccess { loc ->
+                                        controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
+                                    }
                                 }
                             }
 
@@ -377,22 +363,12 @@ fun GeofenceMapScreen(
                 // My Location button
                 SmallFloatingActionButton(
                     onClick = {
-                        val hasPerm =
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                            ) == PackageManager.PERMISSION_GRANTED
-                        if (hasPerm) {
-                            LocationServices
-                                .getFusedLocationProviderClient(context)
-                                .lastLocation
-                                .addOnSuccessListener { loc ->
-                                    if (loc != null) {
-                                        mapViewRef.value?.controller?.animateTo(
-                                            GeoPoint(loc.latitude, loc.longitude),
-                                        )
-                                    }
-                                }
+                        coroutineScope.launch {
+                            viewModel.currentLocation().onSuccess { loc ->
+                                mapViewRef.value?.controller?.animateTo(
+                                    GeoPoint(loc.latitude, loc.longitude),
+                                )
+                            }
                         }
                     },
                     modifier =

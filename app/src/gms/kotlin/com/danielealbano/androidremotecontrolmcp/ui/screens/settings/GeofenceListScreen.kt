@@ -37,7 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
-import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.GeofenceSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -45,19 +45,19 @@ import java.io.IOException
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeofenceListScreen(
-    viewModel: ChannelViewModel,
+    viewModel: GeofenceSettingsViewModel,
     onNavigateToMap: (zoneId: String?) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
-    val config by viewModel.eventChannelConfig.collectAsStateWithLifecycle()
+    val config by viewModel.geofenceConfig.collectAsStateWithLifecycle()
     var zoneToDelete by remember { mutableStateOf<GeofenceZone?>(null) }
     val streetNames = remember { mutableStateMapOf<String, String>() }
     val context = LocalContext.current
 
     // Reverse geocode all zones
-    LaunchedEffect(config.geofence.zones) {
+    LaunchedEffect(config.zones) {
         withContext(Dispatchers.IO) {
-            for (zone in config.geofence.zones) {
+            for (zone in config.zones) {
                 if (zone.id in streetNames) continue
                 try {
                     @Suppress("DEPRECATION")
@@ -110,7 +110,7 @@ fun GeofenceListScreen(
             }
         },
     ) { padding ->
-        if (config.geofence.zones.isEmpty()) {
+        if (config.zones.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center,
@@ -123,7 +123,7 @@ fun GeofenceListScreen(
             }
         } else {
             LazyColumn(modifier = Modifier.padding(padding)) {
-                items(config.geofence.zones) { zone ->
+                items(config.zones) { zone ->
                     val street = streetNames[zone.id] ?: ""
                     ListItem(
                         headlineContent = { Text(zone.name) },

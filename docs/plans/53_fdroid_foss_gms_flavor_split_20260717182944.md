@@ -534,9 +534,9 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
 - [ ] No `com.google.android.gms.*` import remains in ANY UI file in `main`/`foss`.
 
 ### Task 6.1 — Remove geofence routes from `main`; add a gms route holder
-- [ ] **Modify** `app/src/main/kotlin/…/ui/navigation/Routes.kt` — delete the `GeofenceList` and `GeofenceMap`
+- [x] **Modify** `app/src/main/kotlin/…/ui/navigation/Routes.kt` — delete the `GeofenceList` and `GeofenceMap`
       `data object`s from `SettingsRoute`.
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/ui/navigation/GeofenceRoutes.kt`:
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/ui/navigation/GeofenceRoutes.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.ui.navigation
 
@@ -552,7 +552,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
 - [ ] `main` has no geofence route symbol; gms route strings match the originals exactly.
 
 ### Task 6.2 — gms `GeofenceSettingsViewModel` and screen rewiring (created before the seams)
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/GeofenceSettingsViewModel.kt`:
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/GeofenceSettingsViewModel.kt`:
   `@HiltViewModel class … @Inject constructor(private val geofenceConfigRepository: GeofenceConfigRepository,
   private val locationProvider: LocationProvider, @IoDispatcher private val ioDispatcher: CoroutineDispatcher)`.
   Expose `geofenceConfig: StateFlow<GeofenceChannelConfig>` (from the repo). Provide the four mutators
@@ -561,12 +561,12 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
   `suspend fun currentLocation(): Result<LocationData>` delegating to `locationProvider.getLocation(freshFix = false)`
   for map centering — `freshFix = false` preserves the original screen behavior, which used Fused `.lastLocation`
   (last-known, instant), NOT a fresh fix (P53-009).
-- [ ] **Move** `app/src/main/kotlin/…/ui/screens/settings/GeofenceListScreen.kt` → `app/src/gms/…`.
-- [ ] **Move** `app/src/main/kotlin/…/ui/screens/settings/GeofenceMapScreen.kt` → `app/src/gms/…`.
-- [ ] **Modify** both moved screens — change their `viewModel: ChannelViewModel` parameter to
+- [x] **Move** `app/src/main/kotlin/…/ui/screens/settings/GeofenceListScreen.kt` → `app/src/gms/…`.
+- [x] **Move** `app/src/main/kotlin/…/ui/screens/settings/GeofenceMapScreen.kt` → `app/src/gms/…`.
+- [x] **Modify** both moved screens — change their `viewModel: ChannelViewModel` parameter to
       `viewModel: GeofenceSettingsViewModel`, and repoint the geofence calls (`eventChannelConfig.geofence.*`,
       `addGeofenceZone`, `removeGeofenceZone`, `updateGeofenceZone`) to the gms VM's `geofenceConfig`/mutators.
-- [ ] **Modify** the moved `GeofenceMapScreen.kt` — remove the direct
+- [x] **Modify** the moved `GeofenceMapScreen.kt` — remove the direct
       `import com.google.android.gms.location.LocationServices`. There are **TWO** GMS call sites that BOTH use
       `LocationServices.getFusedLocationProviderClient(...).lastLocation.addOnSuccessListener { … }` (P53-006):
       one in the map-init `AndroidView` `factory` centering (~line 299-308) and one in the "My Location" FAB
@@ -580,19 +580,19 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       former `LocationServices` call sites go through `viewModel.currentLocation()` (last-known semantics).
 
 ### Task 6.3 — Channel-settings row seam (adds the `navController` param before Task 6.4 uses it)
-- [ ] **Modify** `app/src/main/kotlin/…/ui/screens/settings/ChannelSettingsScreen.kt`:
+- [x] **Modify** `app/src/main/kotlin/…/ui/screens/settings/ChannelSettingsScreen.kt`:
   - Change the signature: remove `onNavigateToGeofenceList: () -> Unit`; add `navController: NavHostController`.
   - Delete the `item { ListItem(headlineContent = { Text("Geofence Events") } …) }` block (the geofence row).
   - After the WiFi `item { … }`, add `geofenceEventSourceItem(navController)` (called inside the `LazyColumn`
     content lambda, which is a `LazyListScope`).
   - Add the seam import.
-- [ ] **Create** `app/src/gms/kotlin/…/ui/screens/settings/GeofenceEventSourceItem.kt` — real seam: a
+- [x] **Create** `app/src/gms/kotlin/…/ui/screens/settings/GeofenceEventSourceItem.kt` — real seam: a
       `fun LazyListScope.geofenceEventSourceItem(navController: NavHostController)` that adds one `item { ListItem(
       "Geofence Events", leading = Icons.Default.LocationOn, trailing = Switch(checked = gmsVm.geofenceConfig
       .enabled, onChange = gmsVm::updateGeofenceChannelEnabled) + arrow, clickable → navController.navigate(
       GeofenceRoutes.LIST)) }`. Obtain `gmsVm: GeofenceSettingsViewModel` via `hiltViewModel()` and collect its
       config flow with `collectAsStateWithLifecycle()` inside the `item`.
-- [ ] **Create** `app/src/foss/kotlin/…/ui/screens/settings/GeofenceEventSourceItem.kt` — empty seam:
+- [x] **Create** `app/src/foss/kotlin/…/ui/screens/settings/GeofenceEventSourceItem.kt` — empty seam:
       `fun LazyListScope.geofenceEventSourceItem(navController: NavHostController) = Unit`.
 
 **DoD:**
@@ -600,7 +600,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       rows unchanged.
 
 ### Task 6.4 — Nav-destinations seam
-- [ ] **Modify** `app/src/main/kotlin/…/ui/screens/SettingsScreen.kt`:
+- [x] **Modify** `app/src/main/kotlin/…/ui/screens/SettingsScreen.kt`:
   - In the `ChannelSettings` composable block, remove the `onNavigateToGeofenceList = { … }` argument and instead
     pass `navController = navController` to `ChannelSettingsScreen` (its `navController` param was added in Task 6.3).
   - Delete the two `composable(SettingsRoute.GeofenceList.route){ … }` and
@@ -608,7 +608,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
   - After the existing `composable(...)` destinations inside the `NavGraphBuilder` lambda, add a single call
     `geofenceDestinations(navController)`.
   - Add import for the seam (`com.danielealbano.androidremotecontrolmcp.ui.screens.settings.geofenceDestinations`).
-- [ ] **Create** `app/src/gms/kotlin/…/ui/screens/settings/GeofenceDestinations.kt` — real seam:
+- [x] **Create** `app/src/gms/kotlin/…/ui/screens/settings/GeofenceDestinations.kt` — real seam:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.ui.screens.settings
 
@@ -634,7 +634,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       }
   }
   ```
-- [ ] **Create** `app/src/foss/kotlin/…/ui/screens/settings/GeofenceDestinations.kt` — empty seam:
+- [x] **Create** `app/src/foss/kotlin/…/ui/screens/settings/GeofenceDestinations.kt` — empty seam:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.ui.screens.settings
 
@@ -648,16 +648,16 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
 - [ ] `main` `SettingsScreen` registers geofence destinations only via the seam; foss registers none.
 
 ### Task 6.5 — Background-location permission row seam (P53-003)
-- [ ] **Modify** `app/src/main/kotlin/…/ui/viewmodels/MainViewModel.kt` — delete the `_isBackgroundLocationGranted`
+- [x] **Modify** `app/src/main/kotlin/…/ui/viewmodels/MainViewModel.kt` — delete the `_isBackgroundLocationGranted`
       / `isBackgroundLocationGranted` `StateFlow` (lines ~89-90) and the refresh assignment that checks
       `ACCESS_BACKGROUND_LOCATION` (lines ~281-285). (`ACCESS_BACKGROUND_LOCATION` is geofence-only; keeping this in
       `main` would surface a permission not even declared in the `foss` manifest.)
-- [ ] **Modify** `app/src/main/kotlin/…/ui/screens/settings/PermissionsSettingsScreen.kt`:
+- [x] **Modify** `app/src/main/kotlin/…/ui/screens/settings/PermissionsSettingsScreen.kt`:
   - Delete the entire "Background Location" block (the `val isBackgroundLocationGranted by …` line and the
     `PermissionRow(label = "Background Location", …)` at lines ~199-221).
   - After the `permission_location` `PermissionRow`, call the seam `BackgroundLocationPermissionRow()`.
   - Change the private `PermissionRow` composable to `internal` (so the gms seam can reuse it). Add the seam import.
-- [ ] **Create** `app/src/gms/kotlin/…/ui/screens/settings/BackgroundLocationPermissionRow.kt` — real seam:
+- [x] **Create** `app/src/gms/kotlin/…/ui/screens/settings/BackgroundLocationPermissionRow.kt` — real seam:
       `@Composable fun BackgroundLocationPermissionRow()` that: obtains `context` via `LocalContext.current`;
       computes granted state with `ContextCompat.checkSelfPermission(context,
       Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PERMISSION_GRANTED`, recomputed on
@@ -665,7 +665,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       the now-`internal` `PermissionRow` with label "Background Location", the granted/"Open Settings" button text,
       and the open-app-settings `onAction` (the `ACTION_APPLICATION_DETAILS_SETTINGS` intent verbatim from the
       removed block).
-- [ ] **Create** `app/src/foss/kotlin/…/ui/screens/settings/BackgroundLocationPermissionRow.kt` — empty seam:
+- [x] **Create** `app/src/foss/kotlin/…/ui/screens/settings/BackgroundLocationPermissionRow.kt` — empty seam:
       `@Composable fun BackgroundLocationPermissionRow() = Unit`.
 
 **DoD:**
@@ -673,11 +673,11 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       `ACCESS_BACKGROUND_LOCATION`.
 
 ### Task 6.6 — Flavor-specific Event Channel subtitle
-- [ ] **Modify** `app/src/main/res/values/strings.xml` — add
+- [x] **Modify** `app/src/main/res/values/strings.xml` — add
       `<string name="event_channel_subtitle">Notifications and WiFi event forwarding</string>` (foss-safe default).
-- [ ] **Create** `app/src/gms/res/values/strings.xml` — override
+- [x] **Create** `app/src/gms/res/values/strings.xml` — override
       `<string name="event_channel_subtitle">Notifications, WiFi, and geofence event forwarding</string>`.
-- [ ] **Modify** `app/src/main/kotlin/…/ui/screens/settings/SettingsIndexScreen.kt` — replace the literal
+- [x] **Modify** `app/src/main/kotlin/…/ui/screens/settings/SettingsIndexScreen.kt` — replace the literal
       `subtitle = "Notifications, WiFi, and geofence event forwarding"` with
       `subtitle = stringResource(R.string.event_channel_subtitle)` (add the `stringResource`/`R` imports if absent).
 

@@ -102,7 +102,7 @@ private fun SettingsEntriesColumn(
         SettingsEntry(
             icon = Icons.Default.CellTower,
             title = "Event Channel",
-            subtitle = "Notifications, WiFi, and geofence event forwarding",
+            subtitle = stringResource(R.string.event_channel_subtitle),
             onClick = { onNavigate(SettingsRoute.ChannelSettings.route) },
         )
     }

@@ -86,9 +86,6 @@ class MainViewModel
         private val _isLocationPermissionGranted = MutableStateFlow(false)
         val isLocationPermissionGranted: StateFlow<Boolean> = _isLocationPermissionGranted.asStateFlow()
 
-        private val _isBackgroundLocationGranted = MutableStateFlow(false)
-        val isBackgroundLocationGranted: StateFlow<Boolean> = _isBackgroundLocationGranted.asStateFlow()
-
         private val _isNotificationListenerEnabled = MutableStateFlow(false)
         val isNotificationListenerEnabled: StateFlow<Boolean> = _isNotificationListenerEnabled.asStateFlow()
 
@@ -278,11 +275,6 @@ class MainViewModel
                 PermissionUtils.isMicrophonePermissionGranted(context)
             _isLocationPermissionGranted.value =
                 PermissionUtils.isLocationPermissionGranted(context)
-            _isBackgroundLocationGranted.value =
-                androidx.core.content.ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             _isNotificationListenerEnabled.value =
                 PermissionUtils.isNotificationListenerEnabled(
                     context,

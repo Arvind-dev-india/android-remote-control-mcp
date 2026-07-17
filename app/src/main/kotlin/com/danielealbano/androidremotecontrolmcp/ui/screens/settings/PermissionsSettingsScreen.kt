@@ -196,35 +196,14 @@ fun PermissionsSettingsScreen(
                 actionEnabled = !isLocationPermissionGranted,
             )
 
-            val isBackgroundLocationGranted by viewModel.isBackgroundLocationGranted.collectAsStateWithLifecycle()
-            PermissionRow(
-                label = "Background Location",
-                isEnabled = isBackgroundLocationGranted,
-                buttonText =
-                    if (isBackgroundLocationGranted) {
-                        stringResource(R.string.permission_granted)
-                    } else {
-                        "Open Settings"
-                    },
-                onAction = {
-                    // Background location cannot be requested via dialog — open app settings
-                    val intent =
-                        android.content
-                            .Intent(
-                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            ).apply {
-                                data = android.net.Uri.fromParts("package", context.packageName, null)
-                            }
-                    context.startActivity(intent)
-                },
-                actionEnabled = !isBackgroundLocationGranted,
-            )
+            // Background Location is geofence-only; rendered via a flavor seam (gms only).
+            BackgroundLocationPermissionRow()
         }
     }
 }
 
 @Composable
-private fun PermissionRow(
+internal fun PermissionRow(
     label: String,
     isEnabled: Boolean,
     buttonText: String,
