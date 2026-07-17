@@ -133,7 +133,7 @@ framework-only (GMS-free) and is shared.
 - [ ] Shared reverse-geocoding helper lives in `main` and is used by both impls.
 
 ### Task 2.1 — Extract shared reverse-geocode helper into `main`
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/ReverseGeocoder.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/ReverseGeocoder.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.services.location
 
@@ -190,9 +190,9 @@ framework-only (GMS-free) and is shared.
 - [ ] Helper is `internal` and framework-only (no GMS imports).
 
 ### Task 2.2 — Move the Fused implementation into the `gms` source set and reuse the shared helper
-- [ ] **Move** `app/src/main/kotlin/…/services/location/LocationProviderImpl.kt` →
+- [x] **Move** `app/src/main/kotlin/…/services/location/LocationProviderImpl.kt` →
       `app/src/gms/kotlin/…/services/location/LocationProviderImpl.kt` (package unchanged).
-- [ ] **Modify** the moved `LocationProviderImpl.kt` — delete its private `reverseGeocode(...)` function and the
+- [x] **Modify** the moved `LocationProviderImpl.kt` — delete its private `reverseGeocode(...)` function and the
       `Geocoder`/`Address`/`Locale` imports; replace the call site `val street = reverseGeocode(location.latitude,
       location.longitude)` with `val street = reverseGeocode(context, location.latitude, location.longitude)`
       (the shared helper). Keep the Fused logic and the private `Task<T>.await()` extension unchanged.
@@ -201,7 +201,7 @@ framework-only (GMS-free) and is shared.
 - [ ] `gms` `LocationProviderImpl` compiles against the shared helper; Fused behavior unchanged.
 
 ### Task 2.3 — Create the `foss` `LocationManager` implementation
-- [ ] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/FossLocationProviderImpl.kt`.
+- [x] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/FossLocationProviderImpl.kt`.
       Mirror the existing `getLocation(freshFix)` contract and error semantics using the framework
       `LocationManager`:
   - Permission gate: `ACCESS_FINE_LOCATION` (return `Result.failure(SecurityException(...))` if missing) —
@@ -222,12 +222,12 @@ framework-only (GMS-free) and is shared.
       failure paths return descriptive `Result.failure`.
 
 ### Task 2.4 — Split the `LocationProvider` DI binding per flavor
-- [ ] **Modify** `app/src/main/kotlin/…/di/AppModule.kt` — remove `bindLocationProvider(...)` (lines around 210-212)
+- [x] **Modify** `app/src/main/kotlin/…/di/AppModule.kt` — remove `bindLocationProvider(...)` (lines around 210-212)
       and the now-unused `LocationProviderImpl` import.
-- [ ] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsLocationModule.kt` — a
+- [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/di/GmsLocationModule.kt` — a
       Hilt `@Module @InstallIn(SingletonComponent::class)` with
       `@Binds @Singleton abstract fun bindLocationProvider(impl: LocationProviderImpl): LocationProvider`.
-- [ ] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/di/FossLocationModule.kt` — a
+- [x] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/di/FossLocationModule.kt` — a
       Hilt module with `@Binds @Singleton abstract fun bindLocationProvider(impl: FossLocationProviderImpl): LocationProvider`.
 
 **DoD:**
