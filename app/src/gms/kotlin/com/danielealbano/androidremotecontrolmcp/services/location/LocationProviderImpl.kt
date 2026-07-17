@@ -4,11 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Address
-import android.location.Geocoder
 import android.location.Location
 import android.os.Looper
-import android.util.Log
 import androidx.core.content.ContextCompat
 import com.danielealbano.androidremotecontrolmcp.data.model.LocationData
 import com.google.android.gms.common.ConnectionResult
@@ -25,7 +22,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
-import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -92,7 +88,7 @@ class LocationProviderImpl
                 )
             }
 
-            val street = reverseGeocode(location.latitude, location.longitude)
+            val street = reverseGeocode(context, location.latitude, location.longitude)
 
             return Result.success(
                 LocationData(
@@ -146,43 +142,6 @@ class LocationProviderImpl
                     }
                 }
             }
-
-        @Suppress("TooGenericExceptionCaught")
-        private suspend fun reverseGeocode(
-            latitude: Double,
-            longitude: Double,
-        ): String? {
-            if (!Geocoder.isPresent()) {
-                Log.d(TAG, "Geocoder not present on this device")
-                return null
-            }
-
-            return try {
-                suspendCancellableCoroutine { cont ->
-                    val geocoder = Geocoder(context, Locale.getDefault())
-                    geocoder.getFromLocation(
-                        latitude,
-                        longitude,
-                        1,
-                        object : Geocoder.GeocodeListener {
-                            override fun onGeocode(addresses: List<Address>) {
-                                cont.resume(addresses.firstOrNull()?.getAddressLine(0))
-                            }
-
-                            override fun onError(errorMessage: String?) {
-                                Log.d(TAG, "Geocoder onError: $errorMessage")
-                                cont.resume(null)
-                            }
-                        },
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.d(TAG, "Reverse geocoding failed: ${e.message}")
-                null
-            }
-        }
 
         private suspend fun <T> Task<T>.await(): T? =
             suspendCancellableCoroutine { cont ->

@@ -5,7 +5,6 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
@@ -364,16 +363,4 @@ interface SettingsRepository {
 
     /** Updates the WiFi notify on disconnected toggle. */
     suspend fun updateWifiNotifyOnDisconnected(enabled: Boolean)
-
-    /** Updates the geofence channel enabled toggle. */
-    suspend fun updateGeofenceChannelEnabled(enabled: Boolean)
-
-    /** Adds a geofence zone. */
-    suspend fun addGeofenceZone(zone: GeofenceZone)
-
-    /** Removes a geofence zone by ID. */
-    suspend fun removeGeofenceZone(zoneId: String)
-
-    /** Updates an existing geofence zone (matched by ID). */
-    suspend fun updateGeofenceZone(zone: GeofenceZone)
 }

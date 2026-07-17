@@ -28,7 +28,12 @@ object AndroidContainerSetup {
     private const val PROCESS_TIMEOUT_SECONDS = 30L
     private const val MEMORY_BYTES = 8L * 1024 * 1024 * 1024 // 8 GB
 
-    private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.debug"
+    private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.gms.debug"
+
+    // The E2E/OAuth broadcast ACTIONS are hardcoded in E2EConfigReceiver/OAuthApprovalTestReceiver using
+    // their source package (com.danielealbano.androidremotecontrolmcp.debug) — NOT the applicationId. They
+    // must be sent verbatim, independent of the flavor's applicationId suffix (…gms.debug).
+    private const val E2E_ACTION_BASE = "com.danielealbano.androidremotecontrolmcp.debug"
     private const val CALCULATOR_PACKAGE = "com.simplemobiletools.calculator"
     private const val COMPOSE_TEST_PACKAGE = "com.danielealbano.composetestapp"
     private const val CALCULATOR_APK_RESOURCE = "/simple-calculator.apk"
@@ -336,7 +341,7 @@ object AndroidContainerSetup {
         execAdb("shell", "am", "force-stop", APP_PACKAGE)
         Thread.sleep(1_000)
 
-        val configAction = "$APP_PACKAGE.E2E_CONFIGURE"
+        val configAction = "$E2E_ACTION_BASE.E2E_CONFIGURE"
         execAdb(
             "shell", "am", "broadcast",
             "--include-stopped-packages",
@@ -353,7 +358,7 @@ object AndroidContainerSetup {
 
     /** Approves all currently-pending OAuth authorizations via the debug-only approval receiver. */
     fun approvePendingOAuth() {
-        val action = "$APP_PACKAGE.OAUTH_APPROVE"
+        val action = "$E2E_ACTION_BASE.OAUTH_APPROVE"
         execAdb(
             "shell", "am", "broadcast",
             "-a", action,
@@ -376,7 +381,7 @@ object AndroidContainerSetup {
         execAdb("shell", "am", "start", "-n", "$APP_PACKAGE/$MAIN_ACTIVITY_CLASS")
         Thread.sleep(5_000)
 
-        val startServerAction = "$APP_PACKAGE.E2E_START_SERVER"
+        val startServerAction = "$E2E_ACTION_BASE.E2E_START_SERVER"
         execAdb(
             "shell", "am", "broadcast",
             "-a", startServerAction,

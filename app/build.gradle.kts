@@ -96,6 +96,15 @@ android {
         versionName = versionNameProp
     }
 
+    // Distribution flavors: `gms` (full app, GitHub/Play) and `foss` (F-Droid, no Google Play Services).
+    // Release applicationId is identical for both flavors; debug builds get a per-flavor suffix (set via the
+    // variant API in androidComponents below) so gms/foss debug builds can be installed side-by-side.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("gms") { dimension = "distribution" }
+        create("foss") { dimension = "distribution" }
+    }
+
     // Release signing configuration (optional, uses keystore.properties if present)
     val keystorePropertiesFile = rootProject.file("keystore.properties")
     if (keystorePropertiesFile.exists()) {
@@ -114,7 +123,8 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            // Debug applicationId is set per-flavor via the variant API (androidComponents below) so it becomes
+            // `…mcp.<flavor>.debug`, keeping the release applicationId identical across flavors.
             isDebuggable = true
             isMinifyEnabled = false
         }
@@ -205,8 +215,8 @@ dependencies {
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.video)
 
-    // Google Play Services
-    implementation(libs.play.services.location)
+    // Google Play Services (gms flavor only — excluded from the foss/F-Droid build)
+    "gmsImplementation"(libs.play.services.location)
 
     // OpenStreetMap
     implementation(libs.osmdroid)
@@ -318,6 +328,13 @@ val generateLocationDb =
     }
 
 androidComponents {
+    // Per-flavor debug applicationId (`…mcp.gms.debug` / `…mcp.foss.debug`) so both debug builds coexist, while
+    // the release applicationId stays identical across flavors (`com.danielealbano.androidremotecontrolmcp`).
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.applicationId.set(
+            "com.danielealbano.androidremotecontrolmcp.${variant.flavorName}.debug",
+        )
+    }
     onVariants { variant ->
         // Registered as a generated assets source — the generation runs only for variants that package
         // assets (assemble/lint-vital), never for the unit-test path, which uses the committed fixture.
@@ -378,7 +395,7 @@ val jacocoExcludes =
     )
 
 tasks.register<JacocoReport>("jacocoTestReport") {
-    dependsOn("testDebugUnitTest")
+    dependsOn("testGmsDebugUnitTest")
 
     reports {
         html.required.set(true)
@@ -389,15 +406,15 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     }
 
     val debugTree =
-        fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/gmsDebug") {
             exclude(jacocoExcludes)
         }
 
     classDirectories.setFrom(debugTree)
-    sourceDirectories.setFrom(files("src/main/kotlin"))
+    sourceDirectories.setFrom(files("src/main/kotlin", "src/gms/kotlin"))
     executionData.setFrom(
         fileTree(layout.buildDirectory) {
-            include("jacoco/testDebugUnitTest.exec")
+            include("jacoco/testGmsDebugUnitTest.exec")
         },
     )
 }
@@ -406,15 +423,15 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     dependsOn("jacocoTestReport")
 
     val debugTree =
-        fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/gmsDebug") {
             exclude(jacocoExcludes)
         }
 
     classDirectories.setFrom(debugTree)
-    sourceDirectories.setFrom(files("src/main/kotlin"))
+    sourceDirectories.setFrom(files("src/main/kotlin", "src/gms/kotlin"))
     executionData.setFrom(
         fileTree(layout.buildDirectory) {
-            include("jacoco/testDebugUnitTest.exec")
+            include("jacoco/testGmsDebugUnitTest.exec")
         },
     )
 

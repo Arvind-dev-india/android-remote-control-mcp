@@ -36,10 +36,4 @@ sealed class SettingsRoute(
     data object NotificationFilter : SettingsRoute("settings/channel/notification_filter")
 
     data object WifiMonitor : SettingsRoute("settings/channel/wifi_monitor")
-
-    data object GeofenceList : SettingsRoute("settings/channel/geofence_list")
-
-    data object GeofenceMap : SettingsRoute("settings/channel/geofence_map/{zoneId}") {
-        fun createRoute(zoneId: String? = null): String = "settings/channel/geofence_map/${zoneId ?: ""}"
-    }
 }

@@ -2,7 +2,6 @@ package com.danielealbano.androidremotecontrolmcp.ui.viewmodels
 
 import android.content.Context
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import io.mockk.coEvery
@@ -191,27 +190,6 @@ class ChannelViewModelTest {
                 advanceUntilIdle()
 
                 coVerify { settingsRepository.updateWifiSsids(setOf("Network2")) }
-            }
-    }
-
-    @Nested
-    @DisplayName("geofence settings")
-    inner class GeofenceSettings {
-        @Test
-        fun `addGeofenceZone delegates to repository`() =
-            runTest {
-                val zone =
-                    GeofenceZone(
-                        id = "z1",
-                        name = "Test",
-                        latitude = 40.0,
-                        longitude = -74.0,
-                        radiusMeters = 200f,
-                    )
-                viewModel.addGeofenceZone(zone)
-                advanceUntilIdle()
-
-                coVerify { settingsRepository.addGeofenceZone(zone) }
             }
     }
 

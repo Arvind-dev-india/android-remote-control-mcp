@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.apps.AppIconCache
+import com.danielealbano.androidremotecontrolmcp.startup.runFlavorStartupMigrations
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,9 @@ class McpApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Flavor-specific one-time migrations (gms: geofence config → dedicated key), launched eagerly
+        // on a background coroutine (non-blocking — must never stall onCreate). No-op in foss.
+        runFlavorStartupMigrations(this)
         createNotificationChannels()
         configureOsmdroid()
         appIconCache.preload()

@@ -1,4 +1,4 @@
-.PHONY: help check-deps check-deps-updates update-deps build build-release clean \
+.PHONY: help check-deps check-deps-updates update-deps build build-foss build-release clean \
         test-unit test-integration test-e2e test coverage \
         lint lint-fix \
         install install-release uninstall grant-permissions start-server forward-port \
@@ -118,11 +118,14 @@ update-deps: ## Update version catalog with latest stable versions (interactive)
 # Build
 # ─────────────────────────────────────────────────────────────────────────────
 
-build: compile-cloudflared compile-ngrok-native ## Build debug APK
-	$(GRADLE) assembleDebug
+build: compile-cloudflared compile-ngrok-native ## Build gms debug APK
+	$(GRADLE) assembleGmsDebug
 
-build-release: compile-cloudflared compile-ngrok-native ## Build release APK
-	$(GRADLE) assembleRelease
+build-foss: compile-cloudflared compile-ngrok-native ## Build foss (F-Droid) debug APK
+	$(GRADLE) assembleFossDebug
+
+build-release: compile-cloudflared compile-ngrok-native ## Build gms + foss release APKs
+	$(GRADLE) assembleGmsRelease assembleFossRelease
 
 clean: ## Clean build artifacts
 	$(GRADLE) clean
@@ -135,7 +138,7 @@ test-unit: ## Run unit tests (includes integration tests since both are JVM-base
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test
 
 test-integration: ## Run integration tests (JVM-based, no emulator required)
-	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"
+	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testGmsDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"
 
 test-e2e: ## Run E2E tests (requires rootful podman socket)
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) DOCKER_HOST=unix:///run/podman/podman.sock TESTCONTAINERS_RYUK_DISABLED=true $(GRADLE) :e2e-tests:cleanTest :e2e-tests:test
@@ -160,11 +163,11 @@ lint-fix: ## Auto-fix linting issues
 # Device Management
 # ─────────────────────────────────────────────────────────────────────────────
 
-install: ## Install debug APK on connected device/emulator
-	$(GRADLE) installDebug
+install: ## Install gms debug APK on connected device/emulator
+	$(GRADLE) installGmsDebug
 
-install-release: ## Install release APK on connected device/emulator
-	$(GRADLE) installRelease
+install-release: ## Install gms release APK on connected device/emulator
+	$(GRADLE) installGmsRelease
 
 uninstall: ## Uninstall app from connected device/emulator
 	$(ADB) uninstall $(APP_ID) 2>/dev/null || true
@@ -447,7 +450,7 @@ check-so-alignment: ## Check 16KB page alignment of native .so libraries in debu
 		echo "ERROR: llvm-objdump not found. Install LLVM toolchain."; \
 		exit 1; \
 	fi; \
-	APK="app/build/outputs/apk/debug/app-debug.apk"; \
+	APK="app/build/outputs/apk/gms/debug/app-gms-debug.apk"; \
 	if [ ! -f "$$APK" ]; then \
 		echo "Debug APK not found. Run 'make build' first."; \
 		exit 1; \

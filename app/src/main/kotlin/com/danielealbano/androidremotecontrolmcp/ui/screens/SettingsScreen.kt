@@ -13,8 +13,6 @@ import com.danielealbano.androidremotecontrolmcp.ui.navigation.SettingsRoute
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.AccessSettingsScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.ChannelSettingsScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.GeneralSettingsScreen
-import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.GeofenceListScreen
-import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.GeofenceMapScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.McpToolsSettingsScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.NotificationFilterScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.OAuthClientsScreen
@@ -24,6 +22,7 @@ import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.SettingsInd
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.StorageSettingsScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.TunnelSettingsScreen
 import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.WifiMonitorScreen
+import com.danielealbano.androidremotecontrolmcp.ui.screens.settings.geofenceDestinations
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 
@@ -95,14 +94,12 @@ fun SettingsScreen(
         composable(SettingsRoute.ChannelSettings.route) {
             ChannelSettingsScreen(
                 viewModel = channelViewModel,
+                navController = navController,
                 onNavigateToNotificationFilter = {
                     navController.navigate(SettingsRoute.NotificationFilter.route)
                 },
                 onNavigateToWifiMonitor = {
                     navController.navigate(SettingsRoute.WifiMonitor.route)
-                },
-                onNavigateToGeofenceList = {
-                    navController.navigate(SettingsRoute.GeofenceList.route)
                 },
                 onNavigateBack = { navController.popBackStack() },
             )
@@ -119,22 +116,6 @@ fun SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
-        composable(SettingsRoute.GeofenceList.route) {
-            GeofenceListScreen(
-                viewModel = channelViewModel,
-                onNavigateToMap = { zoneId ->
-                    navController.navigate(SettingsRoute.GeofenceMap.createRoute(zoneId))
-                },
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable(SettingsRoute.GeofenceMap.route) { backStackEntry ->
-            val zoneId = backStackEntry.arguments?.getString("zoneId")?.ifEmpty { null }
-            GeofenceMapScreen(
-                viewModel = channelViewModel,
-                zoneId = zoneId,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
+        geofenceDestinations(navController)
     }
 }

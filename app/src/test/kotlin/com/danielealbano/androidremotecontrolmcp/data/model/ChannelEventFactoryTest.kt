@@ -94,28 +94,6 @@ class ChannelEventFactoryTest {
     }
 
     @Nested
-    @DisplayName("geofence events")
-    inner class GeofenceEvents {
-        @Test
-        fun `geofence event has correct type and data`() {
-            val zone =
-                GeofenceZone(
-                    id = "z1",
-                    name = "Office",
-                    latitude = 40.7128,
-                    longitude = -74.006,
-                    radiusMeters = 200f,
-                )
-            val event = ChannelEventFactory.geofence(zone, "enter")
-            assertEquals("geofence", event.type)
-            val data = event.data.jsonObject
-            assertEquals("z1", data["zoneId"]?.jsonPrimitive?.content)
-            assertEquals("Office", data["zoneName"]?.jsonPrimitive?.content)
-            assertEquals("enter", data["transition"]?.jsonPrimitive?.content)
-        }
-    }
-
-    @Nested
     @DisplayName("timestamp")
     inner class Timestamp {
         @Test

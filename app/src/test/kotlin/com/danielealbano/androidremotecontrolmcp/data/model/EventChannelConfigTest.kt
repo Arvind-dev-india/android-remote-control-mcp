@@ -41,12 +41,6 @@ class EventChannelConfigTest {
             val config = EventChannelConfig()
             assertTrue(config.wifi.ssids.isEmpty())
         }
-
-        @Test
-        fun `default geofence config has empty zones`() {
-            val config = EventChannelConfig()
-            assertTrue(config.geofence.zones.isEmpty())
-        }
     }
 
     @Nested
@@ -54,16 +48,6 @@ class EventChannelConfigTest {
     inner class Serialization {
         @Test
         fun `toJson and fromJson round-trip`() {
-            val zone =
-                GeofenceZone(
-                    id = "zone1",
-                    name = "Office",
-                    latitude = 40.7128,
-                    longitude = -74.0060,
-                    radiusMeters = 200f,
-                    notifyOnEnter = true,
-                    notifyOnExit = false,
-                )
             val config =
                 EventChannelConfig(
                     enabled = true,
@@ -84,11 +68,6 @@ class EventChannelConfigTest {
                             notifyOnConnected = true,
                             notifyOnDisconnected = false,
                         ),
-                    geofence =
-                        GeofenceChannelConfig(
-                            enabled = true,
-                            zones = listOf(zone),
-                        ),
                 )
 
             val json = config.toJson()
@@ -100,23 +79,6 @@ class EventChannelConfigTest {
         fun `fromJsonOrDefault returns default on invalid JSON`() {
             val config = EventChannelConfig.fromJsonOrDefault("invalid json {{{")
             assertEquals(EventChannelConfig(), config)
-        }
-
-        @Test
-        fun `geofence zone serialization`() {
-            val zone =
-                GeofenceZone(
-                    id = "z1",
-                    name = "Home",
-                    latitude = 51.5074,
-                    longitude = -0.1278,
-                    radiusMeters = 150f,
-                )
-            val config = EventChannelConfig(geofence = GeofenceChannelConfig(zones = listOf(zone)))
-            val json = config.toJson()
-            val deserialized = EventChannelConfig.fromJson(json)
-            assertEquals(1, deserialized.geofence.zones.size)
-            assertEquals(zone, deserialized.geofence.zones.first())
         }
 
         @Test

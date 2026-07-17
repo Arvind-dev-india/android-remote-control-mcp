@@ -12,7 +12,6 @@ data class EventChannelConfig(
     val authToken: String = "",
     val notifications: NotificationChannelConfig = NotificationChannelConfig(),
     val wifi: WifiChannelConfig = WifiChannelConfig(),
-    val geofence: GeofenceChannelConfig = GeofenceChannelConfig(),
 ) {
     companion object {
         const val DEFAULT_ENDPOINT_URL = "http://localhost:9090"
@@ -52,21 +51,4 @@ data class WifiChannelConfig(
     val notifyOnLost: Boolean = true,
     val notifyOnConnected: Boolean = true,
     val notifyOnDisconnected: Boolean = true,
-)
-
-@Serializable
-data class GeofenceChannelConfig(
-    val enabled: Boolean = false,
-    val zones: List<GeofenceZone> = emptyList(),
-)
-
-@Serializable
-data class GeofenceZone(
-    val id: String,
-    val name: String,
-    val latitude: Double,
-    val longitude: Double,
-    val radiusMeters: Float,
-    val notifyOnEnter: Boolean = true,
-    val notifyOnExit: Boolean = true,
 )

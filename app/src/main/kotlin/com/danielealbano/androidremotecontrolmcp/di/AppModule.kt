@@ -32,12 +32,8 @@ import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcherImpl
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManager
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManagerImpl
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcherImpl
-import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
-import com.danielealbano.androidremotecontrolmcp.services.location.LocationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ApiLevelProvider
@@ -207,17 +203,15 @@ abstract class ServiceModule {
     @Singleton
     abstract fun bindPermissionChecker(impl: PermissionCheckerImpl): PermissionChecker
 
-    @Binds
-    @Singleton
-    abstract fun bindLocationProvider(impl: LocationProviderImpl): LocationProvider
+    // LocationProvider is bound per-flavor (Fused in gms / LocationManager in foss) — see
+    // GmsLocationModule / FossLocationModule.
 
     @Binds
     @Singleton
     abstract fun bindEventDispatcher(impl: EventDispatcherImpl): EventDispatcher
 
-    @Binds
-    @Singleton
-    abstract fun bindGeofenceManager(impl: GeofenceManagerImpl): GeofenceManager
+    // GeofenceManager and GeofenceChannelController are bound per-flavor — see GmsGeofenceModule
+    // (gms) / FossGeofenceModule (foss). foss has no GeofenceManager (geofencing excluded).
 
     @Binds
     @Singleton
