@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  models: read
   actions: read
 
 concurrency:
@@ -22,7 +21,7 @@ jobs:
     steps:
       # ── 1. Checkout with full history (needed for tag comparison) ──
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: true
@@ -36,7 +35,7 @@ jobs:
 
       # ── 3. Wait for CI to pass on this commit (gates on existing CI results) ──
       - name: Wait for CI to pass
-        uses: lewagon/wait-on-check-action@a499964d3917700d29a2a8baf3f16b078d609410 # v1.5.0
+        uses: lewagon/wait-on-check-action@v1.8.1
         with:
           ref: ${{ github.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -116,18 +115,18 @@ jobs:
 
       # ── 5. Setup build toolchains (same as CI build-release job) ──
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        uses: gradle/actions/setup-gradle@v6
 
       # ── 6. Compile native dependencies (cached by submodule content) ──
       - name: Cache cloudflared Android native
         id: cache-cloudflared
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/src/main/jniLibs/arm64-v8a/libcloudflared.so
@@ -136,7 +135,7 @@ jobs:
 
       - name: Cache ngrok-java Android native
         id: cache-ngrok-android
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/src/main/jniLibs/arm64-v8a/libngrok_java.so
@@ -147,13 +146,13 @@ jobs:
 
       - name: Set up Go
         if: steps.cache-cloudflared.outputs.cache-hit != 'true'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.25.6'
 
       - name: Set up Rust
         if: steps.cache-ngrok-android.outputs.cache-hit != 'true'
-        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,x86_64-linux-android
 
@@ -170,7 +169,7 @@ jobs:
 
       # ── 7. Geolocation DB toolchain (generated at build time from DB-IP City Lite) ──
       - name: Set up Python (geolocation DB generator)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -179,7 +178,7 @@ jobs:
         run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
 
       - name: Cache DB-IP source CSV
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .dbip-cache
           key: dbip-csv-${{ steps.dbip-month.outputs.month }}
@@ -221,138 +220,9 @@ jobs:
           ls -lh release-assets/ >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-      # ── 9. Find previous tag for release notes context ──
-      - name: Find previous tag
-        id: prev-tag
-        env:
-          CURRENT_TAG: ${{ steps.parse-tag.outputs.tag }}
-        run: |
-          # Get the tag before the current one, sorted by version
-          # -c versionsort.suffix=- ensures pre-release tags sort before their base version (semver ordering)
-          # grep -E filters to strict semver tags only (prevents non-version v* tags from being picked)
-          PREV_TAG=$(git -c versionsort.suffix=- tag --list 'v*' --sort=-version:refname \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' \
-            | grep -vxF "${CURRENT_TAG}" \
-            | head -1)
-
-          if [ -z "$PREV_TAG" ]; then
-            echo "prev-tag=" >> "$GITHUB_OUTPUT"
-            echo "is-first-release=true" >> "$GITHUB_OUTPUT"
-            echo "First release — no previous tag found"
-          else
-            echo "prev-tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
-            echo "is-first-release=false" >> "$GITHUB_OUTPUT"
-            echo "Previous tag: $PREV_TAG"
-          fi
-
-      # ── 10. Generate auto release notes via GitHub API ──
-      - name: Generate auto release notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.parse-tag.outputs.tag }}
-          PREV_TAG: ${{ steps.prev-tag.outputs.prev-tag }}
-          REPO: ${{ github.repository }}
-        run: |
-          if [ -n "$PREV_TAG" ]; then
-            gh api "repos/${REPO}/releases/generate-notes" \
-              -f tag_name="$TAG" \
-              -f previous_tag_name="$PREV_TAG" \
-              --jq '.body' > auto-notes.md
-          else
-            gh api "repos/${REPO}/releases/generate-notes" \
-              -f tag_name="$TAG" \
-              --jq '.body' > auto-notes.md
-          fi
-
-          echo "Auto-generated release notes saved to auto-notes.md"
-
-      # ── 11. Gather PR details (titles + bodies) for AI context ──
-      - name: Gather PR details for AI context
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract PR numbers from auto-generated notes (capped at 100)
-          PR_NUMBERS=$(grep -oE '(#|/pull/)[0-9]+' auto-notes.md | grep -oE '[0-9]+' | sort -un | head -100)
-
-          if [ -z "$PR_NUMBERS" ]; then
-            echo "No PRs found in auto-generated notes"
-            echo "No pull requests found for this release." > pr-details.txt
-            exit 0
-          fi
-
-          # Fetch full details (title + body) for each PR
-          # Bodies are truncated to 500 chars to keep AI input focused
-          > pr-details.txt
-          for NUM in $PR_NUMBERS; do
-            echo "Fetching PR #${NUM}..."
-            PR_JSON=$(gh pr view "$NUM" --json title,body 2>/dev/null || echo '{}')
-            PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title // "(title unavailable)"')
-            PR_BODY=$(printf '%s' "$PR_JSON" | jq -r '.body // "No description"')
-            PR_BODY_TRUNCATED=$(printf '%.500s' "$PR_BODY")
-            printf 'PR #%s: %s\n%s\n---\n\n' "$NUM" "$PR_TITLE" "$PR_BODY_TRUNCATED" >> pr-details.txt
-          done
-
-          echo "Gathered details for $(echo "$PR_NUMBERS" | wc -w | tr -d ' ') PRs"
-
-      # ── 12. Generate AI summary via GitHub Models ──
-      - name: Generate AI summary
-        id: ai-summary
-        continue-on-error: true
-        uses: actions/ai-inference@v1
-        with:
-          model: openai/gpt-4o
-          max-tokens: 1500
-          prompt-file: '.github/prompts/release-notes.prompt.yml'
-          file_input: |
-            pr_details: ./pr-details.txt
-
-      # ── 13. Compose release body ──
-      - name: Compose release body
-        env:
-          TAG: ${{ steps.parse-tag.outputs.tag }}
-          PREV_TAG: ${{ steps.prev-tag.outputs.prev-tag }}
-          REPO: ${{ github.repository }}
-          AI_OUTCOME: ${{ steps.ai-summary.outcome }}
-          AI_RESPONSE_FILE: ${{ steps.ai-summary.outputs.response-file }}
-        run: |
-          # Build compare URL
-          if [ -n "$PREV_TAG" ]; then
-            COMPARE_URL="https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}"
-          else
-            COMPARE_URL="https://github.com/${REPO}/commits/${TAG}"
-          fi
-
-          # Compose body into file
-          {
-            # AI summary section (only if AI succeeded)
-            if [ "$AI_OUTCOME" = "success" ] && \
-               [ -n "$AI_RESPONSE_FILE" ] && \
-               [ -f "$AI_RESPONSE_FILE" ] && \
-               [ -s "$AI_RESPONSE_FILE" ]; then
-              echo "## Summary"
-              echo ""
-              cat "$AI_RESPONSE_FILE"
-              echo ""
-              echo ""
-            fi
-
-            # Auto-generated PR list
-            echo "## What's Changed"
-            echo ""
-            cat auto-notes.md
-            echo ""
-
-            # Full changelog link
-            echo "**Full Changelog**: ${COMPARE_URL}"
-          } > release-body.md
-
-          echo "Release body composed"
-          echo ""
-          echo "### Release Body Preview" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          cat release-body.md >> "$GITHUB_STEP_SUMMARY"
-
-      # ── 14. Create draft release with APK attachments ──
+      # ── 9. Create draft release with APK attachments ──
+      #      Notes are left to GitHub's native --generate-notes; the draft body
+      #      is finalized manually before publishing.
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -368,7 +238,7 @@ jobs:
           gh release create "$TAG" \
             --draft \
             --title "$TAG" \
-            --notes-file release-body.md \
+            --generate-notes \
             $PRERELEASE_FLAG \
             release-assets/*.apk
 

@@ -168,9 +168,9 @@ Plan <N>: <Short descriptive title>
 
 Releases are created automatically via GitHub Actions when a semantic version tag is pushed. The workflow creates a **draft** release (never auto-published) with:
 - Debug and release APKs attached with proper names
-- AI-generated release note summary (via GitHub Models)
-- Auto-generated list of merged PRs
-- Link to the full changelog diff
+- GitHub's native auto-generated release notes (list of merged PRs + link to the full changelog diff)
+
+The draft body is populated with GitHub's native release notes; you finalize it manually before publishing.
 
 ### Creating a Release
 
@@ -225,7 +225,7 @@ Attached APKs follow this naming convention:
 
 1. **CI Gate**: The workflow waits for the CI pipeline (`Build Release` check) to pass on the tagged commit before proceeding. If CI hasn't completed yet, it polls until it finishes or the job timeout (150 minutes) is reached.
 2. **Build**: APKs are built with `VERSION_NAME` and `VERSION_CODE` injected from the tag.
-3. **Release Notes**: AI-generated summary + auto-generated PR list + changelog link. If AI generation fails, the release is created without the summary section.
+3. **Release Notes**: GitHub's native auto-generated notes (`gh release create --generate-notes`) — merged PR list + full changelog link. Finalize the draft body manually before publishing.
 4. **Draft Release**: Created as draft — you must manually review and publish.
 
 ### Prerequisites and Limitations
