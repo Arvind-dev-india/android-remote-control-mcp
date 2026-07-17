@@ -53,13 +53,13 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
 `gmsDebug`/`fossDebug`), which breaks the existing jacoco tasks and integration Makefile target unless fixed.
 
 **Acceptance criteria:**
-- [ ] `distribution` flavor dimension with flavors `gms` and `foss` exists; Gradle sync lists variants
+- [x] `distribution` flavor dimension with flavors `gms` and `foss` exists; Gradle sync lists variants
       `gmsDebug`, `gmsRelease`, `fossDebug`, `fossRelease`.
-- [ ] `play-services-location` is on the `gmsImplementation` configuration only.
-- [ ] Release applicationId is identical for both flavors; debug applicationIds are `…mcp.gms.debug` and
+- [x] `play-services-location` is on the `gmsImplementation` configuration only.
+- [x] Release applicationId is identical for both flavors; debug applicationIds are `…mcp.gms.debug` and
       `…mcp.foss.debug`.
-- [ ] jacoco tasks reference the `gmsDebug` unit-test task/paths and run successfully.
-- [ ] Empty flavor source-set directories exist so AGP recognizes them.
+- [x] jacoco tasks reference the `gmsDebug` unit-test task/paths and run successfully.
+- [x] Empty flavor source-set directories exist so AGP recognizes them.
 
 ### Task 1.1 — Declare flavors, per-flavor debug applicationId, and move the GMS dependency
 - [x] **Modify** `app/build.gradle.kts` — inside `android { }`, after `defaultConfig { }`, add:
@@ -92,8 +92,8 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
       (string-quoted configuration name; the flavor configuration is created by AGP).
 
 **DoD:**
-- [ ] Variants `gmsDebug/gmsRelease/fossDebug/fossRelease` are produced by AGP.
-- [ ] `fossReleaseRuntimeClasspath` does NOT contain `play-services-location` (verified in US10).
+- [x] Variants `gmsDebug/gmsRelease/fossDebug/fossRelease` are produced by AGP.
+- [x] `fossReleaseRuntimeClasspath` does NOT contain `play-services-location` (verified in US10).
 
 ### Task 1.2 — Repair jacoco tasks for the renamed flavor unit-test task/paths
 - [x] **Modify** `app/build.gradle.kts` — in `jacocoTestReport`: change `dependsOn("testDebugUnitTest")` to
@@ -107,7 +107,7 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
       superset of code.)
 
 **DoD:**
-- [ ] `./gradlew :app:jacocoTestReport` resolves the `gmsDebug` task and paths; the HTML report links gms sources
+- [x] `./gradlew :app:jacocoTestReport` resolves the `gmsDebug` task and paths; the HTML report links gms sources
       (verified in US10, which also confirms the 0.50 coverage gate still holds with the expanded class/source
       universe).
 
@@ -117,7 +117,7 @@ existing. Adding flavors also renames the unit-test task and kotlin-classes dir 
       `app/src/testGms/kotlin`, `app/src/testFoss/kotlin`. These are populated by later user stories.
 
 **DoD:**
-- [ ] AGP recognizes `gms`/`foss`/`testGms`/`testFoss` source sets.
+- [x] AGP recognizes `gms`/`foss`/`testGms`/`testFoss` source sets.
 
 ---
 
@@ -128,9 +128,9 @@ interface already exists with a single consumer; each flavor binds its own imple
 framework-only (GMS-free) and is shared.
 
 **Acceptance criteria:**
-- [ ] `LocationProvider` interface stays in `main`; `main` no longer binds a concrete impl.
-- [ ] `gms` binds `LocationProviderImpl` (Fused); `foss` binds `FossLocationProviderImpl` (`LocationManager`).
-- [ ] Shared reverse-geocoding helper lives in `main` and is used by both impls.
+- [x] `LocationProvider` interface stays in `main`; `main` no longer binds a concrete impl.
+- [x] `gms` binds `LocationProviderImpl` (Fused); `foss` binds `FossLocationProviderImpl` (`LocationManager`).
+- [x] Shared reverse-geocoding helper lives in `main` and is used by both impls.
 
 ### Task 2.1 — Extract shared reverse-geocode helper into `main`
 - [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/ReverseGeocoder.kt`:
@@ -187,7 +187,7 @@ framework-only (GMS-free) and is shared.
   ```
 
 **DoD:**
-- [ ] Helper is `internal` and framework-only (no GMS imports).
+- [x] Helper is `internal` and framework-only (no GMS imports).
 
 ### Task 2.2 — Move the Fused implementation into the `gms` source set and reuse the shared helper
 - [x] **Move** `app/src/main/kotlin/…/services/location/LocationProviderImpl.kt` →
@@ -198,7 +198,7 @@ framework-only (GMS-free) and is shared.
       (the shared helper). Keep the Fused logic and the private `Task<T>.await()` extension unchanged.
 
 **DoD:**
-- [ ] `gms` `LocationProviderImpl` compiles against the shared helper; Fused behavior unchanged.
+- [x] `gms` `LocationProviderImpl` compiles against the shared helper; Fused behavior unchanged.
 
 ### Task 2.3 — Create the `foss` `LocationManager` implementation
 - [x] **Create** `app/src/foss/kotlin/com/danielealbano/androidremotecontrolmcp/services/location/FossLocationProviderImpl.kt`.
@@ -218,7 +218,7 @@ framework-only (GMS-free) and is shared.
   - Class signature: `class FossLocationProviderImpl @Inject constructor(@ApplicationContext private val context: Context) : LocationProvider`.
 
 **DoD:**
-- [ ] No GMS imports; returns `LocationData` with the same shape as the Fused impl; permission/timeout/no-fix
+- [x] No GMS imports; returns `LocationData` with the same shape as the Fused impl; permission/timeout/no-fix
       failure paths return descriptive `Result.failure`.
 
 ### Task 2.4 — Split the `LocationProvider` DI binding per flavor
@@ -231,7 +231,7 @@ framework-only (GMS-free) and is shared.
       Hilt module with `@Binds @Singleton abstract fun bindLocationProvider(impl: FossLocationProviderImpl): LocationProvider`.
 
 **DoD:**
-- [ ] Exactly one `LocationProvider` binding is active per flavor; `main` has none.
+- [x] Exactly one `LocationProvider` binding is active per flavor; `main` has none.
 
 ---
 
@@ -242,12 +242,12 @@ the shared `EventChannelConfig` blob; it must move to its own DataStore key owne
 data/repository/UI-model code must become geofence-free.
 
 **Acceptance criteria:**
-- [ ] `main` `EventChannelConfig` has no `geofence` field; `GeofenceChannelConfig`/`GeofenceZone` live in `gms`.
-- [ ] `main` `SettingsRepository`/Impl expose no geofence methods.
-- [ ] `main` `ChannelViewModel` and `ChannelEventFactory` reference no geofence type.
-- [ ] A gms-only `GeofenceConfigRepository` persists geofence config under its own key and runs a one-time
+- [x] `main` `EventChannelConfig` has no `geofence` field; `GeofenceChannelConfig`/`GeofenceZone` live in `gms`.
+- [x] `main` `SettingsRepository`/Impl expose no geofence methods.
+- [x] `main` `ChannelViewModel` and `ChannelEventFactory` reference no geofence type.
+- [x] A gms-only `GeofenceConfigRepository` persists geofence config under its own key and runs a one-time
       migration from the legacy blob.
-- [ ] The gms migration is **eager and completes during app startup BEFORE any `main` event-channel write can
+- [x] The gms migration is **eager and completes during app startup BEFORE any `main` event-channel write can
       run** (P53-001): because `main`'s `updateEventChannelConfig` read-modify-writes the SAME
       `event_channel_config` blob and `main`'s `EventChannelConfig` no longer carries the `geofence` field, the
       first `main` write (e.g. a notification/WiFi toggle on the Event Channel screen) would otherwise permanently
@@ -284,7 +284,7 @@ data/repository/UI-model code must become geofence-free.
   ```
 
 **DoD:**
-- [ ] `main` no longer defines or references `GeofenceChannelConfig`/`GeofenceZone`.
+- [x] `main` no longer defines or references `GeofenceChannelConfig`/`GeofenceZone`.
 
 ### Task 3.2 — Remove geofence methods from the shared repository
 - [x] **Modify** `app/src/main/kotlin/…/data/repository/SettingsRepository.kt` — delete the four geofence method
@@ -296,7 +296,7 @@ data/repository/UI-model code must become geofence-free.
       notification/wifi logic intact.
 
 **DoD:**
-- [ ] `main` `SettingsRepository`/Impl compile with no geofence references.
+- [x] `main` `SettingsRepository`/Impl compile with no geofence references.
 
 ### Task 3.3 — Create the gms-only geofence config repository + one-time migration
 - [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/GeofenceConfigRepository.kt`
@@ -353,7 +353,7 @@ data/repository/UI-model code must become geofence-free.
       binding without a forward dependency on US5.
 
 **DoD:**
-- [ ] gms geofence config round-trips under its own key; migration copies legacy zones exactly once (atomic
+- [x] gms geofence config round-trips under its own key; migration copies legacy zones exactly once (atomic
       single-`edit`) and is a no-op afterward; malformed/absent legacy data does not crash and still marks migration
       done.
 
@@ -372,7 +372,7 @@ data/repository/UI-model code must become geofence-free.
       write settings. Add the import for the seam.
 
 **DoD:**
-- [ ] On a gms upgrade, `runFlavorStartupMigrations` completes migration during `McpApplication.onCreate` (before
+- [x] On a gms upgrade, `runFlavorStartupMigrations` completes migration during `McpApplication.onCreate` (before
       any UI/service write); on `foss` it is a no-op; subsequent launches are a cheap done-flag read.
 
 ### Task 3.5 — Make `main` `ChannelEventFactory` and `ChannelViewModel` geofence-free
@@ -386,7 +386,7 @@ data/repository/UI-model code must become geofence-free.
       `GeofenceZone` import. (Geofence VM logic is provided by the gms `GeofenceSettingsViewModel` in US6.)
 
 **DoD:**
-- [ ] `main` `ChannelEventFactory`/`ChannelViewModel` reference no geofence type; gms event factory produces the
+- [x] `main` `ChannelEventFactory`/`ChannelViewModel` reference no geofence type; gms event factory produces the
       identical `geofence` event JSON.
 
 ---
@@ -397,9 +397,9 @@ data/repository/UI-model code must become geofence-free.
 `foss`. They are moved verbatim (package unchanged) and rewired to the gms config repository + gms event factory.
 
 **Acceptance criteria:**
-- [ ] `GeofenceManager`, `GeofenceManagerImpl`, `GeofenceTransitionReceiver`, `GeofenceEventListener` live only
+- [x] `GeofenceManager`, `GeofenceManagerImpl`, `GeofenceTransitionReceiver`, `GeofenceEventListener` live only
       in `app/src/gms/`.
-- [ ] `GeofenceEventListener` uses the gms `GeofenceChannelConfig` and gms `GeofenceChannelEventFactory`.
+- [x] `GeofenceEventListener` uses the gms `GeofenceChannelConfig` and gms `GeofenceChannelEventFactory`.
 
 ### Task 4.1 — Move the geofence manager + receiver
 - [x] **Move** `app/src/main/kotlin/…/services/channel/geofence/GeofenceManager.kt` →
@@ -410,7 +410,7 @@ data/repository/UI-model code must become geofence-free.
       references `EventChannelService.ACTION_GEOFENCE_EVENT`/`EXTRA_*` which remain in `main`).
 
 **DoD:**
-- [ ] The three files exist only under `app/src/gms/` and compile against the gms `GeofenceZone`.
+- [x] The three files exist only under `app/src/gms/` and compile against the gms `GeofenceZone`.
 
 ### Task 4.2 — Move and rewire the geofence event listener
 - [x] **Move** `app/src/main/kotlin/…/services/channel/listeners/GeofenceEventListener.kt` →
@@ -421,7 +421,7 @@ data/repository/UI-model code must become geofence-free.
       `start/stop/updateConfig/handleTransition` and its private `reverseGeocode` unchanged.
 
 **DoD:**
-- [ ] `GeofenceEventListener` exists only under `app/src/gms/` and dispatches the geofence event via the gms
+- [x] `GeofenceEventListener` exists only under `app/src/gms/` and dispatches the geofence event via the gms
       factory.
 
 ---
@@ -433,9 +433,9 @@ data/repository/UI-model code must become geofence-free.
 service logic moves behind a `main` interface with a real gms impl and a no-op foss impl.
 
 **Acceptance criteria:**
-- [ ] `main` `EventChannelService` references no geofence type — only the `GeofenceChannelController` interface
+- [x] `main` `EventChannelService` references no geofence type — only the `GeofenceChannelController` interface
       and its own `ACTION_GEOFENCE_EVENT`/`EXTRA_*` string constants.
-- [ ] `gms` controller reproduces today's geofence behavior (sync on config, transition dispatch, lifecycle);
+- [x] `gms` controller reproduces today's geofence behavior (sync on config, transition dispatch, lifecycle);
       `foss` controller is a no-op.
 
 ### Task 5.1 — Define the seam interface in `main`
@@ -457,7 +457,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
   ```
 
 **DoD:**
-- [ ] Interface uses only `main`-visible types (`EventDispatcher`, `Intent`, `CoroutineScope`).
+- [x] Interface uses only `main`-visible types (`EventDispatcher`, `Intent`, `CoroutineScope`).
 
 ### Task 5.2 — Refactor `EventChannelService` to use the controller
 - [x] **Modify** `app/src/main/kotlin/…/services/channel/EventChannelService.kt`:
@@ -476,7 +476,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
     companion object (the gms receiver depends on them).
 
 **DoD:**
-- [ ] `EventChannelService` compiles with zero geofence-type references; notification/wifi behavior unchanged.
+- [x] `EventChannelService` compiles with zero geofence-type references; notification/wifi behavior unchanged.
 
 ### Task 5.3 — Implement the gms controller and foss no-op + DI
 - [x] **Create** `app/src/gms/kotlin/…/services/channel/GeofenceChannelControllerImpl.kt`:
@@ -509,7 +509,7 @@ service logic moves behind a `main` interface with a real gms impl and a no-op f
       module binding `GeofenceChannelController` → `NoOpGeofenceChannelController` (`@Binds @Singleton`).
 
 **DoD:**
-- [ ] `gms` provides a real controller (+ manager + config repo); `foss` provides only the no-op controller and
+- [x] `gms` provides a real controller (+ manager + config repo); `foss` provides only the no-op controller and
       no geofence manager/repo; both flavors satisfy `EventChannelService`'s `GeofenceChannelController` injection.
 
 ---
@@ -525,13 +525,13 @@ provided empty by `foss` and real by `gms`, and the geofence screens move into `
 created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
 
 **Acceptance criteria:**
-- [ ] `main` `Routes.kt` has no geofence routes; `main` `SettingsScreen`/`ChannelSettingsScreen` reference no
+- [x] `main` `Routes.kt` has no geofence routes; `main` `SettingsScreen`/`ChannelSettingsScreen` reference no
       geofence route/screen/VM method.
-- [ ] `gms` provides `geofenceDestinations` + `geofenceEventSourceItem` + `BackgroundLocationPermissionRow` + the
+- [x] `gms` provides `geofenceDestinations` + `geofenceEventSourceItem` + `BackgroundLocationPermissionRow` + the
       two screens + a gms VM; `foss` provides empty seam bodies.
-- [ ] The Event Channel settings subtitle mentions geofencing only in `gms`.
-- [ ] The "Background Location" permission row and its `MainViewModel` state are absent from `foss` (P53-003).
-- [ ] No `com.google.android.gms.*` import remains in ANY UI file in `main`/`foss`.
+- [x] The Event Channel settings subtitle mentions geofencing only in `gms`.
+- [x] The "Background Location" permission row and its `MainViewModel` state are absent from `foss` (P53-003).
+- [x] No `com.google.android.gms.*` import remains in ANY UI file in `main`/`foss`.
 
 ### Task 6.1 — Remove geofence routes from `main`; add a gms route holder
 - [x] **Modify** `app/src/main/kotlin/…/ui/navigation/Routes.kt` — delete the `GeofenceList` and `GeofenceMap`
@@ -549,7 +549,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
   ```
 
 **DoD:**
-- [ ] `main` has no geofence route symbol; gms route strings match the originals exactly.
+- [x] `main` has no geofence route symbol; gms route strings match the originals exactly.
 
 ### Task 6.2 — gms `GeofenceSettingsViewModel` and screen rewiring (created before the seams)
 - [x] **Create** `app/src/gms/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/GeofenceSettingsViewModel.kt`:
@@ -576,7 +576,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       handling (center map / move camera). No `com.google.android.gms.*` import remains in this or any UI file.
 
 **DoD:**
-- [ ] Both geofence screens live only under `app/src/gms/`, use the gms VM, and contain no direct GMS import; both
+- [x] Both geofence screens live only under `app/src/gms/`, use the gms VM, and contain no direct GMS import; both
       former `LocationServices` call sites go through `viewModel.currentLocation()` (last-known semantics).
 
 ### Task 6.3 — Channel-settings row seam (adds the `navController` param before Task 6.4 uses it)
@@ -596,7 +596,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       `fun LazyListScope.geofenceEventSourceItem(navController: NavHostController) = Unit`.
 
 **DoD:**
-- [ ] `main` `ChannelSettingsScreen` shows the geofence row only via the seam; foss shows none; notification/wifi
+- [x] `main` `ChannelSettingsScreen` shows the geofence row only via the seam; foss shows none; notification/wifi
       rows unchanged.
 
 ### Task 6.4 — Nav-destinations seam
@@ -645,7 +645,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
   ```
 
 **DoD:**
-- [ ] `main` `SettingsScreen` registers geofence destinations only via the seam; foss registers none.
+- [x] `main` `SettingsScreen` registers geofence destinations only via the seam; foss registers none.
 
 ### Task 6.5 — Background-location permission row seam (P53-003)
 - [x] **Modify** `app/src/main/kotlin/…/ui/viewmodels/MainViewModel.kt` — delete the `_isBackgroundLocationGranted`
@@ -669,7 +669,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       `@Composable fun BackgroundLocationPermissionRow() = Unit`.
 
 **DoD:**
-- [ ] `gms` shows the Background Location row; `foss` shows none; `main`/`MainViewModel` reference no
+- [x] `gms` shows the Background Location row; `foss` shows none; `main`/`MainViewModel` reference no
       `ACCESS_BACKGROUND_LOCATION`.
 
 ### Task 6.6 — Flavor-specific Event Channel subtitle
@@ -682,7 +682,7 @@ created FIRST, because the nav/row seams (Tasks 6.3/6.4) reference them.
       `subtitle = stringResource(R.string.event_channel_subtitle)` (add the `stringResource`/`R` imports if absent).
 
 **DoD:**
-- [ ] `gms` subtitle mentions geofence; `foss` subtitle does not.
+- [x] `gms` subtitle mentions geofence; `foss` subtitle does not.
 
 ---
 
@@ -694,8 +694,8 @@ in the `foss` manifest. The `location` foreground-service type and `FOREGROUND_S
 them in both flavors.
 
 **Acceptance criteria:**
-- [ ] `foss` merged manifest has no `GeofenceTransitionReceiver` and no `ACCESS_BACKGROUND_LOCATION`.
-- [ ] `gms` merged manifest has both; all other permissions/services unchanged in both flavors.
+- [x] `foss` merged manifest has no `GeofenceTransitionReceiver` and no `ACCESS_BACKGROUND_LOCATION`.
+- [x] `gms` merged manifest has both; all other permissions/services unchanged in both flavors.
 
 ### Task 7.1 — Remove geofence-only manifest entries from `main`
 - [x] **Modify** `app/src/main/AndroidManifest.xml` — delete the `ACCESS_BACKGROUND_LOCATION` `<uses-permission>`
@@ -720,7 +720,7 @@ them in both flavors.
   ```
 
 **DoD:**
-- [ ] Manifest merge: `fossDebug`/`fossRelease` contain neither the receiver nor `ACCESS_BACKGROUND_LOCATION`;
+- [x] Manifest merge: `fossDebug`/`fossRelease` contain neither the receiver nor `ACCESS_BACKGROUND_LOCATION`;
       `gmsDebug`/`gmsRelease` contain both (verified in US10).
 
 ---
@@ -732,9 +732,9 @@ assertions (the code left `main`); `foss` needs coverage for the new `LocationMa
 controller. Tests are written/updated but executed only at the end of the plan.
 
 **Acceptance criteria:**
-- [ ] gms-only tests live under `app/src/testGms/`; foss-only tests under `app/src/testFoss/`.
-- [ ] `main` tests contain no geofence references.
-- [ ] New tests cover the foss location provider, the gms config repository + migration, the gms controller, the
+- [x] gms-only tests live under `app/src/testGms/`; foss-only tests under `app/src/testFoss/`.
+- [x] `main` tests contain no geofence references.
+- [x] New tests cover the foss location provider, the gms config repository + migration, the gms controller, the
       gms VM, and the gms event factory.
 
 ### Task 8.1 — Relocate gms-only existing tests to `testGms`
@@ -820,7 +820,7 @@ controller. Tests are written/updated but executed only at the end of the plan.
 | `all methods are inert` | `onChannelStarted`/`handleGeofenceIntent`/`onChannelStopped` do nothing and never throw |
 
 **DoD (US8):**
-- [ ] `main` test tree has no geofence references; gms/foss test source sets compile against their flavor code.
+- [x] `main` test tree has no geofence references; gms/foss test source sets compile against their flavor code.
 
 ---
 
@@ -840,11 +840,11 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
 **Flavor chosen for single-APK tooling (e2e, dev install, so-alignment):** `gms` (the full superset variant).
 
 **Acceptance criteria:**
-- [ ] Makefile targets (`build`, `build-release`, `install`, `install-release`, `check-so-alignment`, integration,
+- [x] Makefile targets (`build`, `build-release`, `install`, `install-release`, `check-so-alignment`, integration,
       `test`, `ci`) work with flavors and reference correct per-flavor tasks/paths.
-- [ ] `ci.yml` and `release.yml` build the right per-flavor variants and collect the correct per-flavor APK paths.
-- [ ] The e2e harness targets a concrete flavor APK (`gms` debug) and the correct debug package/receivers.
-- [ ] `docs/PROJECT.md` build-variants documentation reflects the flavors and per-flavor debug applicationIds.
+- [x] `ci.yml` and `release.yml` build the right per-flavor variants and collect the correct per-flavor APK paths.
+- [x] The e2e harness targets a concrete flavor APK (`gms` debug) and the correct debug package/receivers.
+- [x] `docs/PROJECT.md` build-variants documentation reflects the flavors and per-flavor debug applicationIds.
 
 ### Task 9.1 — Re-read then update the Makefile
 - [x] **Read** the current `Makefile` (post-#119) before editing.
@@ -910,7 +910,7 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
       minimal and factual (accuracy only; do not add new documentation sections).
 
 **DoD:**
-- [ ] Local `make ci` and both workflows build the correct per-flavor variants and run both flavors' tests
+- [x] Local `make ci` and both workflows build the correct per-flavor variants and run both flavors' tests
       successfully; the e2e harness installs the gms debug APK with the correct package; docs are accurate
       (validated in US10).
 
@@ -923,45 +923,45 @@ numbers, task names, steps), ADAPT — do NOT blindly apply diffs. If reconcilia
 applicationIds are correct, migration works, and all quality gates pass.
 
 **Acceptance criteria (verify EVERY item from the ground up):**
-- [ ] `./gradlew clean` then `assembleGmsDebug assembleGmsRelease assembleFossDebug assembleFossRelease` all
+- [x] `./gradlew clean` then `assembleGmsDebug assembleGmsRelease assembleFossDebug assembleFossRelease` all
       succeed with **no warnings and no errors** (capture output via `tee` to `/tmp/`).
-- [ ] **FOSS is GMS-free**: `./gradlew :app:dependencies --configuration fossReleaseRuntimeClasspath` shows NO
+- [x] **FOSS is GMS-free**: `./gradlew :app:dependencies --configuration fossReleaseRuntimeClasspath` shows NO
       `play-services-*`; and the built `fossRelease` APK contains no `com.google.android.gms` classes and no
       geofence classes (inspect via `unzip -l` + dex inspection / grep of decompiled class list).
-- [ ] **FOSS manifest**: merged `fossRelease` manifest contains no `GeofenceTransitionReceiver` and no
+- [x] **FOSS manifest**: merged `fossRelease` manifest contains no `GeofenceTransitionReceiver` and no
       `ACCESS_BACKGROUND_LOCATION`; `ACCESS_FINE_LOCATION` and the `location` FGS type are present (WiFi/get_location).
-- [ ] **GMS manifest**: merged `gmsRelease` manifest contains the receiver and `ACCESS_BACKGROUND_LOCATION`.
-- [ ] **applicationIds**: `gmsDebug` = `…mcp.gms.debug`, `fossDebug` = `…mcp.foss.debug`, `gmsRelease` =
+- [x] **GMS manifest**: merged `gmsRelease` manifest contains the receiver and `ACCESS_BACKGROUND_LOCATION`.
+- [x] **applicationIds**: `gmsDebug` = `…mcp.gms.debug`, `fossDebug` = `…mcp.foss.debug`, `gmsRelease` =
       `fossRelease` = `com.danielealbano.androidremotecontrolmcp`.
-- [ ] **Unit tests both flavors** pass: `:app:testGmsDebugUnitTest` and `:app:testFossDebugUnitTest` (capture via
+- [x] **Unit tests both flavors** pass: `:app:testGmsDebugUnitTest` and `:app:testFossDebugUnitTest` (capture via
       `tee`). Fix ANY broken test (even pre-existing) per repo rules.
-- [ ] **Migration** test proves legacy geofence zones are preserved into the new key exactly once.
-- [ ] **get_location** works in both flavors (foss uses `LocationManager`, gms uses Fused) — validated by the
+- [x] **Migration** test proves legacy geofence zones are preserved into the new key exactly once.
+- [x] **get_location** works in both flavors (foss uses `LocationManager`, gms uses Fused) — validated by the
       flavor-specific provider tests passing.
-- [ ] **jacoco**: `./gradlew :app:jacocoTestReport jacocoTestCoverageVerification` run against the `gmsDebug` task
+- [x] **jacoco**: `./gradlew :app:jacocoTestReport jacocoTestCoverageVerification` run against the `gmsDebug` task
       and succeed.
-- [ ] **Lint/format both flavors**: `make lint` (ktlint + detekt) passes with zero warnings/errors; fix ANY
+- [x] **Lint/format both flavors**: `make lint` (ktlint + detekt) passes with zero warnings/errors; fix ANY
       violation (even unrelated) per repo rules. No lint suppressions added.
-- [ ] **No `com.google.android.gms` import remains in `app/src/main/` or `app/src/foss/`** (grep proves zero,
+- [x] **No `com.google.android.gms` import remains in `app/src/main/` or `app/src/foss/`** (grep proves zero,
       including UI files — both former `GeofenceMapScreen` `LocationServices` call sites are gone).
-- [ ] **No geofence type reference remains in `app/src/main/` or `app/src/foss/`** (grep for `Geofence` proves only
+- [x] **No geofence type reference remains in `app/src/main/` or `app/src/foss/`** (grep for `Geofence` proves only
       the `ACTION_GEOFENCE_EVENT`/`EXTRA_GEOFENCE_*` string constants + the `GeofenceChannelController` seam name
       remain in `main`; zero in `foss`).
-- [ ] **No `ACCESS_BACKGROUND_LOCATION` / `isBackgroundLocationGranted` / "Background Location" residue in
+- [x] **No `ACCESS_BACKGROUND_LOCATION` / `isBackgroundLocationGranted` / "Background Location" residue in
       `app/src/main/` or `app/src/foss/`** (P53-003): grep proves the permission string, the `MainViewModel` state,
       and the row exist only in the `gms` seam.
-- [ ] **Data-loss regression**: the P53-001 test (`legacy zones survive a main event-channel write after
+- [x] **Data-loss regression**: the P53-001 test (`legacy zones survive a main event-channel write after
       migration`) passes; and the gms `runFlavorStartupMigrations` is invoked from `McpApplication.onCreate`.
-- [ ] **e2e harness** targets the gms debug APK (`app/build/outputs/apk/gms/debug/app-gms-debug.apk`) and package
+- [x] **e2e harness** targets the gms debug APK (`app/build/outputs/apk/gms/debug/app-gms-debug.apk`) and package
       `…mcp.gms.debug`; `./gradlew :app:assembleGmsDebug` produces that path.
-- [ ] **Build tooling**: `make ci` (or the equivalent post-#119 target) builds both flavors and runs both flavors'
+- [x] **Build tooling**: `make ci` (or the equivalent post-#119 target) builds both flavors and runs both flavors'
       tests green; `ci.yml` and `release.yml` reference the correct per-flavor APK paths.
-- [ ] **No AI attribution** anywhere in the diff (commits, code, comments) per repo rules.
-- [ ] Re-read this entire plan and confirm every task/action checkbox above is checked and matches the actual
+- [x] **No AI attribution** anywhere in the diff (commits, code, comments) per repo rules.
+- [x] Re-read this entire plan and confirm every task/action checkbox above is checked and matches the actual
       implementation; reconcile any drift or ASK the user.
 
 **DoD:**
-- [ ] Every checkbox in US1–US10 is `[x]`; both flavors build, test, and lint clean; `foss` is provably GMS- and
+- [x] Every checkbox in US1–US10 is `[x]`; both flavors build, test, and lint clean; `foss` is provably GMS- and
       geofence-free; `gms` retains full geofencing; `get_location` works in both.
 
 ---
