@@ -698,13 +698,13 @@ them in both flavors.
 - [ ] `gms` merged manifest has both; all other permissions/services unchanged in both flavors.
 
 ### Task 7.1 — Remove geofence-only manifest entries from `main`
-- [ ] **Modify** `app/src/main/AndroidManifest.xml` — delete the `ACCESS_BACKGROUND_LOCATION` `<uses-permission>`
+- [x] **Modify** `app/src/main/AndroidManifest.xml` — delete the `ACCESS_BACKGROUND_LOCATION` `<uses-permission>`
       (line ~30) and the entire `<receiver android:name=".services.channel.geofence.GeofenceTransitionReceiver" …/>`
       block (lines ~150-153). Leave `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`,
       the `location.gps` `uses-feature`, and the `EventChannelService` (`foregroundServiceType="location"`) intact.
 
 ### Task 7.2 — Add the geofence-only entries to the `gms` manifest
-- [ ] **Create** `app/src/gms/AndroidManifest.xml`:
+- [x] **Create** `app/src/gms/AndroidManifest.xml`:
   ```xml
   <?xml version="1.0" encoding="utf-8"?>
   <manifest xmlns:android="http://schemas.android.com/apk/res/android">
