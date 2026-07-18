@@ -4,6 +4,7 @@
         install install-release uninstall grant-permissions start-server forward-port \
         setup-emulator start-emulator stop-emulator \
         logs logs-clear \
+        build-release-bundle \
         version-bump-patch version-bump-minor version-bump-major \
         compile-cloudflared compile-ngrok-native check-so-alignment \
         all ci
@@ -126,6 +127,10 @@ build-foss: compile-cloudflared compile-ngrok-native ## Build foss (F-Droid) deb
 
 build-release: compile-cloudflared compile-ngrok-native ## Build gms + foss release APKs
 	$(GRADLE) assembleGmsRelease assembleFossRelease
+
+build-release-bundle: compile-cloudflared compile-ngrok-native ## Build signed gms release AAB for Google Play upload
+	$(GRADLE) bundleGmsRelease
+	@echo "AAB: app/build/outputs/bundle/gmsRelease/app-gms-release.aab"
 
 clean: ## Clean build artifacts
 	$(GRADLE) clean
