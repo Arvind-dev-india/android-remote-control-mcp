@@ -111,11 +111,13 @@ fun getGitVersionCode(): Int? {
 
     // A shallow clone yields a truncated commit count; refuse to derive a wrong,
     // too-low code from it and treat it as underivable. Detected via the `shallow`
-    // marker file in the git dir, which works on all git versions (unlike
-    // `rev-parse --is-shallow-repository`, which requires git >= 2.15).
-    val gitDir = runGit("rev-parse", "--git-dir") ?: return null
-    if (gitDir.first != 0) return null
-    if (rootDir.resolve(gitDir.second).resolve("shallow").exists()) return null
+    // marker file, which lives in the COMMON git dir (shared across linked worktrees,
+    // so `--git-common-dir` is required — `--git-dir` would point at a worktree's
+    // private dir and miss it). Works on all git versions (unlike
+    // `rev-parse --is-shallow-repository`, git >= 2.15; --git-common-dir exists since 2.5).
+    val gitCommonDir = runGit("rev-parse", "--git-common-dir") ?: return null
+    if (gitCommonDir.first != 0) return null
+    if (rootDir.resolve(gitCommonDir.second).resolve("shallow").exists()) return null
 
     val (countExit, countOutput) = runGit("rev-list", "--count", "HEAD") ?: return null
     if (countExit != 0) return null
