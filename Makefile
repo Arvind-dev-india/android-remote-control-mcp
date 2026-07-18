@@ -129,6 +129,11 @@ build-release: compile-cloudflared compile-ngrok-native ## Build gms + foss rele
 	$(GRADLE) assembleGmsRelease assembleFossRelease
 
 build-release-bundle: compile-cloudflared compile-ngrok-native ## Build signed gms release AAB for Google Play upload
+	@test -f keystore.properties || { \
+		echo "ERROR: keystore.properties not found — the AAB would be UNSIGNED and rejected by Google Play."; \
+		echo "Create it from keystore.properties.example first."; \
+		exit 1; \
+	}
 	$(GRADLE) bundleGmsRelease
 	@echo "AAB: app/build/outputs/bundle/gmsRelease/app-gms-release.aab"
 
@@ -289,11 +294,8 @@ version-bump-patch: ## Bump patch version (1.0.0 -> 1.0.1)
 	NEW_PATCH=$$((PATCH + 1)); \
 	NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 version-bump-minor: ## Bump minor version (1.0.0 -> 1.1.0)
 	@CURRENT=$$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2); \
@@ -302,11 +304,8 @@ version-bump-minor: ## Bump minor version (1.0.0 -> 1.1.0)
 	NEW_MINOR=$$((MINOR + 1)); \
 	NEW_VERSION="$$MAJOR.$$NEW_MINOR.0"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 version-bump-major: ## Bump major version (1.0.0 -> 2.0.0)
 	@CURRENT=$$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2); \
@@ -314,11 +313,8 @@ version-bump-major: ## Bump major version (1.0.0 -> 2.0.0)
 	NEW_MAJOR=$$((MAJOR + 1)); \
 	NEW_VERSION="$$NEW_MAJOR.0.0"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Native Binary Compilation (cloudflared + ngrok)

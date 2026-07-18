@@ -23,6 +23,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+          # Full history + tags: build.gradle.kts derives versionName/versionCode from
+          # git and fails configuration without them (no hardcoded fallback).
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -65,6 +68,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+          # Full history + tags: build.gradle.kts derives versionName/versionCode from
+          # git and fails configuration without them (no hardcoded fallback).
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -152,6 +158,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+          # Full history + tags: build.gradle.kts derives versionName/versionCode from
+          # git and fails configuration without them (no hardcoded fallback).
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -292,8 +301,10 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
-          # Full history + tags so Gradle can derive versionName (git describe)
-          # and versionCode (git rev-list --count) accurately.
+          # Full history + tags: build.gradle.kts derives versionName/versionCode from
+          # git and fails configuration without them (no hardcoded fallback). On
+          # pull_request runs this reflects the ephemeral merge ref, not the post-merge
+          # main commit; these artifacts are unsigned and never shipped.
           fetch-depth: 0
 
       - name: Set up JDK 17

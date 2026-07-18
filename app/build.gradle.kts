@@ -83,17 +83,20 @@ fun getGitDescribeVersion(): String? {
  *   files): a local dirty build sorts one above the clean build at the same commit
  *   without ever colliding with the next commit's code.
  *
- * Requires full history (git rev-list is inaccurate on a shallow clone). Returns null
- * when git is unavailable or a command fails, so the caller can fall back to the
- * gradle.properties value (e.g. building from a source tarball).
+ * Requires full history: a shallow clone is detected (git rev-parse
+ * --is-shallow-repository) and treated as underivable. Returns null when git is
+ * unavailable, the clone is shallow, or a command errors, so the caller can fall back
+ * to the gradle.properties value (e.g. building from a source tarball).
  */
 fun getGitVersionCode(): Int? {
+    // Capture stdout only (stderr is discarded) so a git warning/hint printed to
+    // stderr can never be merged into and corrupt the numeric output we parse.
     fun runGit(vararg args: String): Pair<Int, String>? =
         try {
             val process =
                 ProcessBuilder(listOf("git", *args))
                     .directory(rootDir)
-                    .redirectErrorStream(true)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start()
             val output =
                 process
@@ -106,14 +109,26 @@ fun getGitVersionCode(): Int? {
             null
         }
 
+    // A shallow clone yields a truncated commit count; refuse to derive a wrong,
+    // too-low code from it and treat it as underivable. Only a confirmed "true"
+    // counts as shallow (an unavailable check on very old git is ignored).
+    val shallow = runGit("rev-parse", "--is-shallow-repository")
+    if (shallow != null && shallow.first == 0 && shallow.second == "true") return null
+
     val (countExit, countOutput) = runGit("rev-list", "--count", "HEAD") ?: return null
     if (countExit != 0) return null
     val commitCount = countOutput.toIntOrNull() ?: return null
 
-    // `git diff --quiet HEAD` exits non-zero when tracked files differ from HEAD
-    // (staged or unstaged). Untracked files are intentionally ignored.
+    // `git diff --quiet HEAD` exits 1 when tracked files differ from HEAD (staged or
+    // unstaged); untracked files are intentionally ignored. Any other non-zero exit is
+    // a git error, not a dirty tree, so bail to the fallback rather than mislabel it.
     val (dirtyExit, _) = runGit("diff", "--quiet", "HEAD") ?: return null
-    val dirty = dirtyExit != 0
+    val dirty =
+        when (dirtyExit) {
+            0 -> false
+            1 -> true
+            else -> return null
+        }
 
     return (2_000_000 + commitCount) * 10 + if (dirty) 1 else 0
 }
@@ -136,11 +151,15 @@ val versionCodeProp =
         val raw = project.findProperty("VERSION_CODE") as String
         raw.toIntOrNull() ?: error("VERSION_CODE must be an integer, got: \"$raw\"")
     } else {
-        // Prefer the git-derived code; fall back to the gradle.properties value only
-        // when git is unavailable (e.g. building from a source tarball).
+        // The version code is ALWAYS derived from git — there is no hardcoded fallback.
+        // Fail loudly if it cannot be derived (no repository, shallow clone, or git
+        // error) so a build can never silently ship a wrong/placeholder code.
         getGitVersionCode()
-            ?: (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull()
-            ?: 1
+            ?: error(
+                "Cannot derive versionCode from git (missing repository, shallow clone, " +
+                    "or git error). Build from a full git checkout, or pass an explicit " +
+                    "-PVERSION_CODE=<integer>.",
+            )
     }
 
 ktlint {
