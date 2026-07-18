@@ -83,10 +83,10 @@ fun getGitDescribeVersion(): String? {
  *   files): a local dirty build sorts one above the clean build at the same commit
  *   without ever colliding with the next commit's code.
  *
- * Requires full history: a shallow clone is detected (git rev-parse
- * --is-shallow-repository) and treated as underivable. Returns null when git is
- * unavailable, the clone is shallow, or a command errors, so the caller can fall back
- * to the gradle.properties value (e.g. building from a source tarball).
+ * Requires full history: a shallow clone (detected via the `shallow` marker file in
+ * the git dir) is treated as underivable. Returns null when git is unavailable, the
+ * clone is shallow, or a command errors; the caller then FAILS the build — there is no
+ * hardcoded fallback — unless an explicit -PVERSION_CODE is supplied.
  */
 fun getGitVersionCode(): Int? {
     // Capture stdout only (stderr is discarded) so a git warning/hint printed to
@@ -110,10 +110,12 @@ fun getGitVersionCode(): Int? {
         }
 
     // A shallow clone yields a truncated commit count; refuse to derive a wrong,
-    // too-low code from it and treat it as underivable. Only a confirmed "true"
-    // counts as shallow (an unavailable check on very old git is ignored).
-    val shallow = runGit("rev-parse", "--is-shallow-repository")
-    if (shallow != null && shallow.first == 0 && shallow.second == "true") return null
+    // too-low code from it and treat it as underivable. Detected via the `shallow`
+    // marker file in the git dir, which works on all git versions (unlike
+    // `rev-parse --is-shallow-repository`, which requires git >= 2.15).
+    val gitDir = runGit("rev-parse", "--git-dir") ?: return null
+    if (gitDir.first != 0) return null
+    if (rootDir.resolve(gitDir.second).resolve("shallow").exists()) return null
 
     val (countExit, countOutput) = runGit("rev-list", "--count", "HEAD") ?: return null
     if (countExit != 0) return null
