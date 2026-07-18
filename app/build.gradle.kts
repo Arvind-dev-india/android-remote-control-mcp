@@ -72,6 +72,41 @@ fun getGitDescribeVersion(): String? {
 }
 
 /**
+ * Runs `git <args>` in the repo root, capturing stdout only. stderr is discarded so a
+ * git warning/hint can never be merged into and corrupt the parsed output. Returns
+ * (exitCode, trimmed stdout), or null if the process could not be started.
+ */
+fun runGit(vararg args: String): Pair<Int, String>? =
+    try {
+        val process =
+            ProcessBuilder(listOf("git", *args))
+                .directory(rootDir)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+        val output =
+            process
+                .inputStream
+                .bufferedReader()
+                .readText()
+                .trim()
+        Pair(process.waitFor(), output)
+    } catch (_: Exception) {
+        null
+    }
+
+/**
+ * True when the working tree is a shallow clone, detected via the `shallow` marker file
+ * in the COMMON git dir (shared across linked worktrees, so `--git-common-dir` is
+ * required — `--git-dir` points at a worktree's private dir and would miss it).
+ * `--git-common-dir` exists since git 2.5; on older/absent git this returns false.
+ */
+fun isShallowClone(): Boolean {
+    val gitCommonDir = runGit("rev-parse", "--git-common-dir") ?: return false
+    if (gitCommonDir.first != 0) return false
+    return rootDir.resolve(gitCommonDir.second).resolve("shallow").exists()
+}
+
+/**
  * Derives the numeric version code from git history.
  *
  * `versionCode = (2_000_000 + commitCount) * 10 + (dirty ? 1 : 0)` where:
@@ -83,49 +118,20 @@ fun getGitDescribeVersion(): String? {
  *   files): a local dirty build sorts one above the clean build at the same commit
  *   without ever colliding with the next commit's code.
  *
- * Requires full history: a shallow clone (detected via the `shallow` marker file in
- * the git dir) is treated as underivable. Returns null when git is unavailable, the
- * clone is shallow, or a command errors; the caller then FAILS the build — there is no
- * hardcoded fallback — unless an explicit -PVERSION_CODE is supplied.
+ * Returns null only when git is unavailable (no repository / git absent), so the caller
+ * fails the build rather than falling back to a hardcoded code. A shallow clone still
+ * derives a (truncated) code here so config-only work — `help`, dependency resolution,
+ * IDE sync — is not broken; shipping a shallow (wrong) code is prevented separately by
+ * the release-artifact guard (see gradle.taskGraph.whenReady below).
  */
 fun getGitVersionCode(): Int? {
-    // Capture stdout only (stderr is discarded) so a git warning/hint printed to
-    // stderr can never be merged into and corrupt the numeric output we parse.
-    fun runGit(vararg args: String): Pair<Int, String>? =
-        try {
-            val process =
-                ProcessBuilder(listOf("git", *args))
-                    .directory(rootDir)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            val output =
-                process
-                    .inputStream
-                    .bufferedReader()
-                    .readText()
-                    .trim()
-            Pair(process.waitFor(), output)
-        } catch (_: Exception) {
-            null
-        }
-
-    // A shallow clone yields a truncated commit count; refuse to derive a wrong,
-    // too-low code from it and treat it as underivable. Detected via the `shallow`
-    // marker file, which lives in the COMMON git dir (shared across linked worktrees,
-    // so `--git-common-dir` is required — `--git-dir` would point at a worktree's
-    // private dir and miss it). Works on all git versions (unlike
-    // `rev-parse --is-shallow-repository`, git >= 2.15; --git-common-dir exists since 2.5).
-    val gitCommonDir = runGit("rev-parse", "--git-common-dir") ?: return null
-    if (gitCommonDir.first != 0) return null
-    if (rootDir.resolve(gitCommonDir.second).resolve("shallow").exists()) return null
-
     val (countExit, countOutput) = runGit("rev-list", "--count", "HEAD") ?: return null
     if (countExit != 0) return null
     val commitCount = countOutput.toIntOrNull() ?: return null
 
     // `git diff --quiet HEAD` exits 1 when tracked files differ from HEAD (staged or
     // unstaged); untracked files are intentionally ignored. Any other non-zero exit is
-    // a git error, not a dirty tree, so bail to the fallback rather than mislabel it.
+    // a git error, not a dirty tree, so bail rather than mislabel it.
     val (dirtyExit, _) = runGit("diff", "--quiet", "HEAD") ?: return null
     val dirty =
         when (dirtyExit) {
@@ -156,15 +162,39 @@ val versionCodeProp =
         raw.toIntOrNull() ?: error("VERSION_CODE must be an integer, got: \"$raw\"")
     } else {
         // The version code is ALWAYS derived from git — there is no hardcoded fallback.
-        // Fail loudly if it cannot be derived (no repository, shallow clone, or git
-        // error) so a build can never silently ship a wrong/placeholder code.
+        // Fail only when git is entirely unavailable (no repository); a shallow clone
+        // still derives a code so config-only tasks (help, dependency resolution, IDE
+        // sync) are not broken. A shallow RELEASE build is rejected by the guard below.
         getGitVersionCode()
             ?: error(
-                "Cannot derive versionCode from git (missing repository, shallow clone, " +
-                    "or git error). Build from a full git checkout, or pass an explicit " +
-                    "-PVERSION_CODE=<integer>.",
+                "Cannot derive versionCode: no git repository found. Build from a git " +
+                    "checkout, or pass an explicit -PVERSION_CODE=<integer>.",
             )
     }
+
+// A release/bundle artifact must carry a full-history git-derived code. A shallow
+// checkout yields a truncated (wrong, too-low) count, so refuse to build one from a
+// shallow tree — but only for actual release-artifact tasks, so config-only work
+// (help, dependency resolution, IDE sync) on a shallow checkout is unaffected.
+gradle.taskGraph.whenReady {
+    val buildingReleaseArtifact =
+        !isExplicitVersionCode &&
+            gradle.taskGraph.allTasks.any { task ->
+                task.name.contains("Release") &&
+                    (
+                        task.name.startsWith("assemble") ||
+                            task.name.startsWith("bundle") ||
+                            task.name.startsWith("package")
+                    )
+            }
+    if (buildingReleaseArtifact && (getGitVersionCode() == null || isShallowClone())) {
+        error(
+            "Refusing to build a release artifact without a full-history git versionCode " +
+                "(missing repository or shallow clone). Build from a full git checkout, or " +
+                "pass an explicit -PVERSION_CODE=<integer>.",
+        )
+    }
+}
 
 ktlint {
     version.set("1.8.0")
