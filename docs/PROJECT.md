@@ -572,8 +572,8 @@ debug builds get a per-flavor suffix so both can be installed side by side.
 ### Versioning
 
 - **Semantic versioning** (MAJOR.MINOR.PATCH): MAJOR for breaking MCP protocol changes, MINOR for new features, PATCH for bug fixes
-- Version defined in `gradle.properties` (`VERSION_NAME`, `VERSION_CODE`)
-- Bump via Makefile: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major`
+- `VERSION_NAME` is derived from git tags (with a `gradle.properties` fallback for git-less builds); the `versionCode` is derived from git history by Gradle, never hardcoded (see [TOOLS.md](TOOLS.md) → VERSION_CODE Derivation)
+- Bump the version name via Makefile: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major` (the version code is git-derived, not bumped)
 
 ### APK Signing
 

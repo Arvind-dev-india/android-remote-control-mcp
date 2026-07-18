@@ -617,10 +617,9 @@ Local development requires Android SDK, emulator/device, and standard Android de
 
 ### Versioning
 - Follow **semantic versioning** (MAJOR.MINOR.PATCH).
-- Version defined in `gradle.properties`:
-  - `VERSION_NAME=1.0.0`
-  - `VERSION_CODE=1` (auto-increment for each release).
-- Bump version: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major`.
+- `VERSION_NAME` is derived from git tags, with a `gradle.properties` fallback for git-less builds.
+- `versionCode` is derived from git history by Gradle (`getGitVersionCode`) and is never hardcoded; a full git checkout is required or the build fails at configuration (override with `-PVERSION_CODE=<integer>`).
+- Bump the version name: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major` (the version code is git-derived, not bumped).
 
 ### Health check endpoint (MCP server)
 - Implement `/health` endpoint in Ktor server.
