@@ -71,6 +71,53 @@ fun getGitDescribeVersion(): String? {
     }
 }
 
+/**
+ * Derives the numeric version code from git history.
+ *
+ * `versionCode = (2_000_000 + commitCount) * 10 + (dirty ? 1 : 0)` where:
+ * - `commitCount` is `git rev-list --count HEAD` — strictly monotonic on `main`, so
+ *   every commit/merge auto-increments the code with no manual bumping.
+ * - The `2_000_000` base clears the ceiling of the previous scheme (max 1_090_099 for
+ *   v1.9.0), so codes under the new scheme never regress below already-shipped builds.
+ * - The trailing digit marks a dirty working tree (uncommitted changes to tracked
+ *   files): a local dirty build sorts one above the clean build at the same commit
+ *   without ever colliding with the next commit's code.
+ *
+ * Requires full history (git rev-list is inaccurate on a shallow clone). Returns null
+ * when git is unavailable or a command fails, so the caller can fall back to the
+ * gradle.properties value (e.g. building from a source tarball).
+ */
+fun getGitVersionCode(): Int? {
+    fun runGit(vararg args: String): Pair<Int, String>? =
+        try {
+            val process =
+                ProcessBuilder(listOf("git", *args))
+                    .directory(rootDir)
+                    .redirectErrorStream(true)
+                    .start()
+            val output =
+                process
+                    .inputStream
+                    .bufferedReader()
+                    .readText()
+                    .trim()
+            Pair(process.waitFor(), output)
+        } catch (_: Exception) {
+            null
+        }
+
+    val (countExit, countOutput) = runGit("rev-list", "--count", "HEAD") ?: return null
+    if (countExit != 0) return null
+    val commitCount = countOutput.toIntOrNull() ?: return null
+
+    // `git diff --quiet HEAD` exits non-zero when tracked files differ from HEAD
+    // (staged or unstaged). Untracked files are intentionally ignored.
+    val (dirtyExit, _) = runGit("diff", "--quiet", "HEAD") ?: return null
+    val dirty = dirtyExit != 0
+
+    return (2_000_000 + commitCount) * 10 + if (dirty) 1 else 0
+}
+
 val isExplicitVersion =
     project.gradle.startParameter
         .projectProperties
@@ -78,7 +125,23 @@ val isExplicitVersion =
 val fallbackVersion = project.findProperty("VERSION_NAME") as String? ?: "1.0.0"
 val versionNameProp =
     if (isExplicitVersion) fallbackVersion else (getGitDescribeVersion() ?: fallbackVersion)
-val versionCodeProp = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
+val isExplicitVersionCode =
+    project.gradle.startParameter
+        .projectProperties
+        .containsKey("VERSION_CODE")
+val versionCodeProp =
+    if (isExplicitVersionCode) {
+        // An explicit -PVERSION_CODE override MUST be a valid integer; fail loudly
+        // rather than silently degrading to a fallback and shipping a wrong code.
+        val raw = project.findProperty("VERSION_CODE") as String
+        raw.toIntOrNull() ?: error("VERSION_CODE must be an integer, got: \"$raw\"")
+    } else {
+        // Prefer the git-derived code; fall back to the gradle.properties value only
+        // when git is unavailable (e.g. building from a source tarball).
+        getGitVersionCode()
+            ?: (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull()
+            ?: 1
+    }
 
 ktlint {
     version.set("1.8.0")

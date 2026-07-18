@@ -44,7 +44,7 @@ jobs:
           allowed-conclusions: success
           running-workflow-name: 'Create Draft Release'
 
-      # ── 4. Parse tag → VERSION_NAME, VERSION_CODE, pre-release flag ──
+      # ── 4. Parse tag → VERSION_NAME + pre-release flag (versionCode is derived by Gradle) ──
       - name: Parse tag
         id: parse-tag
         env:
@@ -53,37 +53,25 @@ jobs:
           # Strip 'v' prefix to get version
           VERSION="${TAG#v}"
 
-          # Parse: MAJOR.MINOR.PATCH[-PRERELEASE]
+          # Validate MAJOR.MINOR.PATCH[-PRERELEASE] and extract the pre-release suffix
           if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-(.+))?$ ]]; then
-            MAJOR="${BASH_REMATCH[1]}"
-            MINOR="${BASH_REMATCH[2]}"
-            PATCH="${BASH_REMATCH[3]}"
             PRERELEASE="${BASH_REMATCH[5]}"
           else
             echo "::error::Invalid version format: $VERSION (expected: MAJOR.MINOR.PATCH[-PRERELEASE])"
             exit 1
           fi
 
-          # Compute VERSION_CODE offset based on pre-release type
-          # alpha=01, beta=10, rc{N}=20+N, release=99
+          # Determine the pre-release flag from the tag suffix.
+          # The numeric versionCode is derived by Gradle from git history
+          # (see app/build.gradle.kts getGitVersionCode); no version-code math here.
           if [ -z "$PRERELEASE" ]; then
-            OFFSET=99
             IS_PRERELEASE="false"
-          elif [ "$PRERELEASE" = "alpha" ]; then
-            OFFSET=1
-            IS_PRERELEASE="true"
-          elif [ "$PRERELEASE" = "beta" ]; then
-            OFFSET=10
+          elif [ "$PRERELEASE" = "alpha" ] || [ "$PRERELEASE" = "beta" ]; then
             IS_PRERELEASE="true"
           elif [[ "$PRERELEASE" =~ ^rc([0-9]+)$ ]]; then
             RC_NUM=$((10#${BASH_REMATCH[1]}))
             if [ "$RC_NUM" -lt 1 ]; then
               echo "::error::RC number must be >= 1 (got rc${RC_NUM})"
-              exit 1
-            fi
-            OFFSET=$(( 20 + RC_NUM ))
-            if [ "$OFFSET" -ge 99 ]; then
-              echo "::error::RC number too high: rc${RC_NUM} (max rc78)"
               exit 1
             fi
             IS_PRERELEASE="true"
@@ -92,17 +80,8 @@ jobs:
             exit 1
           fi
 
-          VERSION_CODE=$(( MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + OFFSET ))
-
-          # Android versionCode must fit in a signed 32-bit integer (max 2147483647)
-          if [ "$VERSION_CODE" -gt 2147483647 ]; then
-            echo "::error::VERSION_CODE overflow: $VERSION_CODE exceeds Android maximum (2147483647)"
-            exit 1
-          fi
-
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "version-code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "is-prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
 
           echo "### Parsed Tag" >> "$GITHUB_STEP_SUMMARY"
@@ -110,7 +89,6 @@ jobs:
           echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Tag | \`$TAG\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Version Name | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Version Code | \`$VERSION_CODE\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Pre-release | $IS_PRERELEASE |" >> "$GITHUB_STEP_SUMMARY"
 
       # ── 5. Setup build toolchains (same as CI build-release job) ──
@@ -183,12 +161,11 @@ jobs:
           path: .dbip-cache
           key: dbip-csv-${{ steps.dbip-month.outputs.month }}
 
-      # ── 8. Build APKs with version from tag ──
+      # ── 8. Build APKs with version name from tag (versionCode derived by Gradle from git) ──
       - name: Build APKs
         env:
           VERSION_NAME: ${{ steps.parse-tag.outputs.version }}
-          VERSION_CODE: ${{ steps.parse-tag.outputs.version-code }}
-        run: ./gradlew assembleGmsDebug assembleFossDebug assembleGmsRelease assembleFossRelease -PVERSION_NAME="$VERSION_NAME" -PVERSION_CODE="$VERSION_CODE"
+        run: ./gradlew assembleGmsDebug assembleFossDebug assembleGmsRelease assembleFossRelease -PVERSION_NAME="$VERSION_NAME"
 
       # ── 8. Rename APKs with proper names (per flavor: gms + foss) ──
       - name: Rename APKs

@@ -292,6 +292,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+          # Full history + tags so Gradle can derive versionName (git describe)
+          # and versionCode (git rev-list --count) accurately.
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
