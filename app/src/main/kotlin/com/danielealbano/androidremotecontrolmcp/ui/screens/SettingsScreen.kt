@@ -90,7 +90,11 @@ fun SettingsScreen(
             )
         }
         composable(SettingsRoute.Storage.route) {
-            StorageSettingsScreen(onBack = { navController.popBackStack() }, viewModel = viewModel)
+            StorageSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToMcpTools = { navController.navigate(SettingsRoute.McpTools.route) },
+                viewModel = viewModel,
+            )
         }
         composable(SettingsRoute.ChannelSettings.route) {
             ChannelSettingsScreen(

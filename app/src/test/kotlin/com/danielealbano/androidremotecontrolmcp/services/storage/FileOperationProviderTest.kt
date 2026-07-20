@@ -117,6 +117,43 @@ class FileOperationProviderTest {
         every { DocumentFile.fromTreeUri(mockContext, mockTreeUri) } returns rootDoc
     }
 
+    @Nested
+    @DisplayName("path scoping")
+    inner class PathScoping {
+        @Test
+        fun `listFiles rejects absolute paths`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.listFiles("loc1", "/outside", 0, 10)
+                    }
+
+                assertTrue(exception.message!!.contains("relative"))
+            }
+
+        @Test
+        fun `readFile rejects parent traversal`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.readFile("loc1", "../outside.txt", 1, 10)
+                    }
+
+                assertTrue(exception.message!!.contains("'..'"))
+            }
+
+        @Test
+        fun `writeFile rejects backslash paths`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.writeFile("loc1", "folder\\outside.txt", "blocked")
+                    }
+
+                assertTrue(exception.message!!.contains("relative"))
+            }
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // listFiles
     // ─────────────────────────────────────────────────────────────────────

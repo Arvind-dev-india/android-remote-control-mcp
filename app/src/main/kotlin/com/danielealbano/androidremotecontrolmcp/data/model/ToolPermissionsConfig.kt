@@ -80,6 +80,18 @@ data class ToolPermissionsConfig(
         fun fromJsonOrDefault(json: String?): ToolPermissionsConfig =
             if (json == null) ToolPermissionsConfig() else fromJson(json) ?: ToolPermissionsConfig()
 
+        val FILE_OPERATION_TOOLS: Set<String> =
+            setOf(
+                "list_storage_locations",
+                "list_files",
+                "read_file",
+                "write_file",
+                "append_file",
+                "file_replace",
+                "download_from_url",
+                "delete_file",
+            )
+
         val DEFAULT_ENABLED_TOOLS: Set<String> =
             setOf(
                 "get_screen_state",
@@ -113,7 +125,7 @@ data class ToolPermissionsConfig(
                 "notification_open",
                 "notification_dismiss",
                 "get_location",
-            )
+            ) + FILE_OPERATION_TOOLS
 
         val ALL_SUPPORTED_TOOLS: Set<String> =
             setOf(
@@ -147,14 +159,6 @@ data class ToolPermissionsConfig(
                 "wait_for_node",
                 "wait_for_idle",
                 "get_node_details",
-                "list_storage_locations",
-                "list_files",
-                "read_file",
-                "write_file",
-                "append_file",
-                "file_replace",
-                "download_from_url",
-                "delete_file",
                 "open_app",
                 "list_apps",
                 "close_app",
@@ -175,6 +179,6 @@ data class ToolPermissionsConfig(
                 "get_location",
                 "get_shared_content",
                 "share_file_via_web",
-            )
+            ) + FILE_OPERATION_TOOLS
     }
 }

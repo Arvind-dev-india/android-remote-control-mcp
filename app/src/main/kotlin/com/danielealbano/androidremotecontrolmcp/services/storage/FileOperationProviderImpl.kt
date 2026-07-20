@@ -45,6 +45,7 @@ class FileOperationProviderImpl
             offset: Int,
             limit: Int,
         ): FileListResult {
+            validateRelativePath(path, allowEmpty = true)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.listFiles(locationId, path, offset, limit)
             }
@@ -99,6 +100,7 @@ class FileOperationProviderImpl
             offset: Int,
             limit: Int,
         ): FileReadResult {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFile(locationId, path, offset, limit)
             }
@@ -162,6 +164,7 @@ class FileOperationProviderImpl
             path: String,
             maxBytes: Long,
         ): FileBytesResult {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFileBytes(locationId, path, maxBytes)
             }
@@ -196,6 +199,7 @@ class FileOperationProviderImpl
             path: String,
             content: String,
         ) {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.writeFile(locationId, path, content)
             }
@@ -231,6 +235,7 @@ class FileOperationProviderImpl
             path: String,
             content: String,
         ) {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.appendFile(locationId, path, content)
             }
@@ -300,6 +305,7 @@ class FileOperationProviderImpl
             newString: String,
             replaceAll: Boolean,
         ): FileReplaceResult {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.replaceInFile(locationId, path, oldString, newString, replaceAll)
             }
@@ -359,6 +365,7 @@ class FileOperationProviderImpl
             path: String,
             url: String,
         ): Long {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.downloadFromUrl(locationId, path, url)
             }
@@ -475,6 +482,7 @@ class FileOperationProviderImpl
             locationId: String,
             path: String,
         ) {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.deleteFile(locationId, path)
             }
@@ -512,6 +520,7 @@ class FileOperationProviderImpl
             path: String,
             mimeType: String,
         ): Uri {
+            validateRelativePath(path)
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.createFileUri(locationId, path, mimeType)
             }
@@ -524,6 +533,38 @@ class FileOperationProviderImpl
         // ─────────────────────────────────────────────────────────────────────
         // Private helpers
         // ─────────────────────────────────────────────────────────────────────
+
+        private fun validateRelativePath(
+            path: String,
+            allowEmpty: Boolean = false,
+        ) {
+            if (path.isEmpty() && allowEmpty) return
+            val error =
+                when {
+                    path.isEmpty() -> {
+                        "File path cannot be empty"
+                    }
+
+                    path.startsWith("/") || path.contains('\\') -> {
+                        "Path must be relative to the selected storage location"
+                    }
+
+                    path.split("/").any { segment ->
+                        segment == "." ||
+                            segment == ".." ||
+                            CONTROL_CHAR_REGEX.containsMatchIn(segment)
+                    } -> {
+                        "Path must not contain '.', '..', or control-character segments"
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
+            if (error != null) {
+                throw McpToolException.InvalidParams(error)
+            }
+        }
 
         /**
          * Checks that the given location is authorized.

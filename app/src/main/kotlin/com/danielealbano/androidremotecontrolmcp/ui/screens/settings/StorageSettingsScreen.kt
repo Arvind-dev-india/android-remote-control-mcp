@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinStorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
+import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 import kotlinx.coroutines.launch
@@ -70,6 +71,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StorageSettingsScreen(
     onBack: () -> Unit,
+    onNavigateToMcpTools: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
 ) {
@@ -81,6 +83,7 @@ fun StorageSettingsScreen(
     val fileSizeLimitError by viewModel.fileSizeLimitError.collectAsStateWithLifecycle()
     val downloadTimeoutInput by viewModel.downloadTimeoutInput.collectAsStateWithLifecycle()
     val downloadTimeoutError by viewModel.downloadTimeoutError.collectAsStateWithLifecycle()
+    val toolPermissions by viewModel.toolPermissionsConfig.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -147,6 +150,31 @@ fun StorageSettingsScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
             ) {
+                val enabledFileToolCount =
+                    ToolPermissionsConfig.FILE_OPERATION_TOOLS.count(toolPermissions::isToolEnabled)
+
+                Text(
+                    text = stringResource(R.string.storage_mcp_tools_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text =
+                        stringResource(
+                            R.string.storage_mcp_tools_description,
+                            enabledFileToolCount,
+                            ToolPermissionsConfig.FILE_OPERATION_TOOLS.size,
+                        ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onNavigateToMcpTools) {
+                    Text(stringResource(R.string.storage_mcp_tools_button))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+
                 val builtinLocations = storageLocations.filter { it.isBuiltin }
                 val userLocations = storageLocations.filter { !it.isBuiltin }
 

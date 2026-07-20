@@ -11,12 +11,14 @@ import org.junit.jupiter.api.Test
 @DisplayName("ToolPermissionsConfig")
 class ToolPermissionsConfigTest {
     @Test
-    fun `default profile enables core control tools`() {
+    fun `default profile enables core control and scoped file tools`() {
         val config = ToolPermissionsConfig()
         assertTrue(config.isToolEnabled("tap"))
         assertTrue(config.isToolEnabled("take_camera_photo"))
         assertTrue(config.isToolEnabled("get_location"))
-        assertFalse(config.isToolEnabled("read_file"))
+        ToolPermissionsConfig.FILE_OPERATION_TOOLS.forEach { tool ->
+            assertTrue(config.isToolEnabled(tool), "Expected $tool to be enabled")
+        }
     }
 
     @Test

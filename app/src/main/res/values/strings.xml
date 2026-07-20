@@ -153,6 +153,9 @@
     <!-- Storage Locations -->
     <string name="storage_locations_title">Storage Locations</string>
     <string name="storage_locations_description">Add storage locations to enable file operations via MCP tools. Each location grants access to a directory you choose.</string>
+    <string name="storage_mcp_tools_title">MCP file tools</string>
+    <string name="storage_mcp_tools_description">%1$d of %2$d file tools enabled. Every operation stays inside a listed storage location. Write and delete also require that location’s permission switch.</string>
+    <string name="storage_mcp_tools_button">Configure file tools</string>
     <string name="storage_location_no_locations">No storage locations added. Tap + to add one.</string>
     <string name="storage_location_path_label">Path: %1$s</string>
     <string name="storage_location_add_button">Add Storage Location</string>
