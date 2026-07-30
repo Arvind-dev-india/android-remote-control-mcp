@@ -352,6 +352,11 @@ See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for the full reference and a copy
 
 All extras are optional — only the ones provided are updated. The app does **not** need to be open.
 
+> **Requires adb.** The configuration receiver and the service trampoline are gated on
+> `android.permission.DUMP`, which the adb shell UID holds but ordinary apps cannot obtain. The
+> commands below work unchanged from `adb shell`; an app on the device cannot use them to
+> reconfigure the server. See the [Security](#security) section.
+
 ```bash
 adb shell am broadcast \
   -a com.danielealbano.androidremotecontrolmcp.ADB_CONFIGURE \
