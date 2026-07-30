@@ -139,14 +139,6 @@
             android:permission="android.permission.DUMP">
         </receiver>
 
-        <!-- E2E Configuration Receiver (test configuration injection via adb shell) -->
-        <!-- Gated on DUMP (adb-shell-only) for the same reason as AdbConfigReceiver above. -->
-        <receiver
-            android:name=".debug.E2EConfigReceiver"
-            android:exported="true"
-            android:permission="android.permission.DUMP">
-        </receiver>
-
         <!-- Event Channel Service -->
         <service
             android:name=".services.channel.EventChannelService"
