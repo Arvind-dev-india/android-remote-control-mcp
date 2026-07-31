@@ -40,25 +40,35 @@ internal fun restartMcpServer(context: Context) {
     )
 }
 
+/**
+ * Restart, swallowing [ForegroundServiceStartNotAllowedException]. The OS refuses a background FGS
+ * start when the app is not battery-exempt (task-removal path) or when an OEM does not honor the
+ * broadcast's FGS-background-start exemption (package-replaced path). Both restart entry points use
+ * this so a refused start logs and proceeds instead of crashing the caller.
+ */
+private fun restartMcpServerSwallowingFgs(context: Context) {
+    try {
+        restartMcpServer(context)
+    } catch (e: ForegroundServiceStartNotAllowedException) {
+        Log.w(TAG, "Cannot restart MCP server: foreground start not allowed (app not battery-exempt)", e)
+    }
+}
+
 /** Task-removal restart: attempt only when the server is running; swallow the FGS-not-allowed case. */
 internal fun restartMcpServerIfForeground(
     context: Context,
     isServerRunning: Boolean,
 ) {
     if (!isServerRunning) return
-    try {
-        restartMcpServer(context)
-    } catch (e: ForegroundServiceStartNotAllowedException) {
-        Log.w(TAG, "Cannot restart on task removal (app not battery-exempt)", e)
-    }
+    restartMcpServerSwallowingFgs(context)
 }
 
-/** Package-replaced restart: attempt only when the persisted intent flag is true. */
+/** Package-replaced restart: attempt only when the persisted intent flag is true; FGS-safe. */
 internal suspend fun restartMcpServerIfRunning(
     context: Context,
     settingsRepository: SettingsRepository,
 ) {
     if (settingsRepository.serverRunning.first()) {
-        restartMcpServer(context)
+        restartMcpServerSwallowingFgs(context)
     }
 }

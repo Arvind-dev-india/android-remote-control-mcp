@@ -40,6 +40,19 @@ class McpServerRestartTest {
         }
 
     @Test
+    fun `restartMcpServerIfRunning swallows FGS-not-allowed`() =
+        runTest {
+            every { settingsRepository.serverRunning } returns flowOf(true)
+            every { context.startForegroundService(any()) } throws
+                mockk<ForegroundServiceStartNotAllowedException>(relaxed = true)
+
+            // Must not propagate: the package-replaced path is FGS-safe like the task-removal path.
+            restartMcpServerIfRunning(context, settingsRepository)
+
+            verify(exactly = 1) { context.startForegroundService(any()) }
+        }
+
+    @Test
     fun `restartMcpServerIfForeground starts when running`() {
         restartMcpServerIfForeground(context, isServerRunning = true)
 
