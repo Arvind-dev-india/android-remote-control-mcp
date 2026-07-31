@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -263,7 +265,11 @@ private fun PermissionSectionHeader(
     title: String,
     subtitle: String,
 ) {
-    Text(text = title, style = MaterialTheme.typography.labelLarge)
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.semantics { heading() },
+    )
     Spacer(modifier = Modifier.height(2.dp))
     Text(
         text = subtitle,
