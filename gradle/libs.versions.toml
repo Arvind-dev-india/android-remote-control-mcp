@@ -26,6 +26,9 @@ mcp-kotlin-sdk = "0.8.3"
 # OAuth (JWT signing/verification)
 java-jwt = "4.5.2"
 
+# Jackson (transitive via java-jwt) — pinned to a patched release to close CVE alerts
+jackson = "2.21.5"
+
 # Image loading (OAuth client logos)
 coil = "3.2.0"
 
@@ -123,6 +126,9 @@ bouncy-castle-prov = { group = "org.bouncycastle", name = "bcprov-jdk18on", vers
 
 # OAuth (JWT signing/verification)
 java-jwt = { group = "com.auth0", name = "java-jwt", version.ref = "java-jwt" }
+
+# Jackson BOM — aligns transitive jackson-core/jackson-databind (pulled by java-jwt) to a patched release
+jackson-bom = { group = "com.fasterxml.jackson", name = "jackson-bom", version.ref = "jackson" }
 
 # Image loading (OAuth client logos)
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }

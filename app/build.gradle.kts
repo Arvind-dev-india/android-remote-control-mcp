@@ -200,6 +200,19 @@ ktlint {
     version.set("1.8.0")
 }
 
+// ktlint-cli 1.8.0 (the latest release) bundles logback 1.3.16, which trips CVE alerts. logback is
+// used only for ktlint's own build-time console logging and never ships in the APK. Force the patched
+// logback onto ktlint's resolvable configurations. Compatible: logback 1.5.x keeps the slf4j 2.0.x
+// binding ktlint already uses and only requires Java 11+, which the JDK 17 build satisfies.
+configurations.matching { it.name.startsWith("ktlint") }.configureEach {
+    resolutionStrategy {
+        force(
+            "ch.qos.logback:logback-core:1.5.34",
+            "ch.qos.logback:logback-classic:1.5.34",
+        )
+    }
+}
+
 android {
     namespace = "com.danielealbano.androidremotecontrolmcp"
     compileSdk = 36
@@ -386,6 +399,9 @@ dependencies {
     runtimeOnly(libs.slf4j.android)
 
     // OAuth (JWT signing/verification)
+    // The Jackson BOM aligns java-jwt's transitive jackson-core/jackson-databind to a patched
+    // release, closing the CVE alerts on the 2.21.3 versions the library would otherwise pull in.
+    implementation(platform(libs.jackson.bom))
     implementation(libs.java.jwt)
 
     // OAuth client logos (SSRF-guarded remote image loading)
