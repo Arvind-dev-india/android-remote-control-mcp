@@ -15,6 +15,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelEndpoint
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.services.power.BatteryOptimizationManager
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
 import com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils
@@ -28,6 +29,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkObject
+import io.mockk.verify
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +55,7 @@ class MainViewModelTest {
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var tunnelManager: TunnelManager
     private lateinit var storageLocationProvider: StorageLocationProvider
+    private lateinit var batteryOptimizationManager: BatteryOptimizationManager
     private lateinit var configFlow: MutableStateFlow<ServerConfig>
     private lateinit var tunnelStatusFlow: MutableStateFlow<TunnelStatus>
     private lateinit var viewModel: MainViewModel
@@ -92,7 +95,16 @@ class MainViewModelTest {
 
         storageLocationProvider = mockk(relaxed = true)
 
-        viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+        batteryOptimizationManager = mockk(relaxed = true)
+
+        viewModel =
+            MainViewModel(
+                settingsRepository,
+                tunnelManager,
+                storageLocationProvider,
+                batteryOptimizationManager,
+                testDispatcher,
+            )
     }
 
     @AfterEach
@@ -439,7 +451,14 @@ class MainViewModelTest {
                     ngrokAuthtoken = "my-authtoken",
                     ngrokDomain = "my.ngrok.app",
                 )
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                )
             advanceUntilIdle()
 
             assertEquals("my-authtoken", viewModel.ngrokAuthtokenInput.value)
@@ -473,7 +492,14 @@ class MainViewModelTest {
     fun `serverConfig collection sets cloudflare token input`() =
         runTest {
             configFlow.value = configFlow.value.copy(cloudflareTunnelToken = "seeded-token")
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                )
             advanceUntilIdle()
 
             assertEquals("seeded-token", viewModel.cloudflareTokenInput.value)
@@ -1028,7 +1054,14 @@ class MainViewModelTest {
         runTest {
             // Set deviceSlug BEFORE creating ViewModel so initial load picks it up
             configFlow.value = configFlow.value.copy(deviceSlug = "test_device")
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                )
             advanceUntilIdle()
 
             assertEquals("test_device", viewModel.deviceSlugInput.value)
@@ -1096,6 +1129,74 @@ class MainViewModelTest {
                 unmockkStatic(androidx.core.content.ContextCompat::class)
                 unmockkObject(PermissionUtils)
             }
+        }
+
+    // ─── Battery Optimization Tests ─────────────────────────────────────
+
+    @Test
+    fun `refreshPermissionStatus reflects not-exempt`() =
+        runTest {
+            advanceUntilIdle()
+
+            val context = mockk<Context>()
+            mockkObject(PermissionUtils)
+            try {
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                every { PermissionUtils.isNotificationPermissionGranted(context) } returns false
+                every { PermissionUtils.isCameraPermissionGranted(context) } returns false
+                every { PermissionUtils.isMicrophonePermissionGranted(context) } returns false
+                every { PermissionUtils.isLocationPermissionGranted(context) } returns false
+                every { PermissionUtils.isNotificationListenerEnabled(context, any()) } returns false
+                coEvery { storageLocationProvider.getAllLocations() } returns emptyList()
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns false
+
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+
+                assertEquals(false, viewModel.isBatteryOptimizationIgnored.value)
+            } finally {
+                unmockkObject(PermissionUtils)
+            }
+        }
+
+    @Test
+    fun `refreshPermissionStatus reflects exempt after grant`() =
+        runTest {
+            advanceUntilIdle()
+
+            val context = mockk<Context>()
+            mockkObject(PermissionUtils)
+            try {
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                every { PermissionUtils.isNotificationPermissionGranted(context) } returns false
+                every { PermissionUtils.isCameraPermissionGranted(context) } returns false
+                every { PermissionUtils.isMicrophonePermissionGranted(context) } returns false
+                every { PermissionUtils.isLocationPermissionGranted(context) } returns false
+                every { PermissionUtils.isNotificationListenerEnabled(context, any()) } returns false
+                coEvery { storageLocationProvider.getAllLocations() } returns emptyList()
+
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns false
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+                assertEquals(false, viewModel.isBatteryOptimizationIgnored.value)
+
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns true
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+                assertEquals(true, viewModel.isBatteryOptimizationIgnored.value)
+            } finally {
+                unmockkObject(PermissionUtils)
+            }
+        }
+
+    @Test
+    fun `requestBatteryOptimizationExemption delegates to manager`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.requestBatteryOptimizationExemption()
+
+            verify { batteryOptimizationManager.requestExemption() }
         }
 
     // --- Tool Permissions Tests ---

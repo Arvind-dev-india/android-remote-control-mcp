@@ -108,6 +108,11 @@
     <!-- Permission Warning -->
     <string name="permission_warning_message">Some permissions are not granted. Tap to review.</string>
 
+    <!-- Battery Optimization -->
+    <string name="battery_optimization_card_title">Keep the server running</string>
+    <string name="battery_optimization_card_body">Android battery optimization can stop the MCP server in the background. Disable it for this app so the server stays reachable.</string>
+    <string name="battery_optimization_card_action">Disable battery optimization</string>
+
     <!-- Server Logs -->
     <string name="server_logs_title">Server Logs</string>
     <string name="server_logs_empty">No log entries yet</string>
