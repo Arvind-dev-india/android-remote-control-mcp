@@ -71,7 +71,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +81,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -182,13 +180,13 @@ class McpServerService : Service() {
 
         when (intent?.action) {
             ACTION_STOP -> {
-                persistServerRunning(false)
+                persistServerRunning(settingsRepository, false)
                 stopSelf()
                 return START_NOT_STICKY
             }
 
             ACTION_START, null -> {
-                persistServerRunning(true)
+                persistServerRunning(settingsRepository, true)
                 if (!serverActive.compareAndSet(false, true)) {
                     Log.w(TAG, "Server already starting or running, ignoring duplicate start request")
                 } else {
@@ -310,7 +308,7 @@ class McpServerService : Service() {
                                     "Tunnel connected: ${status.endpoints.joinToString { it.url }} " +
                                         "(provider: ${status.providerType})",
                                 )
-                                emitLogEntry(
+                                _serverLogEvents.tryEmit(
                                     ServerLogEntry(
                                         timestamp = System.currentTimeMillis(),
                                         type = ServerLogEntry.Type.TUNNEL,
@@ -321,7 +319,7 @@ class McpServerService : Service() {
 
                             is TunnelStatus.Error -> {
                                 Log.w(TAG, "Tunnel error: ${status.message}")
-                                emitLogEntry(
+                                _serverLogEvents.tryEmit(
                                     ServerLogEntry(
                                         timestamp = System.currentTimeMillis(),
                                         type = ServerLogEntry.Type.TUNNEL,
@@ -522,26 +520,6 @@ class McpServerService : Service() {
         _serverStatus.value = status
     }
 
-    /**
-     * Durably persists the user's start/stop intent (`server_running`) before [onStartCommand]
-     * returns, so restart triggers can decide whether to bring the server back up. The bounded
-     * main-thread block is acceptable for a single DataStore edit (onDestroy already blocks longer);
-     * a slow or failed write logs and proceeds instead of crashing this frequently-invoked callback.
-     */
-    private fun persistServerRunning(running: Boolean) {
-        try {
-            runBlocking { withTimeout(FLAG_WRITE_TIMEOUT_MS) { settingsRepository.updateServerRunning(running) } }
-        } catch (e: TimeoutCancellationException) {
-            Log.w(TAG, "Timed out persisting server_running=$running", e)
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to persist server_running=$running", e)
-        }
-    }
-
-    private fun emitLogEntry(entry: ServerLogEntry) {
-        _serverLogEvents.tryEmit(entry)
-    }
-
     private fun createNotification(): Notification {
         val pendingIntent =
             PendingIntent.getActivity(
@@ -568,7 +546,6 @@ class McpServerService : Service() {
         const val SHUTDOWN_GRACE_PERIOD_MS = 1000L
         const val SHUTDOWN_TIMEOUT_MS = 5000L
         const val TUNNEL_STOP_TIMEOUT_MS = 3_000L
-        private const val FLAG_WRITE_TIMEOUT_MS = 2_000L
 
         /**
          * Shared server status flow. Collected by MainViewModel to update the UI.

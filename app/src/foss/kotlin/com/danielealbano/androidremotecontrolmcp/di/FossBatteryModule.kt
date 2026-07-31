@@ -14,7 +14,5 @@ import javax.inject.Singleton
 abstract class FossBatteryModule {
     @Binds
     @Singleton
-    abstract fun bindBatteryOptimizationManager(
-        impl: FossBatteryOptimizationManagerImpl,
-    ): BatteryOptimizationManager
+    abstract fun bindBatteryOptimizationManager(impl: FossBatteryOptimizationManagerImpl): BatteryOptimizationManager
 }

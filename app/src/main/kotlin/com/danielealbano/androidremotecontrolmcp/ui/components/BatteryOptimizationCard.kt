@@ -14,10 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.danielealbano.androidremotecontrolmcp.R
-import com.danielealbano.androidremotecontrolmcp.ui.theme.AndroidRemoteControlMcpTheme
 
 @Composable
 fun BatteryOptimizationCard(
@@ -49,13 +47,5 @@ fun BatteryOptimizationCard(
                 Text(text = stringResource(R.string.battery_optimization_card_action))
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun BatteryOptimizationCardPreview() {
-    AndroidRemoteControlMcpTheme {
-        BatteryOptimizationCard(onRequestExemption = {})
     }
 }

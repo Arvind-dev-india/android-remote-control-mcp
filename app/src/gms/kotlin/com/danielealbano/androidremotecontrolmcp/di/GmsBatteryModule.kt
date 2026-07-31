@@ -13,7 +13,5 @@ import javax.inject.Singleton
 abstract class GmsBatteryModule {
     @Binds
     @Singleton
-    abstract fun bindBatteryOptimizationManager(
-        impl: GmsBatteryOptimizationManagerImpl,
-    ): BatteryOptimizationManager
+    abstract fun bindBatteryOptimizationManager(impl: GmsBatteryOptimizationManagerImpl): BatteryOptimizationManager
 }

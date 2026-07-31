@@ -266,10 +266,10 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 **Why**: `START_STICKY` is already present; the remaining gaps are OEM task-swipe kills and the server staying down after an app update. `onTaskRemoved` runs after the app leaves the foreground and therefore benefits from the US1 battery exemption to start the FGS; `MY_PACKAGE_REPLACED` is an FGS-background-start-exempt broadcast and works independently of the exemption.
 
 **Acceptance criteria**
-- [ ] Persisted `server_running` encodes the user's start/stop intent — set `true` on `ACTION_START`, `false` on `ACTION_STOP` (a failed start leaves the intent `true`, which a later restart trigger simply retries).
+- [x] Persisted `server_running` encodes the user's start/stop intent — set `true` on `ACTION_START`, `false` on `ACTION_STOP` (a failed start leaves the intent `true`, which a later restart trigger simply retries).
 - [ ] Swiping the app from recents while running attempts a restart (guaranteed to succeed when battery-exempt; safely caught otherwise).
 - [ ] After an app update (`MY_PACKAGE_REPLACED`), the MCP server restarts iff `server_running` is true.
-- [ ] An explicit stop is never resurrected by either path (the `false` write deterministically wins over any prior `true`).
+- [x] An explicit stop is never resurrected by either path (the `false` write deterministically wins over any prior `true`).
 
 ### Task 2.1 — Persisted `server_running` flag
 
@@ -428,7 +428,12 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 
 ### Task 3.1 — Re-read every change against the plan
 
-- [ ] Re-read each file below and confirm it matches the corresponding action exactly (no TODOs, no dead code, no out-of-scope edits):
+> **Implementation amendments (2026-07-31, forced by existing detekt gate, behavior-preserving):**
+> - `persistServerRunning` was relocated from an `McpServerService` private member to an `internal` helper in `services/mcp/McpServerRestart.kt` (called as `persistServerRunning(settingsRepository, running)`). Reason: `McpServerService` already had 10 functions; the required `onTaskRemoved` override made it 11, and adding `persistServerRunning` as a member would have made it 12, tripping detekt `TooManyFunctions` (cap 10). Placing it with the other server-lifecycle helpers keeps behavior identical and makes it testable. Task 2.2's flag-write semantics/timeout/exception-handling are unchanged.
+> - The trivial one-line `emitLogEntry` wrapper in `McpServerService` was inlined to its two call sites (`_serverLogEvents.tryEmit(...)`), removing one function so the class returns to 10 and `TooManyFunctions` passes without any new `@Suppress`. No behavior change.
+> - `BatteryOptimizationCard` ships without a `@Preview` (sibling cards suppress `UnusedPrivateMember` file-wide; the plan's "no new @Suppress" gate is stricter, so the optional preview was omitted instead).
+>
+- [x] Re-read each file below and confirm it matches the corresponding action exactly (no TODOs, no dead code, no out-of-scope edits):
   - `services/power/BatteryOptimizationManager.kt`, `services/power/BatteryOptimizationState.kt`
   - `src/gms/.../services/power/GmsBatteryOptimizationManagerImpl.kt`, `src/gms/.../di/GmsBatteryModule.kt`, `src/gms/AndroidManifest.xml`
   - `src/foss/.../services/power/FossBatteryOptimizationManagerImpl.kt`, `src/foss/.../di/FossBatteryModule.kt`
@@ -436,21 +441,21 @@ US1 is sequenced before US2 because the two user stories are code-independent an
   - `data/repository/SettingsRepository.kt`, `data/repository/SettingsRepositoryImpl.kt`
   - `services/mcp/McpServerService.kt`, `services/mcp/McpServerRestart.kt`, `services/mcp/PackageReplacedReceiver.kt`, `src/main/AndroidManifest.xml`
   - All new/modified test files (incl. the `MainViewModelTest.kt` constructor updates).
-- [ ] Confirm NO files outside this list were changed.
+- [x] Confirm NO files outside this list were changed.
 
 ### Task 3.2 — Quality gates
 
-- [ ] `make lint` → zero ktlint/detekt issues (no new `@Suppress`; confirm the gms catch logs the exception so `SwallowedException` does not fire).
-- [ ] `make test-unit` → all tests pass, including every new test in US1/US2 and the updated `MainViewModelTest`.
-- [ ] `./gradlew assembleGmsDebug assembleFossDebug assembleGmsRelease assembleFossRelease` → all four build without errors/warnings.
+- [x] `make lint` → zero ktlint/detekt issues (no new `@Suppress`; confirm the gms catch logs the exception so `SwallowedException` does not fire).
+- [x] `make test-unit` → all tests pass, including every new test in US1/US2 and the updated `MainViewModelTest`.
+- [x] `./gradlew assembleGmsDebug assembleFossDebug assembleGmsRelease assembleFossRelease` → all four build without errors/warnings.
 
 ### Task 3.3 — Merged-manifest & flavor verification
 
-- [ ] Dump the merged manifest of each built APK (aapt2) and confirm:
+- [x] Dump the merged manifest of each built APK (aapt2) and confirm:
   - gms debug + gms release contain `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`.
   - foss debug + foss release do NOT contain it.
   - `PackageReplacedReceiver` is present in all four with `exported=false` and the `MY_PACKAGE_REPLACED` intent-filter.
-- [ ] Confirm `ExportedComponentsManifestTest` is green.
+- [x] Confirm `ExportedComponentsManifestTest` is green.
 
 ### Task 3.4 — Manual QA (labeled — NOT a substitute for automated tests)
 
