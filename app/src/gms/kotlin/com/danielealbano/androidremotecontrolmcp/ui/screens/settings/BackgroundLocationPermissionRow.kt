@@ -5,14 +5,18 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -48,14 +52,16 @@ fun BackgroundLocationPermissionRow() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    Spacer(modifier = Modifier.height(8.dp))
     PermissionRow(
-        label = "Background Location",
+        label = stringResource(R.string.permission_background_location),
+        rationale = stringResource(R.string.permission_background_location_rationale),
         isEnabled = granted,
         buttonText =
             if (granted) {
                 stringResource(R.string.permission_granted)
             } else {
-                "Open Settings"
+                stringResource(R.string.permission_background_location_open_settings)
             },
         onAction = {
             val intent =

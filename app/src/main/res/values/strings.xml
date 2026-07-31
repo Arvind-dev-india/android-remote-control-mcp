@@ -105,6 +105,21 @@
     <string name="permission_notification_listener">Notification Listener</string>
     <string name="permission_location">Location</string>
 
+    <!-- Permissions screen: section headers -->
+    <string name="permission_section_required_title">Required</string>
+    <string name="permission_section_required_subtitle">Needed for the app to control your device.</string>
+    <string name="permission_section_required_if_title">Required if you use a feature</string>
+    <string name="permission_section_required_if_subtitle">Grant only the capabilities you plan to use.</string>
+    <string name="permission_section_optional_title">Optional</string>
+    <string name="permission_section_optional_subtitle">Nice to have; everything works without it.</string>
+    <!-- Permissions screen: per-permission rationale (default / foss values) -->
+    <string name="permission_accessibility_rationale">Reads the screen and performs taps, swipes, and typing.</string>
+    <string name="permission_notifications_rationale">OAuth approval prompts, Event Channel alerts, and server status.</string>
+    <string name="permission_notification_listener_rationale">Read and act on device notifications.</string>
+    <string name="permission_camera_rationale">Take photos and record video.</string>
+    <string name="permission_location_rationale">Read GPS position.</string>
+    <string name="permission_microphone_rationale">Adds audio to recorded video.</string>
+
     <!-- Permission Warning -->
     <string name="permission_warning_message">Some permissions are not granted. Tap to review.</string>
 
