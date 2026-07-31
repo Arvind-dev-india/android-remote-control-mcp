@@ -33,12 +33,12 @@ This document provides a comprehensive reference for all MCP tools available in 
 
 ## Overview
 
-The MCP server exposes 56 tools via the JSON-RPC 2.0 protocol, organized into 13 categories:
+The MCP server exposes 55 tools via the JSON-RPC 2.0 protocol, organized into 13 categories:
 
 | Category | Tools | Plan |
 |----------|-------|------|
 | Screen Introspection | `android_get_screen_state` | 7, 15 |
-| System Actions | `android_press_back`, `android_press_home`, `android_press_recents`, `android_open_notifications`, `android_open_quick_settings`, `android_dismiss_keyboard`, `android_get_device_logs` | 7 |
+| System Actions | `android_press_back`, `android_press_home`, `android_press_recents`, `android_open_notifications`, `android_open_quick_settings`, `android_dismiss_keyboard` | 6 |
 | Touch Actions | `android_tap`, `android_long_press`, `android_double_tap`, `android_swipe`, `android_scroll` | 8 |
 | Gestures | `android_pinch`, `android_custom_gesture` | 8 |
 | Node Actions | `android_find_nodes`, `android_click_node`, `android_long_click_node`, `android_tap_node`, `android_scroll_to_node` | 9, 35 |
@@ -630,99 +630,6 @@ When no keyboard was open, the response text is `"No keyboard was open"`.
 **Error Cases**:
 - **Permission denied**: Accessibility service not enabled
 - **Action failed**: Dismissing the keyboard failed
-
----
-
-### `android_get_device_logs`
-
-Retrieves device logcat logs filtered by time range, tag, level, or package name.
-
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "last_lines": {
-      "type": "integer",
-      "description": "Number of most recent log lines to return (1-1000)",
-      "default": 100
-    },
-    "since": {
-      "type": "string",
-      "description": "ISO 8601 timestamp to filter logs from (e.g., 2024-01-15T10:30:00)"
-    },
-    "until": {
-      "type": "string",
-      "description": "ISO 8601 timestamp to filter logs until (used with since)"
-    },
-    "tag": {
-      "type": "string",
-      "description": "Filter by log tag (exact match, e.g., MCP:ServerService)"
-    },
-    "level": {
-      "type": "string",
-      "enum": ["V", "D", "I", "W", "E", "F"],
-      "description": "Minimum log level to include",
-      "default": "D"
-    },
-    "package_name": {
-      "type": "string",
-      "description": "Filter logs by package name"
-    }
-  },
-  "required": []
-}
-```
-
-**Request Example** (default, last 100 lines):
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "method": "tools/call",
-  "params": {
-    "name": "android_get_device_logs",
-    "arguments": {}
-  }
-}
-```
-
-**Request Example** (filtered by tag and level):
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "method": "tools/call",
-  "params": {
-    "name": "android_get_device_logs",
-    "arguments": {
-      "last_lines": 50,
-      "tag": "MCP:ServerService",
-      "level": "W"
-    }
-  }
-}
-```
-
-**Response Example (Success)**:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"logs\":\"02-11 16:30:00.123 D/MCP:ServerService: Server started on port 8080\\n02-11 16:30:01.456 I/MCP:ServerService: Client connected\",\"line_count\":2,\"truncated\":false}"
-      }
-    ]
-  }
-}
-```
-
-**Error Cases**:
-- **Invalid params**: Invalid parameter (e.g., `last_lines` out of range 1-1000, invalid `level`)
-- **Action failed**: Logcat command execution failed
 
 ---
 

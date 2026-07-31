@@ -199,7 +199,7 @@ Tool errors are returned as `CallToolResult(isError = true)` with an error messa
 
 ## MCP Tools Specification
 
-The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
+The MCP server exposes 55 tools across 13 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
 
 > **Tool Naming Convention**: All tool names are prefixed with `android_` by default (e.g., `android_tap`, `android_find_nodes`). When a device slug is configured (e.g., `pixel7`), the prefix becomes `android_pixel7_` (e.g., `android_pixel7_tap`). See [MCP_TOOLS.md](MCP_TOOLS.md) for details.
 
@@ -246,7 +246,7 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 | `android_type_clear_text` | Clear all text from field via select-all + delete | `node_id` (string) | — |
 | `android_press_key` | Press a specific key | `key` (string: ENTER/BACK/DEL/HOME/TAB/SPACE) | — |
 
-### 5. System Action Tools (7 tools)
+### 5. System Action Tools (6 tools)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
@@ -256,7 +256,6 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 | `android_open_notifications` | Pull down notification shade | None |
 | `android_open_quick_settings` | Open quick settings panel | None |
 | `android_dismiss_keyboard` | Dismiss the on-screen soft keyboard if open | None |
-| `android_get_device_logs` | Retrieve filtered logcat logs | `last_lines` (int, 1-1000, default 100), `since`/`until` (ISO 8601 timestamp), `tag` (string), `level` (string: V/D/I/W/E/F, default D), `package_name` (string) — all optional |
 
 ### 6. Gesture Tools (2 tools)
 
@@ -788,7 +787,7 @@ All common development tasks are accessible via `make <target>`. Run `make help`
 
 - **[TOOLS.md](TOOLS.md)** — Git branching conventions, commit format, PR creation, GitHub CLI commands, and local CI testing with `act`
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Detailed application architecture: component interactions, service lifecycle diagrams, threading model, inter-service communication patterns
-- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 56 tools
+- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 55 tools
 
 ---
 
