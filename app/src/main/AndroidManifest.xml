@@ -128,6 +128,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Package Replaced Receiver (restart the MCP server after an app update if it was running) -->
+        <receiver
+            android:name=".services.mcp.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- ADB Configuration Receiver (headless setup via adb shell am broadcast) -->
         <!-- Gated on DUMP: a signature/privileged platform permission held by the
              adb shell UID (com.android.shell) but NOT grantable to third-party apps.

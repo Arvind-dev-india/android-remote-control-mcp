@@ -22,6 +22,7 @@ import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
+import com.danielealbano.androidremotecontrolmcp.services.power.BatteryOptimizationManager
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
@@ -48,6 +49,7 @@ class MainViewModel
         private val settingsRepository: SettingsRepository,
         private val tunnelManager: TunnelManager,
         private val storageLocationProvider: StorageLocationProvider,
+        private val batteryOptimizationManager: BatteryOptimizationManager,
         @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         private val _serverConfig = MutableStateFlow(ServerConfig())
@@ -85,6 +87,9 @@ class MainViewModel
 
         private val _isLocationPermissionGranted = MutableStateFlow(false)
         val isLocationPermissionGranted: StateFlow<Boolean> = _isLocationPermissionGranted.asStateFlow()
+
+        private val _isBatteryOptimizationIgnored = MutableStateFlow(false)
+        val isBatteryOptimizationIgnored: StateFlow<Boolean> = _isBatteryOptimizationIgnored.asStateFlow()
 
         private val _isNotificationListenerEnabled = MutableStateFlow(false)
         val isNotificationListenerEnabled: StateFlow<Boolean> = _isNotificationListenerEnabled.asStateFlow()
@@ -280,7 +285,12 @@ class MainViewModel
                     context,
                     McpNotificationListenerService::class.java,
                 )
+            _isBatteryOptimizationIgnored.value = batteryOptimizationManager.isIgnoringBatteryOptimizations()
             refreshStorageLocations()
+        }
+
+        fun requestBatteryOptimizationExemption() {
+            batteryOptimizationManager.requestExemption()
         }
 
         fun updateTunnelEnabled(enabled: Boolean) {

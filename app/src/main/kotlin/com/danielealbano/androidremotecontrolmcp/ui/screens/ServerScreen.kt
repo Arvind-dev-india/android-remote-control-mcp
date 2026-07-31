@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerStatusCard
@@ -69,6 +70,7 @@ fun ServerScreen(
     val isCameraPermissionGranted by viewModel.isCameraPermissionGranted.collectAsStateWithLifecycle()
     val isMicrophonePermissionGranted by viewModel.isMicrophonePermissionGranted.collectAsStateWithLifecycle()
     val isNotificationListenerEnabled by viewModel.isNotificationListenerEnabled.collectAsStateWithLifecycle()
+    val isBatteryOptimizationIgnored by viewModel.isBatteryOptimizationIgnored.collectAsStateWithLifecycle()
 
     val hasAllPermissions =
         isAccessibilityEnabled &&
@@ -103,6 +105,13 @@ fun ServerScreen(
 
             if (!serverConfig.oauthEnabled && !serverConfig.bearerTokenEnabled) {
                 NoAuthWarningCard()
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (!isBatteryOptimizationIgnored) {
+                BatteryOptimizationCard(
+                    onRequestExemption = { viewModel.requestBatteryOptimizationExemption() },
+                )
                 Spacer(Modifier.height(16.dp))
             }
 

@@ -102,6 +102,15 @@ interface SettingsRepository {
     /** Updates the auto-start-on-boot preference. */
     suspend fun updateAutoStartOnBoot(enabled: Boolean)
 
+    /**
+     * Observes the persisted server-running intent flag (`true` after ACTION_START, `false` after
+     * ACTION_STOP). Used by restart triggers to decide whether to bring the MCP server back up.
+     */
+    val serverRunning: Flow<Boolean>
+
+    /** Persists the server-running intent flag. */
+    suspend fun updateServerRunning(running: Boolean)
+
     /** Updates the HTTPS enabled toggle. */
     suspend fun updateHttpsEnabled(enabled: Boolean)
 
