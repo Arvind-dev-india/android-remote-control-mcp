@@ -423,8 +423,8 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 **Why**: Final, from-scratch verification that everything implemented matches this plan exactly, with zero divergence, zero assumptions, and all quality gates green.
 
 **Acceptance criteria**
-- [ ] Every created/modified file reviewed against this plan; no extra, missing, or divergent changes.
-- [ ] All quality gates pass; merged-manifest and flavor behavior confirmed.
+- [x] Every created/modified file reviewed against this plan; no extra, missing, or divergent changes.
+- [x] All quality gates pass; merged-manifest and flavor behavior confirmed.
 
 ### Task 3.1 — Re-read every change against the plan
 
@@ -459,13 +459,15 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 
 ### Task 3.4 — Manual QA (labeled — NOT a substitute for automated tests)
 
+> **Not performed in this implementation session — requires a physical device.** These three on-device checks are left for the user to run on a real handset (per direction, the Realme device was out of scope this session). All automated equivalents (viewmodel/state/manifest/restart-decision unit tests, merged-manifest flavor checks, four-variant assembly) pass.
+
 - [ ] **Manual Test — battery exemption (gms)**: Server screen shows the card when not exempt → tap → system dialog → grant → return to app → card disappears.
 - [ ] **Manual Test — battery exemption (foss)**: tap → battery-optimization settings list opens (no crash, no permission prompt) → exempt the app → return → card disappears.
 - [ ] **Manual Test — restart hardening (ColorOS/Realme device)**: start server → swipe app from recents → server notification persists/reappears. Update the APK (`adb install -r`) with the server running → server restarts after update. Explicitly stop the server, then update → server stays stopped.
 
 ### Task 3.5 — Plan-compliance review
 
-- [ ] Spawn the `code-reviewer` subagent in plan-compliance mode over the entire implementation; fix ALL reported findings (CRITICAL/WARNING/INFO); re-run until clean.
+- [x] Spawn the `code-reviewer` subagent in plan-compliance mode over the entire implementation; fix ALL reported findings (CRITICAL/WARNING/INFO); re-run until clean. **Result: PASS (0 CRITICAL / 0 WARNING / 0 INFO) on the first pass.**
 
 **Definition of Done**
 - [ ] Lint clean, all tests pass, all four variants build, merged-manifest checks pass, manual QA passes, and `code-reviewer` reports no findings.
