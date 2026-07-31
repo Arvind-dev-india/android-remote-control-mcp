@@ -377,4 +377,13 @@ make lint 2>&1 | tee /tmp/p55-lint.log | tail -20
 - [x] `./gradlew build` succeeds for both flavors with no warnings (`/tmp/p55-build.log`).
 - [x] `make lint` is clean (`/tmp/p55-lint.log`).
 - [ ] Manual QA passes on both GMS and FOSS per Action 6.3.
-- [ ] `code-reviewer` (plan-compliance mode) run after all gates pass, and all findings addressed.
+- [x] `code-reviewer` (plan-compliance mode) run after all gates pass, and all findings addressed.
+
+---
+
+## Post-implementation review
+
+- **2026-07-31 — plan-reviewer (pre-implementation)**: pass 1 FAIL (1 CRITICAL / 2 WARNING / 1 INFO, findings P55-001…P55-004 — import accuracy in Actions 3.3/5.1 and the Action 6.2 build command); pass 2 **PASS** (0/0/0) after fixes.
+- **2026-07-31 — code-reviewer (plan-compliance, post-implementation)**: **PASS** (0 CRITICAL / 0 WARNING / 0 INFO). Verified all strings verbatim, bucket/section/row order, flavor-override mechanism, GMS seam conversion with unchanged permission/lifecycle/intent logic, FOSS seam untouched, scope limited to the 4 in-scope files, and `make lint` clean. The one-line→multi-line `PermissionSectionHeader` signature was a ktlint-mandated formatting normalization, not a divergence.
+- **Implementation note (behavior-preserving)**: the plan wrote `PermissionSectionHeader` with a single-line signature; the project's ktlint `function-signature` rule forces multi-line signatures for 2+ parameters (as with `PermissionRow`), so the signature was formatted multi-line. No change to parameters, types, order, visibility, or behavior.
+- **Manual QA (Action 6.3)**: NOT performed in this session — the three on-device visual checks require a physical device/emulator and are left for the user. All automated gates (four-variant `./gradlew build`, full test suite, `make lint`) pass.
