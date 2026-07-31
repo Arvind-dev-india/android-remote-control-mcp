@@ -165,6 +165,15 @@ class McpServerService : Service() {
     private var tunnelObserverJob: Job? = null
     private var approvalObserverJob: Job? = null
 
+    /**
+     * Tracks whether the LAST [onStartCommand] action was an explicit stop. Lets [onDestroy] re-commit
+     * `server_running=false` when the user explicitly stopped (a second bounded attempt in case the
+     * first write in [onStartCommand] timed out), WITHOUT clearing the flag on an OEM/system kill —
+     * where the last action was a start, so this stays `false` and the flag is left `true` for restart.
+     */
+    @Volatile
+    private var lastIntentWasStop = false
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -180,12 +189,14 @@ class McpServerService : Service() {
 
         when (intent?.action) {
             ACTION_STOP -> {
+                lastIntentWasStop = true
                 persistServerRunning(settingsRepository, false)
                 stopSelf()
                 return START_NOT_STICKY
             }
 
             ACTION_START, null -> {
+                lastIntentWasStop = false
                 persistServerRunning(settingsRepository, true)
                 if (!serverActive.compareAndSet(false, true)) {
                     Log.w(TAG, "Server already starting or running, ignoring duplicate start request")
@@ -462,6 +473,13 @@ class McpServerService : Service() {
         screenStateSnapshotCache.clear()
         Log.i(TAG, "McpServerService destroying")
         updateStatus(ServerStatus.Stopping)
+
+        // Second, later attempt to durably commit an explicit stop, in case the first bounded write in
+        // onStartCommand timed out. Gated on lastIntentWasStop so an OEM/system kill (last action was a
+        // start) never clears the flag — there the flag MUST stay true for restart-if-running.
+        if (lastIntentWasStop) {
+            persistServerRunning(settingsRepository, false)
+        }
 
         // Cancel tunnel status observer before stopping the tunnel
         tunnelObserverJob?.cancel()
