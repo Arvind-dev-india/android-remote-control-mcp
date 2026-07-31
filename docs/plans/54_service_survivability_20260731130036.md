@@ -273,12 +273,12 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 
 ### Task 2.1 — Persisted `server_running` flag
 
-- [ ] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsRepository.kt`: add
+- [x] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsRepository.kt`: add
   ```kotlin
   val serverRunning: Flow<Boolean>
   suspend fun updateServerRunning(running: Boolean)
   ```
-- [ ] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsRepositoryImpl.kt`
+- [x] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsRepositoryImpl.kt`
   - Add key beside the others: `private val SERVER_RUNNING_KEY = booleanPreferencesKey("server_running")`.
   - Add (mirror `updateAutoStartOnBoot` / `serverConfig` read style):
     ```kotlin
@@ -291,11 +291,11 @@ US1 is sequenced before US2 because the two user stories are code-independent an
     ```
 
 **Definition of Done**
-- [ ] Default is `false`; the flag persists across process death.
+- [x] Default is `false`; the flag persists across process death.
 
 ### Task 2.2 — Persist the flag from the service (deterministic, action-based)
 
-- [ ] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt` (uses the existing `@Inject lateinit var settingsRepository`)
+- [x] **Action** — MODIFY `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt` (uses the existing `@Inject lateinit var settingsRepository`)
   - Add a private helper + timeout constant. `runBlocking` and `withTimeout` are ALREADY imported in this file (used by `onDestroy`) — do NOT re-add them (ktlint flags duplicate imports); only add companion `private const val FLAG_WRITE_TIMEOUT_MS = 2_000L`. Wrap the bounded write in try/catch that catches ONLY specific exception types so a slow/failed DataStore write logs and proceeds instead of crashing this frequently-invoked callback — and so that NO `@Suppress("TooGenericExceptionCaught")` is needed (keeping Task 3.2's "no new suppression" gate intact):
     ```kotlin
     private fun persistServerRunning(running: Boolean) {
@@ -317,11 +317,11 @@ US1 is sequenced before US2 because the two user stories are code-independent an
   - Rationale: the flag encodes the user's start/stop INTENT. Because both writes are synchronous and issued from `onStartCommand`, an explicit `ACTION_STOP` deterministically commits `false` after any prior `ACTION_START` `true`; a stop can never be overwritten by an in-flight `true`. A short bounded main-thread block for one DataStore edit is acceptable (`onDestroy` already blocks up to ~9s per its existing comment). The reviewer confirmed every explicit-stop caller (`MainViewModel` stop, `AdbServiceTrampolineActivity`, `AdbConfigHandler.handleStopServer`) converges on this single `ACTION_STOP` branch.
 
 **Definition of Done**
-- [ ] `ACTION_START` durably sets the flag true and `ACTION_STOP` durably sets it false, both before returning from `onStartCommand`; the write is bounded by `withTimeout`; an OEM/system kill leaves the flag true.
+- [x] `ACTION_START` durably sets the flag true and `ACTION_STOP` durably sets it false, both before returning from `onStartCommand`; the write is bounded by `withTimeout`; an OEM/system kill leaves the flag true.
 
 ### Task 2.3 — Shared restart helpers + `onTaskRemoved`
 
-- [ ] **Action** — CREATE `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerRestart.kt` — `internal` helpers so the restart DECISIONS are unit-testable (only the raw platform callbacks remain untestable). `ForegroundServiceStartNotAllowedException` is API 31+, safe on `minSdk = 33`:
+- [x] **Action** — CREATE `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerRestart.kt` — `internal` helpers so the restart DECISIONS are unit-testable (only the raw platform callbacks remain untestable). `ForegroundServiceStartNotAllowedException` is API 31+, safe on `minSdk = 33`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.services.mcp
 
@@ -358,7 +358,7 @@ US1 is sequenced before US2 because the two user stories are code-independent an
       }
   }
   ```
-- [ ] **Action** — MODIFY `McpServerService.kt`: override `onTaskRemoved` to delegate to the helper (passing the live companion status):
+- [x] **Action** — MODIFY `McpServerService.kt`: override `onTaskRemoved` to delegate to the helper (passing the live companion status):
   ```kotlin
   override fun onTaskRemoved(rootIntent: Intent?) {
       restartMcpServerIfForeground(this, _serverStatus.value is ServerStatus.Running)
@@ -367,12 +367,12 @@ US1 is sequenced before US2 because the two user stories are code-independent an
   ```
 
 **Definition of Done**
-- [ ] Swiping with a running server re-issues the start via `restartMcpServerIfForeground`; the FGS-not-allowed case is caught; the decision is unit-tested (Task 2.6).
+- [x] Swiping with a running server re-issues the start via `restartMcpServerIfForeground`; the FGS-not-allowed case is caught; the decision is unit-tested (Task 2.6).
 
 ### Task 2.4 — `MY_PACKAGE_REPLACED` receiver
 
-- [ ] **Action** — CREATE `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/PackageReplacedReceiver.kt`. Mirror `BootCompletedReceiver` (`@AndroidEntryPoint`, `@Inject SettingsRepository`, `goAsync()` + detached `CoroutineScope(SupervisorJob() + Dispatchers.IO)` + `withTimeout`). `onReceive`: ignore any action other than `Intent.ACTION_MY_PACKAGE_REPLACED`; otherwise `goAsync()` and, in the detached coroutine, `withTimeout(SETTINGS_READ_TIMEOUT_MS) { restartMcpServerIfRunning(context, settingsRepository) }` (the shared helper from Task 2.3), finishing the pending result in `finally`. Do NOT touch `EventChannelService` (out of scope). The receiver's `onReceive` is a thin wrapper (no unit test — the decision it delegates to is unit-tested in Task 2.6).
-- [ ] **Action** — MODIFY `app/src/main/AndroidManifest.xml`: register beside `BootCompletedReceiver`
+- [x] **Action** — CREATE `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/PackageReplacedReceiver.kt`. Mirror `BootCompletedReceiver` (`@AndroidEntryPoint`, `@Inject SettingsRepository`, `goAsync()` + detached `CoroutineScope(SupervisorJob() + Dispatchers.IO)` + `withTimeout`). `onReceive`: ignore any action other than `Intent.ACTION_MY_PACKAGE_REPLACED`; otherwise `goAsync()` and, in the detached coroutine, `withTimeout(SETTINGS_READ_TIMEOUT_MS) { restartMcpServerIfRunning(context, settingsRepository) }` (the shared helper from Task 2.3), finishing the pending result in `finally`. Do NOT touch `EventChannelService` (out of scope). The receiver's `onReceive` is a thin wrapper (no unit test — the decision it delegates to is unit-tested in Task 2.6).
+- [x] **Action** — MODIFY `app/src/main/AndroidManifest.xml`: register beside `BootCompletedReceiver`
   ```xml
   <receiver
       android:name=".services.mcp.PackageReplacedReceiver"
@@ -385,11 +385,11 @@ US1 is sequenced before US2 because the two user stories are code-independent an
   (`MY_PACKAGE_REPLACED` targets only this app; no `data` scheme required.)
 
 **Definition of Done**
-- [ ] Updating the APK with `server_running` true restarts the MCP server; a prior explicit stop leaves it stopped; the restart decision lives in the testable `restartMcpServerIfRunning`.
+- [x] Updating the APK with `server_running` true restarts the MCP server; a prior explicit stop leaves it stopped; the restart decision lives in the testable `restartMcpServerIfRunning`.
 
 ### Task 2.5 — Keep exported-components guard green
 
-- [ ] **Action** — VERIFY (no code change expected): `PackageReplacedReceiver` is `exported="false"`, so `ExportedComponentsManifestTest` (from the GHSA DUMP-gate work) still passes. If the receiver is ever exported, it MUST be gated/allow-listed there with rationale — but it MUST remain `exported="false"`.
+- [x] **Action** — VERIFY (no code change expected): `PackageReplacedReceiver` is `exported="false"`, so `ExportedComponentsManifestTest` (from the GHSA DUMP-gate work) still passes. If the receiver is ever exported, it MUST be gated/allow-listed there with rationale — but it MUST remain `exported="false"`.
 
 ### Task 2.6 — Tests (US2)
 
@@ -414,7 +414,7 @@ US1 is sequenced before US2 because the two user stories are code-independent an
 **Coverage boundary**: the restart DECISIONS (`restartMcpServerIfRunning`, `restartMcpServerIfForeground`) and the persisted-flag round-trip (Task 2.1) are unit-tested. Only the raw platform-callback wiring — `onStartCommand` receiving `ACTION_START`/`ACTION_STOP` and `onTaskRemoved` receiving the OS callback with the live companion status — is exercised via Manual QA (Task 3.4). This is an inherent JVM-unit-test limit (no Robolectric in the module), not an accepted logic gap: all branchable logic is extracted and covered.
 
 **Definition of Done**
-- [ ] All listed tests exist and are written to pass (gates executed in Task 3.2).
+- [x] All listed tests exist and are written to pass (gates executed in Task 3.2).
 
 ---
 

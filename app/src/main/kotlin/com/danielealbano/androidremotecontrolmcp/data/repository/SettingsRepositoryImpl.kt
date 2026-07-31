@@ -159,6 +159,13 @@ class SettingsRepositoryImpl
             }
         }
 
+        override val serverRunning: Flow<Boolean> =
+            dataStore.data.map { prefs -> prefs[SERVER_RUNNING_KEY] ?: false }
+
+        override suspend fun updateServerRunning(running: Boolean) {
+            dataStore.edit { prefs -> prefs[SERVER_RUNNING_KEY] = running }
+        }
+
         override suspend fun updateHttpsEnabled(enabled: Boolean) {
             dataStore.edit { prefs ->
                 prefs[HTTPS_ENABLED_KEY] = enabled
@@ -731,6 +738,7 @@ class SettingsRepositoryImpl
             private val PUBLIC_URL_OVERRIDE_KEY = stringPreferencesKey("public_url_override")
             private val JWT_SIGNING_SECRET_KEY = stringPreferencesKey("jwt_signing_secret")
             private val AUTO_START_KEY = booleanPreferencesKey("auto_start_on_boot")
+            private val SERVER_RUNNING_KEY = booleanPreferencesKey("server_running")
             private val HTTPS_ENABLED_KEY = booleanPreferencesKey("https_enabled")
             private val CERTIFICATE_SOURCE_KEY = stringPreferencesKey("certificate_source")
             private val CERTIFICATE_HOSTNAME_KEY = stringPreferencesKey("certificate_hostname")
