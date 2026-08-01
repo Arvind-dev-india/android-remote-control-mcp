@@ -859,11 +859,11 @@ Task DoD:
 Why: there is no central decoded hook — the SDK dispatches `tools/call` internally, so the only uniform boundary is the handler lambda passed to `server.addTool`. A shared wrapper logs name + duration (+ a non-sensitive failure marker), never parameters and never free-form error text.
 
 Acceptance criteria:
-- [ ] Every one of the 57 registered tools logs a `TOOL_CALL` entry per invocation with the un-prefixed tool name and duration; failures add ONLY the constant `failed` marker; parameters and free-form error text NEVER appear.
+- [x] Every one of the 57 registered tools logs a `TOOL_CALL` entry per invocation with the un-prefixed tool name and duration; failures add ONLY the constant `failed` marker; parameters and free-form error text NEVER appear.
 
 ### Task 3.1 — Logged registration helper
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/tools/LoggedToolRegistration.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/tools/LoggedToolRegistration.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.mcp.tools
@@ -953,39 +953,39 @@ class LoggedToolRegistrar(
   Constraint: adjust the `CallToolRequest` import path to the one already used by the tool files if it differs. The wrapper contains NO catch clause — exceptions propagate untouched through the `finally`, so no linting suppression is introduced; cancellation is detected via `coroutineContext.isActive` in the `finally` block.
 
 Task DoD:
-- [ ] The wrapper returns the handler's result and propagates its exceptions unchanged (behavior-transparent apart from logging); no `catch` clause and no new `@Suppress` anywhere in the file; `LoggedToolRegistrar.addTool` has exactly 5 value parameters.
+- [x] The wrapper returns the handler's result and propagates its exceptions unchanged (behavior-transparent apart from logging); no `catch` clause and no new `@Suppress` anywhere in the file; `LoggedToolRegistrar.addTool` has exactly 5 value parameters.
 
 ### Task 3.2 — Sweep all 14 tool files
 
-- [ ] **Modify** every file below with the same mechanical transformation, which keeps EVERY function's parameter count unchanged (no new detekt `LongParameterList` findings, no new suppressions):
+- [x] **Modify** every file below with the same mechanical transformation, which keeps EVERY function's parameter count unchanged (no new detekt `LongParameterList` findings, no new suppressions):
   - For EVERY tool class: change `fun register(server: Server, toolNamePrefix: String)` to `fun register(registrar: LoggedToolRegistrar, toolNamePrefix: String)`; replace `server.addTool(name = "$toolNamePrefix$TOOL_NAME", description = ..., inputSchema = ...) { request -> ... }` with `registrar.addTool(toolName = TOOL_NAME, name = "$toolNamePrefix$TOOL_NAME", description = ..., inputSchema = ...) { request -> ... }` keeping every existing argument and the handler body verbatim. Where a tool's `register` has extra parameters (e.g. `CameraTools` `save_camera_video` audio gating), keep them — only `server` is swapped for `registrar`.
   - Change the file's `registerXxxTools(...)` function: replace the `server: Server` parameter with `registrar: LoggedToolRegistrar` and pass it to every `.register(...)` call (parameter counts unchanged; functions already annotated `@Suppress("LongParameterList")` keep it; do NOT add new suppressions).
   - Remove the now-unused `io.modelcontextprotocol.kotlin.sdk.server.Server` import where nothing else in the file uses it.
   - Expected `registrar.addTool(` call-site counts per file (verification): AppManagementTools 3, CameraTools 6, FileTools 8, GestureTools 2, IntentTools 2, LocationTools 1, NodeActionTools 5, NotificationTools 6, ScreenIntrospectionTools 1, SharingTools 2, SystemActionTools 6, TextInputTools 5, TouchActionTools 5, UtilityTools 5 — total 57, and zero remaining direct `server.addTool(` calls under `mcp/tools/`.
-  - [ ] `mcp/tools/TouchActionTools.kt`
-  - [ ] `mcp/tools/GestureTools.kt`
-  - [ ] `mcp/tools/SystemActionTools.kt`
-  - [ ] `mcp/tools/NodeActionTools.kt`
-  - [ ] `mcp/tools/TextInputTools.kt`
-  - [ ] `mcp/tools/ScreenIntrospectionTools.kt`
-  - [ ] `mcp/tools/UtilityTools.kt`
-  - [ ] `mcp/tools/FileTools.kt`
-  - [ ] `mcp/tools/AppManagementTools.kt`
-  - [ ] `mcp/tools/CameraTools.kt`
-  - [ ] `mcp/tools/IntentTools.kt`
-  - [ ] `mcp/tools/NotificationTools.kt`
-  - [ ] `mcp/tools/LocationTools.kt`
-  - [ ] `mcp/tools/SharingTools.kt`
-- [ ] **Modify** `McpServerService.registerAllTools(...)`: build the registrar once at the top — `val registrar = LoggedToolRegistrar(server, serverLogRepository)` — and pass `registrar` in place of `server` to every `registerXxxTools(...)` call. `registerSharingBundle(...)`: replace its `server: Server` parameter with `registrar: LoggedToolRegistrar` and pass it through to `registerSharingTools(...)` (parameter count unchanged).
+  - [x] `mcp/tools/TouchActionTools.kt`
+  - [x] `mcp/tools/GestureTools.kt`
+  - [x] `mcp/tools/SystemActionTools.kt`
+  - [x] `mcp/tools/NodeActionTools.kt`
+  - [x] `mcp/tools/TextInputTools.kt`
+  - [x] `mcp/tools/ScreenIntrospectionTools.kt`
+  - [x] `mcp/tools/UtilityTools.kt`
+  - [x] `mcp/tools/FileTools.kt`
+  - [x] `mcp/tools/AppManagementTools.kt`
+  - [x] `mcp/tools/CameraTools.kt`
+  - [x] `mcp/tools/IntentTools.kt`
+  - [x] `mcp/tools/NotificationTools.kt`
+  - [x] `mcp/tools/LocationTools.kt`
+  - [x] `mcp/tools/SharingTools.kt`
+- [x] **Modify** `McpServerService.registerAllTools(...)`: build the registrar once at the top — `val registrar = LoggedToolRegistrar(server, serverLogRepository)` — and pass `registrar` in place of `server` to every `registerXxxTools(...)` call. `registerSharingBundle(...)`: replace its `server: Server` parameter with `registrar: LoggedToolRegistrar` and pass it through to `registerSharingTools(...)` (parameter count unchanged).
 
 Task DoD:
-- [ ] Zero direct `server.addTool(` calls remain under `mcp/tools/`; `registrar.addTool(` call sites total 57 with the per-file counts above; no register function's parameter count changed.
+- [x] Zero direct `server.addTool(` calls remain under `mcp/tools/`; `registrar.addTool(` call sites total 57 with the per-file counts above; no register function's parameter count changed.
 
 ### Task 3.3 — Integration helper + tests
 
-- [ ] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/McpIntegrationTestHelper.kt`: mirror Task 3.2 in its `registerAllTools(...)` — build `val registrar = LoggedToolRegistrar(server, deps.serverLog)` once and pass `registrar` in place of `server` to every register function.
-- [ ] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/SharingIntegrationTest.kt`: it calls `registerSharingTools(server, ...)` DIRECTLY (bypassing the helper) — replace the `server` argument with a `LoggedToolRegistrar(server, RecordingServerLogRepository())` (or the test's recording repo if it has one).
-- [ ] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/tools/LocationToolsTest.kt`: it calls `handler.register(mockServer, "android_", freshFixParamEnabled = true)` — wrap the mock: `handler.register(LoggedToolRegistrar(mockServer, RecordingServerLogRepository()), "android_", freshFixParamEnabled = true)`. Its existing `mockServer.addTool(...)` capture stubs keep working because `LoggedToolRegistrar.addTool` forwards to `server.addTool` with the same named arguments. Also update ANY other test-source caller of a `register*Tools(...)` function or `Tool.register(...)` method found via grep.
+- [x] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/McpIntegrationTestHelper.kt`: mirror Task 3.2 in its `registerAllTools(...)` — build `val registrar = LoggedToolRegistrar(server, deps.serverLog)` once and pass `registrar` in place of `server` to every register function.
+- [x] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/SharingIntegrationTest.kt`: it calls `registerSharingTools(server, ...)` DIRECTLY (bypassing the helper) — replace the `server` argument with a `LoggedToolRegistrar(server, RecordingServerLogRepository())` (or the test's recording repo if it has one).
+- [x] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/tools/LocationToolsTest.kt`: it calls `handler.register(mockServer, "android_", freshFixParamEnabled = true)` — wrap the mock: `handler.register(LoggedToolRegistrar(mockServer, RecordingServerLogRepository()), "android_", freshFixParamEnabled = true)`. Its existing `mockServer.addTool(...)` capture stubs keep working because `LoggedToolRegistrar.addTool` forwards to `server.addTool` with the same named arguments. Also update ANY other test-source caller of a `register*Tools(...)` function or `Tool.register(...)` method found via grep.
 
 **File**: `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/ToolCallLoggingIntegrationTest.kt`
 
@@ -1009,7 +1009,7 @@ Task DoD:
 | `cancelled invocation records no entry` | cancel the calling coroutine while the handler suspends → no entry; cancellation propagates |
 
 Task DoD:
-- [ ] New tests written (not run); the helper's `registerAllTools` mirrors production and compiles.
+- [x] New tests written (not run); the helper's `registerAllTools` mirrors production and compiles.
 
 ---
 

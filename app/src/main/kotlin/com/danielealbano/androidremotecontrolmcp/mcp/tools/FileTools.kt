@@ -76,10 +76,11 @@ class ListStorageLocationsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists available storage locations. Includes built-in locations " +
@@ -169,10 +170,11 @@ class ListFilesHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists files and directories in a storage location. The location must be authorized. " +
@@ -272,10 +274,11 @@ class ReadFileHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Reads a text file from an authorized storage location with line-based pagination. " +
@@ -357,10 +360,11 @@ class WriteFileHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Writes text content to a file in an authorized storage location. Creates the file if it " +
@@ -432,10 +436,11 @@ class AppendFileHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Appends text content to an existing file in an authorized storage location. If the " +
@@ -510,10 +515,11 @@ class FileReplaceHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs literal string replacement in a text file in an authorized storage location. " +
@@ -603,10 +609,11 @@ class DownloadFromUrlHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Downloads a file from a URL and saves it to an authorized storage location. Creates " +
@@ -678,10 +685,11 @@ class DeleteFileHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Deletes a single file from an authorized storage location. Cannot delete directories.",
                 inputSchema =
@@ -717,34 +725,34 @@ class DeleteFileHandler
  * Called from [McpServerService.startServer] during server startup.
  */
 fun registerFileTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     storageLocationProvider: StorageLocationProvider,
     fileOperationProvider: FileOperationProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(ListStorageLocationsHandler.TOOL_NAME)) {
-        ListStorageLocationsHandler(storageLocationProvider).register(server, toolNamePrefix)
+        ListStorageLocationsHandler(storageLocationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ListFilesHandler.TOOL_NAME)) {
-        ListFilesHandler(fileOperationProvider).register(server, toolNamePrefix)
+        ListFilesHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ReadFileHandler.TOOL_NAME)) {
-        ReadFileHandler(fileOperationProvider).register(server, toolNamePrefix)
+        ReadFileHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(WriteFileHandler.TOOL_NAME)) {
-        WriteFileHandler(fileOperationProvider).register(server, toolNamePrefix)
+        WriteFileHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(AppendFileHandler.TOOL_NAME)) {
-        AppendFileHandler(fileOperationProvider).register(server, toolNamePrefix)
+        AppendFileHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(FileReplaceHandler.TOOL_NAME)) {
-        FileReplaceHandler(fileOperationProvider).register(server, toolNamePrefix)
+        FileReplaceHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(DownloadFromUrlHandler.TOOL_NAME)) {
-        DownloadFromUrlHandler(fileOperationProvider).register(server, toolNamePrefix)
+        DownloadFromUrlHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(DeleteFileHandler.TOOL_NAME)) {
-        DeleteFileHandler(fileOperationProvider).register(server, toolNamePrefix)
+        DeleteFileHandler(fileOperationProvider).register(registrar, toolNamePrefix)
     }
 }

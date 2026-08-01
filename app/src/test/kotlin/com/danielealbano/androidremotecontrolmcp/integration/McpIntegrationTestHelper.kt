@@ -19,6 +19,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordina
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
@@ -173,8 +174,9 @@ object McpIntegrationTestHelper {
         perms: ToolPermissionsConfig = ToolPermissionsConfig(),
     ) {
         val toolNamePrefix = McpToolUtils.buildToolNamePrefix(deviceSlug)
+        val registrar = LoggedToolRegistrar(server, deps.serverLog)
         registerScreenIntrospectionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.accessibilityServiceProvider,
             deps.screenCaptureProvider,
@@ -187,11 +189,17 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
-        registerSystemActionTools(server, deps.actionExecutor, deps.accessibilityServiceProvider, toolNamePrefix, perms)
-        registerTouchActionTools(server, deps.actionExecutor, toolNamePrefix, perms)
-        registerGestureTools(server, deps.actionExecutor, toolNamePrefix, perms)
+        registerSystemActionTools(
+            registrar,
+            deps.actionExecutor,
+            deps.accessibilityServiceProvider,
+            toolNamePrefix,
+            perms,
+        )
+        registerTouchActionTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
+        registerGestureTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
         registerNodeActionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.actionExecutor,
@@ -201,7 +209,7 @@ object McpIntegrationTestHelper {
             perms,
         )
         registerTextInputTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.actionExecutor,
             deps.accessibilityServiceProvider,
@@ -211,7 +219,7 @@ object McpIntegrationTestHelper {
             perms,
         )
         registerUtilityTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.accessibilityServiceProvider,
@@ -219,12 +227,12 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
-        registerFileTools(server, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(server, deps.appManager, toolNamePrefix, perms)
-        registerCameraTools(server, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(server, deps.intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(server, deps.notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(server, deps.locationProvider, toolNamePrefix, perms)
+        registerFileTools(registrar, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, deps.appManager, toolNamePrefix, perms)
+        registerCameraTools(registrar, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, deps.intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(registrar, deps.notificationProvider, toolNamePrefix, perms)
+        registerLocationTools(registrar, deps.locationProvider, toolNamePrefix, perms)
     }
 
     /**

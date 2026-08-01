@@ -5,7 +5,6 @@ import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
-import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonObject
@@ -103,10 +102,11 @@ class NotificationListHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_list",
                 name = "${toolNamePrefix}notification_list",
                 description =
                     "List active notifications with structured data " +
@@ -159,10 +159,11 @@ class NotificationOpenHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_open",
                 name = "${toolNamePrefix}notification_open",
                 description =
                     "Open/tap a notification (fires its content intent). " +
@@ -210,10 +211,11 @@ class NotificationDismissHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_dismiss",
                 name = "${toolNamePrefix}notification_dismiss",
                 description = "Dismiss/remove a notification. Use notification_id from notification_list.",
                 inputSchema =
@@ -271,10 +273,11 @@ class NotificationSnoozeHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_snooze",
                 name = "${toolNamePrefix}notification_snooze",
                 description =
                     "Snooze a notification for a duration. " +
@@ -331,10 +334,11 @@ class NotificationActionHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_action",
                 name = "${toolNamePrefix}notification_action",
                 description =
                     "Execute a notification action button. " +
@@ -392,10 +396,11 @@ class NotificationReplyHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "notification_reply",
                 name = "${toolNamePrefix}notification_reply",
                 description =
                     "Reply to a notification action that accepts text input " +
@@ -434,27 +439,27 @@ class NotificationReplyHandler
 // ─────────────────────────────────────────────────────────────────────────────
 
 fun registerNotificationTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     notificationProvider: NotificationProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(NotificationListHandler.TOOL_NAME)) {
-        NotificationListHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationListHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationOpenHandler.TOOL_NAME)) {
-        NotificationOpenHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationOpenHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationDismissHandler.TOOL_NAME)) {
-        NotificationDismissHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationDismissHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationSnoozeHandler.TOOL_NAME)) {
-        NotificationSnoozeHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationSnoozeHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationActionHandler.TOOL_NAME)) {
-        NotificationActionHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationActionHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationReplyHandler.TOOL_NAME)) {
-        NotificationReplyHandler(notificationProvider).register(server, toolNamePrefix)
+        NotificationReplyHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
 }

@@ -9,7 +9,9 @@ import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.contentTypeOrOctetStream
 import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSharingTools
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkServiceImpl
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
@@ -447,7 +449,7 @@ class SharingIntegrationTest {
     ) {
         val server = newServer()
         registerSharingTools(
-            server,
+            LoggedToolRegistrar(server, RecordingServerLogRepository()),
             inbox,
             linkService,
             config.fileOperationProvider,

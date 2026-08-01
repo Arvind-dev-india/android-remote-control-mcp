@@ -26,6 +26,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStor
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
@@ -415,8 +416,9 @@ class McpServerService : Service() {
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
     ) {
+        val registrar = LoggedToolRegistrar(server, serverLogRepository)
         registerScreenIntrospectionTools(
-            server,
+            registrar,
             treeParser,
             accessibilityServiceProvider,
             screenCaptureProvider,
@@ -429,11 +431,11 @@ class McpServerService : Service() {
             toolNamePrefix,
             perms,
         )
-        registerSystemActionTools(server, actionExecutor, accessibilityServiceProvider, toolNamePrefix, perms)
-        registerTouchActionTools(server, actionExecutor, toolNamePrefix, perms)
-        registerGestureTools(server, actionExecutor, toolNamePrefix, perms)
+        registerSystemActionTools(registrar, actionExecutor, accessibilityServiceProvider, toolNamePrefix, perms)
+        registerTouchActionTools(registrar, actionExecutor, toolNamePrefix, perms)
+        registerGestureTools(registrar, actionExecutor, toolNamePrefix, perms)
         registerNodeActionTools(
-            server,
+            registrar,
             treeParser,
             elementFinder,
             actionExecutor,
@@ -443,7 +445,7 @@ class McpServerService : Service() {
             perms,
         )
         registerTextInputTools(
-            server,
+            registrar,
             treeParser,
             actionExecutor,
             accessibilityServiceProvider,
@@ -453,7 +455,7 @@ class McpServerService : Service() {
             perms,
         )
         registerUtilityTools(
-            server,
+            registrar,
             treeParser,
             elementFinder,
             accessibilityServiceProvider,
@@ -461,23 +463,23 @@ class McpServerService : Service() {
             toolNamePrefix,
             perms,
         )
-        registerFileTools(server, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(server, appManager, toolNamePrefix, perms)
-        registerCameraTools(server, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(server, intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(server, notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(server, locationProvider, toolNamePrefix, perms)
-        registerSharingBundle(server, toolNamePrefix, perms, fileSizeLimitMb)
+        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, appManager, toolNamePrefix, perms)
+        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(registrar, notificationProvider, toolNamePrefix, perms)
+        registerLocationTools(registrar, locationProvider, toolNamePrefix, perms)
+        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
     }
 
     private fun registerSharingBundle(
-        server: Server,
+        registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
     ) {
         registerSharingTools(
-            server,
+            registrar,
             sharedContentInbox,
             ephemeralFileLinkService,
             fileOperationProvider,

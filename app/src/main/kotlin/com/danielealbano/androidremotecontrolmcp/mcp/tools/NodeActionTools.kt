@@ -96,10 +96,11 @@ class FindNodesTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Find UI nodes matching the specified criteria " +
@@ -177,10 +178,11 @@ class ClickNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Click the specified accessibility node by node ID. " +
@@ -237,10 +239,11 @@ class LongClickNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Long-click the specified accessibility node by node ID. " +
@@ -343,10 +346,11 @@ class TapNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a gesture-based tap at a random point within the bounds of the " +
@@ -561,10 +565,11 @@ class ScrollToNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Scroll to make the specified node visible. Returns after the action is performed.",
                 inputSchema =
@@ -797,7 +802,7 @@ private fun getFreshWindowsLocked(
  */
 @Suppress("LongParameterList")
 fun registerNodeActionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     elementFinder: ElementFinder,
     actionExecutor: ActionExecutor,
@@ -808,23 +813,23 @@ fun registerNodeActionTools(
 ) {
     if (perms.isToolEnabled(FindNodesTool.TOOL_NAME)) {
         FindNodesTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ClickNodeTool.TOOL_NAME)) {
         ClickNodeTool(treeParser, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(LongClickNodeTool.TOOL_NAME)) {
         LongClickNodeTool(treeParser, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TapNodeTool.TOOL_NAME)) {
         TapNodeTool(treeParser, elementFinder, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ScrollToNodeTool.TOOL_NAME)) {
         ScrollToNodeTool(treeParser, elementFinder, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
 }
 

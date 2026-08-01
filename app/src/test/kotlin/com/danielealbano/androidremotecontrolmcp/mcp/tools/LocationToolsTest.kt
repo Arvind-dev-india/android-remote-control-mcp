@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 import com.danielealbano.androidremotecontrolmcp.data.model.LocationData
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -208,7 +209,11 @@ class LocationToolsTest {
                 )
             } returns Unit
 
-            handler.register(mockServer, "android_", freshFixParamEnabled = true)
+            handler.register(
+                LoggedToolRegistrar(mockServer, RecordingServerLogRepository()),
+                "android_",
+                freshFixParamEnabled = true,
+            )
 
             assertTrue(nameSlot.captured.contains("get_location"))
             assertTrue(descSlot.captured.contains("10 seconds"))

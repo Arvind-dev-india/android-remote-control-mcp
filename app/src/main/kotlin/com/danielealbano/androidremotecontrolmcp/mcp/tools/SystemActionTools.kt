@@ -72,10 +72,11 @@ class PressBackHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Presses the back button (global accessibility action). " +
@@ -121,10 +122,11 @@ class PressHomeHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Navigates to the home screen. Returns after the action is performed.",
                 inputSchema =
@@ -168,10 +170,11 @@ class PressRecentsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Opens the recent apps screen. Returns after the action is performed.",
                 inputSchema =
@@ -215,10 +218,11 @@ class OpenNotificationsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Pulls down the notification shade. Returns after the action is performed.",
                 inputSchema =
@@ -262,10 +266,11 @@ class OpenQuickSettingsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Opens the quick settings panel. Returns after the action is performed.",
                 inputSchema =
@@ -324,10 +329,11 @@ class DismissKeyboardHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Closes the on-screen keyboard if open; no-op if none (never navigates back). " +
@@ -355,28 +361,28 @@ class DismissKeyboardHandler
  * Called from [McpServerService.startServer] during server startup.
  */
 fun registerSystemActionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     actionExecutor: ActionExecutor,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(PressBackHandler.TOOL_NAME)) {
-        PressBackHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressBackHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressHomeHandler.TOOL_NAME)) {
-        PressHomeHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressHomeHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressRecentsHandler.TOOL_NAME)) {
-        PressRecentsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressRecentsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(OpenNotificationsHandler.TOOL_NAME)) {
-        OpenNotificationsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        OpenNotificationsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(OpenQuickSettingsHandler.TOOL_NAME)) {
-        OpenQuickSettingsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        OpenQuickSettingsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(DismissKeyboardHandler.TOOL_NAME)) {
-        DismissKeyboardHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        DismissKeyboardHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
 }

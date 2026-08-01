@@ -258,12 +258,13 @@ class GetScreenStateHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
             includeScreenshotParamEnabled: Boolean = true,
         ) {
             includeScreenshotEnabled = includeScreenshotParamEnabled
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Returns the current screen state: app info, screen dimensions, " +
@@ -345,7 +346,7 @@ class GetScreenStateHandler
  */
 @Suppress("LongParameterList")
 fun registerScreenIntrospectionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     screenCaptureProvider: ScreenCaptureProvider,
@@ -370,7 +371,7 @@ fun registerScreenIntrospectionTools(
             screenStateSnapshotCache,
             webViewNodeMerger,
         ).register(
-            server,
+            registrar,
             toolNamePrefix,
             includeScreenshotParamEnabled = perms.isParamEnabled(GetScreenStateHandler.TOOL_NAME, "include_screenshot"),
         )
