@@ -46,9 +46,9 @@ class LogsViewModel
         val selectedTypes: StateFlow<Set<ServerLogEntry.Type>> = _selectedTypes.asStateFlow()
 
         /**
-         * Newest entries for the Server screen's recent card, newest first. `conflate()` + a
-         * trailing pacing delay bound the recompute rate under write bursts (the latest revision
-         * is always processed eventually; no FlowPreview API needed).
+         * Newest entries for the Server screen's recent card, newest first. The `revision`
+         * StateFlow already conflates, and a trailing pacing delay bounds the recompute rate under
+         * write bursts (the latest revision is always processed eventually; no FlowPreview API needed).
          */
         val recentServerLogs: StateFlow<List<ServerLogEntry>> =
             serverLogRepository.revision
