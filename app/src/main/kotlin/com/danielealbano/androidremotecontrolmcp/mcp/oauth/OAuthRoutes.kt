@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.mcp.canonicalResource
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
 import io.ktor.http.ContentType
@@ -95,6 +96,10 @@ private suspend fun ApplicationCall.handleRegister(deps: OAuthRouteDeps) {
             client.logoUri?.let { put("logo_uri", it) }
         }
     respondText(Json.encodeToString(json), ContentType.Application.Json, HttpStatusCode.Created)
+    deps.serverLog.log(
+        ServerLogEntry.Type.OAUTH,
+        "OAuth client registered: ${client.clientName ?: client.clientId}",
+    )
 }
 
 private suspend fun ApplicationCall.handleAuthorize(
@@ -143,6 +148,15 @@ private suspend fun ApplicationCall.handleAuthorize(
             ),
             deps.nowMs(),
         )
+    val geoText =
+        clientGeo
+            ?.let { geo -> listOfNotNull(geo.city, geo.countryCode).joinToString(", ") }
+            ?.takeIf { it.isNotEmpty() }
+    val originText = listOfNotNull(clientIp, geoText).joinToString(" — ").takeIf { it.isNotEmpty() }
+    deps.serverLog.log(
+        ServerLogEntry.Type.OAUTH,
+        "OAuth authorization requested by $displayName" + (originText?.let { " from $it" } ?: ""),
+    )
     pendingAuthorize.put(
         approval.id,
         PendingAuthorizeRequest(

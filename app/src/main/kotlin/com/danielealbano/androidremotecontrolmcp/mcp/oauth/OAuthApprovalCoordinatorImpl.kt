@@ -1,5 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +19,9 @@ import javax.inject.Singleton
 @Singleton
 class OAuthApprovalCoordinatorImpl
     @Inject
-    constructor() : OAuthApprovalCoordinator {
+    constructor(
+        private val serverLog: ServerLogRepository,
+    ) : OAuthApprovalCoordinator {
         private class Entry(
             val approval: PendingApproval,
             var state: ApprovalState,
@@ -63,6 +67,17 @@ class OAuthApprovalCoordinatorImpl
                     // Expiry wins over a late approval: never hand out an authorization past the window.
                     entry.state =
                         if (nowMs >= entry.approval.expiresAtMs) ApprovalState.EXPIRED else ApprovalState.APPROVED
+                    if (entry.state == ApprovalState.APPROVED) {
+                        serverLog.log(
+                            ServerLogEntry.Type.OAUTH,
+                            "OAuth authorization approved for ${entry.approval.clientName}",
+                        )
+                    } else {
+                        serverLog.log(
+                            ServerLogEntry.Type.OAUTH,
+                            "OAuth authorization for ${entry.approval.clientName} expired",
+                        )
+                    }
                 }
                 refreshPendingLocked()
             }
@@ -70,7 +85,13 @@ class OAuthApprovalCoordinatorImpl
 
         override suspend fun deny(id: String) {
             mutex.withLock {
-                entries[id]?.takeIf { it.state == ApprovalState.PENDING }?.let { it.state = ApprovalState.DENIED }
+                entries[id]?.takeIf { it.state == ApprovalState.PENDING }?.let {
+                    it.state = ApprovalState.DENIED
+                    serverLog.log(
+                        ServerLogEntry.Type.OAUTH,
+                        "OAuth authorization denied for ${it.approval.clientName}",
+                    )
+                }
                 refreshPendingLocked()
             }
         }
@@ -83,6 +104,10 @@ class OAuthApprovalCoordinatorImpl
                 val entry = entries[id] ?: return@withLock ApprovalState.EXPIRED
                 if (entry.state == ApprovalState.PENDING && nowMs >= entry.approval.expiresAtMs) {
                     entry.state = ApprovalState.EXPIRED
+                    serverLog.log(
+                        ServerLogEntry.Type.OAUTH,
+                        "OAuth authorization for ${entry.approval.clientName} expired",
+                    )
                     refreshPendingLocked()
                 }
                 entry.state
@@ -93,6 +118,12 @@ class OAuthApprovalCoordinatorImpl
             while (iterator.hasNext()) {
                 val entry = iterator.next()
                 if (nowMs >= entry.approval.expiresAtMs) {
+                    if (entry.state == ApprovalState.PENDING) {
+                        serverLog.log(
+                            ServerLogEntry.Type.OAUTH,
+                            "OAuth authorization for ${entry.approval.clientName} expired",
+                        )
+                    }
                     iterator.remove()
                 }
             }

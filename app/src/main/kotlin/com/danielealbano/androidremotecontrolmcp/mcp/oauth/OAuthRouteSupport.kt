@@ -1,6 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.geo.GeoIpResolver
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.plugins.origin
@@ -9,17 +10,22 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Collaborators for the OAuth HTTP layer. [nowMs] is injectable for tests; [publicUrlOverride] pins the
- * host used by every metadata/`aud`/redirect (empty = auto-detect).
+ * host used by every metadata/`aud`/redirect (empty = auto-detect). Wraps [OAuthServerDeps] with
+ * delegating getters so the constructor stays within detekt's `LongParameterList` threshold while
+ * carrying the extra [serverLog] sink (no `@Suppress` needed).
  */
 class OAuthRouteDeps(
-    val clientRepository: OAuthClientRepository,
-    val tokenService: JwtTokenService,
-    val authorizationCodeStore: AuthorizationCodeStore,
-    val approvalCoordinator: OAuthApprovalCoordinator,
+    private val oauth: OAuthServerDeps,
     val publicUrlOverride: String,
-    val geoIpResolver: GeoIpResolver,
+    val serverLog: ServerLogRepository,
 ) {
-    /** Clock seam (defaulted; not a constructor param to keep the list within detekt's threshold). */
+    val clientRepository: OAuthClientRepository get() = oauth.oauthClientRepository
+    val tokenService: JwtTokenService get() = oauth.jwtTokenService
+    val authorizationCodeStore: AuthorizationCodeStore get() = oauth.authorizationCodeStore
+    val approvalCoordinator: OAuthApprovalCoordinator get() = oauth.approvalCoordinator
+    val geoIpResolver: GeoIpResolver get() = oauth.geoIpResolver
+
+    /** Clock seam (defaulted; not a constructor param to keep the list small). */
     val nowMs: () -> Long = { System.currentTimeMillis() }
 }
 

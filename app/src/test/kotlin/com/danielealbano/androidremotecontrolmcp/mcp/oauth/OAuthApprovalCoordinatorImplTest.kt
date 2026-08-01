@@ -1,6 +1,9 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.geo.GeoLocation
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -9,7 +12,8 @@ import org.junit.jupiter.api.Test
 
 @DisplayName("OAuthApprovalCoordinatorImpl")
 class OAuthApprovalCoordinatorImplTest {
-    private fun newCoordinator() = OAuthApprovalCoordinatorImpl()
+    private fun newCoordinator(serverLog: ServerLogRepository = RecordingServerLogRepository()) =
+        OAuthApprovalCoordinatorImpl(serverLog)
 
     private fun req(
         logoUri: String? = null,
@@ -87,5 +91,82 @@ class OAuthApprovalCoordinatorImplTest {
             val approval = coordinator.createPending(req(), 0L)
             assertEquals(ApprovalState.EXPIRED, coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1))
             assertTrue(coordinator.observePending().value.none { it.id == approval.id })
+        }
+
+    @Test
+    @DisplayName("approve logs approved")
+    fun approveLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.approve(approval.id, 1L)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("approved for Claude"))
+        }
+
+    @Test
+    @DisplayName("late approve logs expired")
+    fun lateApproveLogsExpired() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.approve(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("expired"))
+        }
+
+    @Test
+    @DisplayName("deny logs denied")
+    fun denyLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.deny(approval.id)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("denied for Claude"))
+        }
+
+    @Test
+    @DisplayName("stateOf lazy expiry logs expired")
+    fun stateOfLazyExpiryLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("expired"))
+        }
+
+    @Test
+    @DisplayName("cap eviction logs nothing")
+    fun capEvictionLogsNothing() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            repeat(OAuthPolicy.MAX_PENDING_APPROVALS + 1) { coordinator.createPending(req(), 0L) }
+
+            assertTrue(serverLog.ofType(ServerLogEntry.Type.OAUTH).isEmpty())
+        }
+
+    @Test
+    @DisplayName("purge of stale pending logs expired")
+    fun purgeStalePendingLogsExpired() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            coordinator.createPending(req(), 0L)
+            coordinator.createPending(req(), OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entries = serverLog.ofType(ServerLogEntry.Type.OAUTH)
+            assertEquals(1, entries.size)
+            assertTrue(entries.first().message.contains("expired"))
         }
 }

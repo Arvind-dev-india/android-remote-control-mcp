@@ -61,7 +61,7 @@ class McpServer(
     private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private val running = AtomicBoolean(false)
 
-    private val accessValidator = OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository)
+    private val accessValidator = OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository, serverLog)
 
     /**
      * Starts the server. Non-blocking — the server runs on its own threads.
@@ -200,12 +200,9 @@ class McpServer(
             if (config.oauthEnabled) {
                 installOAuthRoutes(
                     OAuthRouteDeps(
-                        clientRepository = oauth.oauthClientRepository,
-                        tokenService = oauth.jwtTokenService,
-                        authorizationCodeStore = oauth.authorizationCodeStore,
-                        approvalCoordinator = oauth.approvalCoordinator,
+                        oauth = oauth,
                         publicUrlOverride = config.publicUrlOverride,
-                        geoIpResolver = oauth.geoIpResolver,
+                        serverLog = serverLog,
                     ),
                 )
             }

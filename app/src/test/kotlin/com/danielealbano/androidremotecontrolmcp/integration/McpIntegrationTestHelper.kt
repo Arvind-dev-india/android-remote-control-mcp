@@ -18,6 +18,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthAccessValidator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
@@ -413,10 +414,10 @@ object McpIntegrationTestHelper {
                 produceFile = { java.io.File(tempDir, "oauth_clients.preferences_pb") },
             )
         // spyk wraps the real impl transparently so tests can coVerify last-used touches.
-        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore))
+        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore, deps.serverLog))
         val codeStore = AuthorizationCodeStoreImpl()
-        val approvalCoordinator = OAuthApprovalCoordinatorImpl()
-        val accessValidator = OAuthAccessValidator(tokenService, clientRepository)
+        val approvalCoordinator = OAuthApprovalCoordinatorImpl(deps.serverLog)
+        val accessValidator = OAuthAccessValidator(tokenService, clientRepository, deps.serverLog)
 
         testApplication {
             application {
@@ -435,12 +436,16 @@ object McpIntegrationTestHelper {
                 routing {
                     installOAuthRoutes(
                         OAuthRouteDeps(
-                            clientRepository = clientRepository,
-                            tokenService = tokenService,
-                            authorizationCodeStore = codeStore,
-                            approvalCoordinator = approvalCoordinator,
+                            oauth =
+                                OAuthServerDeps(
+                                    jwtTokenService = tokenService,
+                                    oauthClientRepository = clientRepository,
+                                    authorizationCodeStore = codeStore,
+                                    approvalCoordinator = approvalCoordinator,
+                                    geoIpResolver = { null },
+                                ),
                             publicUrlOverride = publicUrlOverride,
-                            geoIpResolver = { null },
+                            serverLog = deps.serverLog,
                         ),
                     )
                 }

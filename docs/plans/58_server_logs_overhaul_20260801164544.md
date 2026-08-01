@@ -1018,19 +1018,19 @@ Task DoD:
 Why: registration, the approval lifecycle, token grants, per-request validation, and revocation each have a single precise site (mapped in the investigation); the idle-session event needs the persisted `lastUsedAtMs` read before it is touched.
 
 Acceptance criteria:
-- [ ] Events 6-11 of the catalog all emit `OAUTH` entries with client display names (never tokens).
-- [ ] Idle threshold is 30 minutes, per client, from persisted `lastUsedAtMs`.
+- [x] Events 6-11 of the catalog all emit `OAUTH` entries with client display names (never tokens).
+- [x] Idle threshold is 30 minutes, per client, from persisted `lastUsedAtMs`.
 
 ### Task 4.1 — Policy constant + access validator
 
-- [ ] **Modify** `mcp/oauth/OAuthPolicy.kt` — add:
+- [x] **Modify** `mcp/oauth/OAuthPolicy.kt` — add:
 
 ```kotlin
     /** Idle gap after which a client's next authenticated request is logged as a new session (30 min). */
     const val IDLE_SESSION_LOG_THRESHOLD_MS = 1_800_000L
 ```
 
-- [ ] **Modify** `mcp/oauth/OAuthAccessValidator.kt`:
+- [x] **Modify** `mcp/oauth/OAuthAccessValidator.kt`:
   - Add constructor parameter `private val serverLog: ServerLogRepository` after `clientRepository` (before the defaulted params).
   - Rework `validate` so the client is captured and the idle gap is evaluated BEFORE the debounced touch, ATOMICALLY gated on winning the per-client debounce slot (`ConcurrentHashMap.compute` is atomic per key, so two concurrent post-idle requests produce exactly ONE idle entry):
 
@@ -1071,14 +1071,14 @@ Acceptance criteria:
 ```
 
   with `private const val MILLIS_PER_MINUTE = 60_000L` added to the private companion. This preserves the existing debounce semantics (the touch happens exactly when it did before) while making the idle-log emission race-free.
-- [ ] **Modify** `mcp/McpServer.kt` line constructing the validator: `OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository, serverLog)`.
+- [x] **Modify** `mcp/McpServer.kt` line constructing the validator: `OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository, serverLog)`.
 
 Task DoD:
-- [ ] The idle-gap check reads `client.lastUsedAtMs` BEFORE the debounced `touchLastUsed`; the threshold constant lives in `OAuthPolicy`; validation outcomes are unchanged.
+- [x] The idle-gap check reads `client.lastUsedAtMs` BEFORE the debounced `touchLastUsed`; the threshold constant lives in `OAuthPolicy`; validation outcomes are unchanged.
 
 ### Task 4.2 — Routes and token grants
 
-- [ ] **Modify** `mcp/oauth/OAuthRouteSupport.kt` — detekt's default `LongParameterList` allows at most 6 constructor parameters (the current 6-param `OAuthRouteDeps` deliberately keeps `nowMs` out for this reason), so adding a 7th is NOT allowed. Restructure `OAuthRouteDeps` to 3 constructor parameters with delegating getters, so NO reference in `OAuthRoutes.kt`/`OAuthTokenGrants.kt` bodies changes (update the class KDoc accordingly):
+- [x] **Modify** `mcp/oauth/OAuthRouteSupport.kt` — detekt's default `LongParameterList` allows at most 6 constructor parameters (the current 6-param `OAuthRouteDeps` deliberately keeps `nowMs` out for this reason), so adding a 7th is NOT allowed. Restructure `OAuthRouteDeps` to 3 constructor parameters with delegating getters, so NO reference in `OAuthRoutes.kt`/`OAuthTokenGrants.kt` bodies changes (update the class KDoc accordingly):
 
 ```kotlin
 class OAuthRouteDeps(
@@ -1097,8 +1097,8 @@ class OAuthRouteDeps(
 }
 ```
 
-- [ ] **Modify** `mcp/McpServer.kt` — the construction site becomes `OAuthRouteDeps(oauth = oauth, publicUrlOverride = config.publicUrlOverride, serverLog = serverLog)`.
-- [ ] **Modify** `mcp/oauth/OAuthRoutes.kt`:
+- [x] **Modify** `mcp/McpServer.kt` — the construction site becomes `OAuthRouteDeps(oauth = oauth, publicUrlOverride = config.publicUrlOverride, serverLog = serverLog)`.
+- [x] **Modify** `mcp/oauth/OAuthRoutes.kt`:
   - `handleRegister`: after the `respondText(..., HttpStatusCode.Created)` success response, add:
 
 ```kotlin
@@ -1122,7 +1122,7 @@ class OAuthRouteDeps(
     )
 ```
 
-- [ ] **Modify** `mcp/oauth/OAuthTokenGrants.kt`:
+- [x] **Modify** `mcp/oauth/OAuthTokenGrants.kt`:
   - `handleAuthorizationCodeGrant` success path — before `respondTokens(...)`:
 
 ```kotlin
@@ -1142,11 +1142,11 @@ class OAuthRouteDeps(
   Constraint: use the safe-call form above — `client` is declared `OAuthClient?` and the composite `rejected` guard does not smart-cast it.
 
 Task DoD:
-- [ ] Entries are emitted on SUCCESS paths only; every error branch responds exactly as before with no log entry.
+- [x] Entries are emitted on SUCCESS paths only; every error branch responds exactly as before with no log entry.
 
 ### Task 4.3 — Approval coordinator
 
-- [ ] **Modify** `mcp/oauth/OAuthApprovalCoordinatorImpl.kt`:
+- [x] **Modify** `mcp/oauth/OAuthApprovalCoordinatorImpl.kt`:
   - Constructor becomes `@Inject constructor(private val serverLog: ServerLogRepository)`.
   - `approve`: inside the `let`, log after the state assignment — `APPROVED` → `"OAuth authorization approved for ${entry.approval.clientName}"`; `EXPIRED` (late approval) → `"OAuth authorization for ${entry.approval.clientName} expired"`.
   - `deny`: inside the `let`, log `"OAuth authorization denied for ${it.approval.clientName}"`.
@@ -1155,11 +1155,11 @@ Task DoD:
   - `dropOldestPendingIfAtCapLocked` is NOT instrumented — cap eviction is outside the agreed event set (approved / denied / expired only).
 
 Task DoD:
-- [ ] The approved/denied/expired transitions each log exactly once across the four instrumented sites; cap eviction logs nothing.
+- [x] The approved/denied/expired transitions each log exactly once across the four instrumented sites; cap eviction logs nothing.
 
 ### Task 4.4 — Client revocation
 
-- [ ] **Modify** `data/repository/OAuthClientRepositoryImpl.kt`:
+- [x] **Modify** `data/repository/OAuthClientRepositoryImpl.kt`:
   - Constructor gains `private val serverLog: ServerLogRepository` (after the DataStore param).
   - `revoke`: capture the client before filtering; when one was removed, log after `persist(updated)`:
 
@@ -1181,12 +1181,12 @@ Task DoD:
 ```
 
 Task DoD:
-- [ ] Revoking an unknown clientId logs nothing; a successful revoke logs the client name.
+- [x] Revoking an unknown clientId logs nothing; a successful revoke logs the client name.
 
 ### Task 4.5 — Helper + tests
 
-- [ ] **Modify** `McpIntegrationTestHelper`: `OAuthAccessValidator(tokenService, clientRepository, deps.serverLog)`; update its DIRECT constructions `OAuthClientRepositoryImpl(clientsDataStore)` → `OAuthClientRepositoryImpl(clientsDataStore, deps.serverLog)` and `OAuthApprovalCoordinatorImpl()` → `OAuthApprovalCoordinatorImpl(deps.serverLog)`; for the routes, build `OAuthServerDeps(jwtTokenService = ..., oauthClientRepository = ..., authorizationCodeStore = ..., approvalCoordinator = ..., geoIpResolver = ...)` from the helper's existing components and pass `OAuthRouteDeps(oauth = ..., publicUrlOverride = ..., serverLog = deps.serverLog)` (mirrors the restructured constructor).
-- [ ] Update existing tests constructing the changed classes: `OAuthAccessValidatorTest`, `OAuthApprovalCoordinatorImplTest`, `OAuthClientRepositoryImplTest`, plus ANY other test-source construction site of the classes changed in US4 found via grep — pass a `RecordingServerLogRepository`.
+- [x] **Modify** `McpIntegrationTestHelper`: `OAuthAccessValidator(tokenService, clientRepository, deps.serverLog)`; update its DIRECT constructions `OAuthClientRepositoryImpl(clientsDataStore)` → `OAuthClientRepositoryImpl(clientsDataStore, deps.serverLog)` and `OAuthApprovalCoordinatorImpl()` → `OAuthApprovalCoordinatorImpl(deps.serverLog)`; for the routes, build `OAuthServerDeps(jwtTokenService = ..., oauthClientRepository = ..., authorizationCodeStore = ..., approvalCoordinator = ..., geoIpResolver = ...)` from the helper's existing components and pass `OAuthRouteDeps(oauth = ..., publicUrlOverride = ..., serverLog = deps.serverLog)` (mirrors the restructured constructor).
+- [x] Update existing tests constructing the changed classes: `OAuthAccessValidatorTest`, `OAuthApprovalCoordinatorImplTest`, `OAuthClientRepositoryImplTest`, plus ANY other test-source construction site of the classes changed in US4 found via grep — pass a `RecordingServerLogRepository`.
 
 **File additions to the three existing test classes above** (same files, new tests):
 
@@ -1218,7 +1218,7 @@ Task DoD:
 | `token values never appear in entries` | no JWT substring (`eyJ`) in any recorded message |
 
 Task DoD:
-- [ ] Tests written (not run); no OAuth log message ever includes a token, code, or code_verifier value.
+- [x] Tests written (not run); no OAuth log message ever includes a token, code, or code_verifier value.
 
 ---
 
