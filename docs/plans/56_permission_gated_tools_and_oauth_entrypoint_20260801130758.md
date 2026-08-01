@@ -46,7 +46,7 @@ The repo has **no Compose UI test infrastructure** (no `createComposeRule`, no `
 
 ### Task 1.1 — Create the shared optional-permission model
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/OptionalToolPermission.kt`
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/OptionalToolPermission.kt`
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.data.model
@@ -151,13 +151,13 @@ object OptionalToolPermissions {
 ```
 
 **DoD**:
-- [ ] Enum has exactly four values; MICROPHONE appears only in `PARAMS_BY_PERMISSION`.
-- [ ] Tool/param names match the handler `TOOL_NAME`/param constants and the `McpToolsSettingsScreen` catalog strings.
-- [ ] `effectivePermissions` returns a new object; `stored` is never mutated.
+- [x] Enum has exactly four values; MICROPHONE appears only in `PARAMS_BY_PERMISSION`.
+- [x] Tool/param names match the handler `TOOL_NAME`/param constants and the `McpToolsSettingsScreen` catalog strings.
+- [x] `effectivePermissions` returns a new object; `stored` is never mutated.
 
 ### Task 1.2 — Use the effective config at server start
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt`
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt`
 
 Replace the current registration call (`registerAllTools(sdkServer, toolNamePrefix, config.toolPermissionsConfig, config.fileSizeLimitMb)`, line ~265) with:
 
@@ -185,9 +185,9 @@ registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimit
 Add imports: `com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermissions`, `com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils`, `com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService`. (The `OptionalToolPermission` enum is not referenced directly here, so it is NOT imported.)
 
 **DoD**:
-- [ ] `config.toolPermissionsConfig` is never mutated; only local `effectivePerms` carries the extra disabled tools/params.
-- [ ] No `register*Tools` function is modified.
-- [ ] All four granted signals come from `PermissionUtils` — identical to the UI — NOT from `cameraProvider`/`notificationProvider`.
+- [x] `config.toolPermissionsConfig` is never mutated; only local `effectivePerms` carries the extra disabled tools/params.
+- [x] No `register*Tools` function is modified.
+- [x] All four granted signals come from `PermissionUtils` — identical to the UI — NOT from `cameraProvider`/`notificationProvider`.
 
 ### Task 1.3 — Tests
 

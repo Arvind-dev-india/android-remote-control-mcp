@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.danielealbano.androidremotecontrolmcp.McpApplication
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
@@ -51,6 +52,7 @@ import com.danielealbano.androidremotecontrolmcp.services.apps.AppManager
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
+import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
@@ -62,6 +64,7 @@ import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocatio
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
 import com.danielealbano.androidremotecontrolmcp.ui.MainActivity
 import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
+import com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
@@ -262,7 +265,24 @@ class McpServerService : Service() {
                                 ),
                         ),
                 )
-            registerAllTools(sdkServer, toolNamePrefix, config.toolPermissionsConfig, config.fileSizeLimitMb)
+            // ALL four signals MUST come from PermissionUtils — the SAME source the UI uses
+            // (MainViewModel.refreshPermissionStatus) — so the server-start gate and the settings grey-out
+            // never diverge. Do NOT use cameraProvider.isCameraPermissionGranted()/isMicrophonePermissionGranted()
+            // or notificationProvider.isReady() here.
+            val grantedOptionalPermissions =
+                OptionalToolPermissions.grantedPermissions(
+                    camera = PermissionUtils.isCameraPermissionGranted(this@McpServerService),
+                    microphone = PermissionUtils.isMicrophonePermissionGranted(this@McpServerService),
+                    location = PermissionUtils.isLocationPermissionGranted(this@McpServerService),
+                    notificationListener =
+                        PermissionUtils.isNotificationListenerEnabled(
+                            this@McpServerService,
+                            McpNotificationListenerService::class.java,
+                        ),
+                )
+            val effectivePerms =
+                OptionalToolPermissions.effectivePermissions(config.toolPermissionsConfig, grantedOptionalPermissions)
+            registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimitMb)
 
             // Create and start the Ktor server
             mcpServer =
