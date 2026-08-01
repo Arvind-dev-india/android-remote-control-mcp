@@ -13,6 +13,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The four jobs below are independent — none consumes another's artifacts; each checks out
+# fresh, rebuilds its native deps from cache, and runs its own Gradle tasks. They therefore run
+# in PARALLEL on separate runners instead of in a needs: chain, cutting wall-clock from the sum
+# of their durations (~36 min) to the longest single job (~13 min). The former chain existed only
+# as a fail-fast gate; we trade that for faster feedback. Do NOT re-add needs: unless a real
+# artifact dependency is introduced.
 jobs:
   lint:
     name: Lint
@@ -61,7 +67,6 @@ jobs:
   test-unit:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: lint
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -151,7 +156,6 @@ jobs:
   test-e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: test-unit
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -294,7 +298,6 @@ jobs:
   build-release:
     name: Build Release
     runs-on: ubuntu-latest
-    needs: test-e2e
     timeout-minutes: 25
     steps:
       - name: Checkout
