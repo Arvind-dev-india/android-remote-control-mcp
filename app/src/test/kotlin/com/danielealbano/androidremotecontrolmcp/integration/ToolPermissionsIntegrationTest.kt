@@ -276,7 +276,6 @@ class ToolPermissionsIntegrationTest {
                 "open_notifications",
                 "open_quick_settings",
                 "dismiss_keyboard",
-                "get_device_logs",
                 "pinch",
                 "custom_gesture",
                 "find_nodes",
