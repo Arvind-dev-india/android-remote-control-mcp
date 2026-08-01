@@ -19,6 +19,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
@@ -51,6 +52,7 @@ class MainViewModel
         private val storageLocationProvider: StorageLocationProvider,
         private val batteryOptimizationManager: BatteryOptimizationManager,
         @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        private val approvalCoordinator: OAuthApprovalCoordinator,
     ) : ViewModel() {
         private val _serverConfig = MutableStateFlow(ServerConfig())
         val serverConfig: StateFlow<ServerConfig> = _serverConfig.asStateFlow()
@@ -543,6 +545,12 @@ class MainViewModel
             settingsRepository.serverConfig
                 .map { it.toolPermissionsConfig }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), ToolPermissionsConfig())
+
+        val pendingApprovalCount: StateFlow<Int> =
+            approvalCoordinator
+                .observePending()
+                .map { it.size }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), 0)
 
         fun updateToolEnabled(
             toolName: String,

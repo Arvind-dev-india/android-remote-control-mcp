@@ -122,8 +122,9 @@
     <string name="permission_location_rationale">Read GPS position.</string>
     <string name="permission_microphone_rationale">Adds audio to recorded video.</string>
 
-    <!-- Permission Warning -->
-    <string name="permission_warning_message">Some permissions are not granted. Tap to review.</string>
+    <!-- Permission Warning (main screen: accessibility is the one required permission) -->
+    <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
+    <string name="server_pending_approvals_message">%1$d pending connection approval(s). Tap to review.</string>
 
     <!-- Battery Optimization -->
     <string name="battery_optimization_card_title">Keep the server running</string>

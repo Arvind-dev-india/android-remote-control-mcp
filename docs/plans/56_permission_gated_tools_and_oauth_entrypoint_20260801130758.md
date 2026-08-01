@@ -360,7 +360,7 @@ composable(SettingsRoute.McpTools.route) {
 
 ### Task 3.1 — Strings (defined before their first use)
 
-- [ ] **Modify** `app/src/main/res/values/strings.xml`:
+- [x] **Modify** `app/src/main/res/values/strings.xml`:
   - CHANGE the value of the existing `permission_warning_message` (currently "Some permissions are not granted. Tap to review.") to the accessibility-specific text. This string is referenced ONLY by the main-screen `PermissionWarningCard`, which is now accessibility-only — so repurposing it (rather than adding a new key) avoids leaving an orphaned/unused resource:
     ```xml
     <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
@@ -371,12 +371,12 @@ composable(SettingsRoute.McpTools.route) {
     ```
 
 **DoD**:
-- [ ] `permission_warning_message` is repurposed in place (no new accessibility string added, no orphaned/unused string left behind).
-- [ ] `server_pending_approvals_message` key is unique in the file.
+- [x] `permission_warning_message` is repurposed in place (no new accessibility string added, no orphaned/unused string left behind).
+- [x] `server_pending_approvals_message` key is unique in the file.
 
 ### Task 3.2 — Expose pending-approval count from `MainViewModel`
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/MainViewModel.kt`
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/MainViewModel.kt`
 
 1. Add constructor param `private val approvalCoordinator: OAuthApprovalCoordinator,` as the **last** parameter, immediately AFTER `@param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,`. (Position matters: the four test construction sites pass positional args ending in the dispatcher — see Task 3.5.)
 2. Expose (reusing the existing `FLOW_TIMEOUT_MS` constant, line ~569; `map`/`stateIn`/`SharingStarted` are already imported):
@@ -392,11 +392,11 @@ val pendingApprovalCount: StateFlow<Int> =
 Add import: `com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator` (only this import is new).
 
 **DoD**:
-- [ ] Hilt still constructs `MainViewModel` (coordinator is already bound in `AppModule`).
+- [x] Hilt still constructs `MainViewModel` (coordinator is already bound in `AppModule`).
 
 ### Task 3.3 — Gate both start buttons in `ServerStatusCard`
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ServerStatusCard.kt`
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ServerStatusCard.kt`
 
 1. Add parameter `startEnabled: Boolean,` **before** `modifier: Modifier = Modifier` in `ServerStatusCard`.
 2. Add two pure, `internal` top-level helpers (unit-testable, no Compose):
@@ -423,12 +423,12 @@ internal fun channelStartStopButtonEnabled(
 5. Update the `@Preview` to pass `startEnabled = true`.
 
 **DoD**:
-- [ ] Stop actions remain enabled when running; start actions require `startEnabled`.
-- [ ] Behavior identical to before when `startEnabled = true`.
+- [x] Stop actions remain enabled when running; start actions require `startEnabled`.
+- [x] Behavior identical to before when `startEnabled = true`.
 
 ### Task 3.4 — Update `ServerScreen`
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/ServerScreen.kt`
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/ServerScreen.kt`
 
 1. Remove the `hasAllPermissions` block (lines ~75-80) and the now-unused permission collects `isNotificationPermissionGranted`, `isCameraPermissionGranted`, `isMicrophonePermissionGranted`, `isNotificationListenerEnabled` (they are used ONLY by `hasAllPermissions`). Keep `isAccessibilityEnabled` and `isBatteryOptimizationIgnored`.
 2. Warning gate becomes accessibility-only:
@@ -460,8 +460,8 @@ if (pendingApprovalCount > 0) {
 Add imports: `com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity`, `androidx.compose.material.icons.filled.Notifications`. (`Intent`, `LocalContext`, `Icons` are already imported.)
 
 **DoD**:
-- [ ] No unused variables / no new ktlint/detekt warnings after removing the extra collects.
-- [ ] Card visible only when count > 0; tap launches `ApprovalActivity`.
+- [x] No unused variables / no new ktlint/detekt warnings after removing the extra collects.
+- [x] Card visible only when count > 0; tap launches `ApprovalActivity`.
 
 ### Task 3.5 — Tests
 
