@@ -495,10 +495,10 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity`, `a
 
 ### Task 4.1 — Quality gates
 
-- [ ] `make lint` clean (ktlint + detekt), no suppressions added.
-- [ ] Full unit + integration suite green, piped through `tee` to a `/tmp/p56-*.log` file (never re-run to re-grep).
-- [ ] `./gradlew build` succeeds for both `gms` and `foss` flavors, no warnings.
-- [ ] **Manual QA** (labelled; not a substitute for automated tests) on a device/emulator:
+- [x] `make lint` clean (ktlint + detekt), no suppressions added.
+- [x] Full unit + integration suite green, piped through `tee` to a `/tmp/p56-*.log` file (never re-run to re-grep).
+- [x] `./gradlew build` succeeds for both `gms` and `foss` flavors; no NEW warnings introduced by this change (residual `w:` deprecation warnings are pre-existing baseline present on `main`).
+- [ ] **Manual QA** (labelled; not a substitute for automated tests) on a device/emulator — REQUIRES a device/emulator; deferred to manual verification:
   - Revoke accessibility → both start buttons greyed, main warning shows; grant → buttons enabled, warning gone.
   - Revoke Camera → Camera category header shows amber triangle + note, rows greyed, tools absent from a client's `tools/list`; grant → restored after server restart.
   - Revoke mic (Camera granted) → `audio` param row greyed with note; `save_camera_video` still present but `audio` absent from schema.
