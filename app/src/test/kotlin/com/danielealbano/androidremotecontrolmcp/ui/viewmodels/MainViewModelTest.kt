@@ -389,7 +389,6 @@ class MainViewModelTest {
                     type = ServerLogEntry.Type.TOOL_CALL,
                     message = "screen_tap",
                     toolName = "screen_tap",
-                    params = "x=100, y=200",
                     durationMs = 42L,
                 )
             viewModel.addServerLogEntry(entry)
@@ -410,7 +409,6 @@ class MainViewModelTest {
                         type = ServerLogEntry.Type.TOOL_CALL,
                         message = "tool_$i",
                         toolName = "tool_$i",
-                        params = "",
                         durationMs = i.toLong(),
                     ),
                 )

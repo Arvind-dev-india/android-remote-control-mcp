@@ -41,13 +41,13 @@
 Why: the current pipeline (companion `SharedFlow`, replay 0, consumed only while a `MainViewModel` exists, 100-entry in-memory list) loses every event emitted while the UI is closed and on process death. A process-independent, disk-backed store is the foundation every other story writes to.
 
 Acceptance criteria:
-- [ ] `ServerLogEntry` has no `params` field; `Type` has 7 values with stable byte ids.
-- [ ] Store persists entries across instances, rotates at 1000 entries/segment, caps at 20 segments, truncates variable data to a 500-byte per-entry budget (tool name ≤ 100 B first, message gets the remainder) at UTF-8 boundaries.
-- [ ] Repository is a Hilt singleton: non-suspend `log()` (queued single writer), `readIndex()` served from an in-memory cache (initial load via mmap, incremental append, eviction on rotation, reset on clear), on-demand `readEntry()`, `recent(n)`, `clear()`, `revision` StateFlow; messages sanitized via `Logger.sanitize`.
+- [x] `ServerLogEntry` has no `params` field; `Type` has 7 values with stable byte ids.
+- [x] Store persists entries across instances, rotates at 1000 entries/segment, caps at 20 segments, truncates variable data to a 500-byte per-entry budget (tool name ≤ 100 B first, message gets the remainder) at UTF-8 boundaries.
+- [x] Repository is a Hilt singleton: non-suspend `log()` (queued single writer), `readIndex()` served from an in-memory cache (initial load via mmap, incremental append, eviction on rotation, reset on clear), on-demand `readEntry()`, `recent(n)`, `clear()`, `revision` StateFlow; messages sanitized via `Logger.sanitize`.
 
 ### Task 1.1 — ServerLogEntry model rework
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/ServerLogEntry.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/ServerLogEntry.kt`:
   - Remove the `params` property and its KDoc line, and remove `MAX_PARAMS_LENGTH` (delete the whole `companion object` if it becomes empty).
   - Add file-private constants for the byte ids at the top of the file (after the imports). detekt's `MagicNumber` rule fires on enum constructor literals outside `[-1, 0, 1, 2]` but exempts constant declarations, so the ids MUST be constants — no suppression:
 
@@ -96,15 +96,15 @@ enum class Type(val id: Byte) {
 }
 ```
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ServerLogsSection.kt`: remove the `if (!entry.params.isNullOrEmpty()) { ... }` block in the `TOOL_CALL` branch, remove `params = """{"x": 500, "y": 800}"""` from the preview, and extend `ServerLogEntryRow`'s second `when` branch from `TUNNEL, SERVER ->` to `TUNNEL, SERVER, OAUTH, AUTH, CHANNEL, SETTINGS ->` so the `when` stays exhaustive over the 7-value enum (no compiler warning) and every new type renders its message (keeps the file compiling; the full redesign happens in US7).
-- [ ] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/MainViewModelTest.kt`: remove the `params = ...` named arguments from the two `ServerLogEntry(...)` constructions (the tests themselves are removed in Task 7.7).
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ServerLogsSection.kt`: remove the `if (!entry.params.isNullOrEmpty()) { ... }` block in the `TOOL_CALL` branch, remove `params = """{"x": 500, "y": 800}"""` from the preview, and extend `ServerLogEntryRow`'s second `when` branch from `TUNNEL, SERVER ->` to `TUNNEL, SERVER, OAUTH, AUTH, CHANNEL, SETTINGS ->` so the `when` stays exhaustive over the 7-value enum (no compiler warning) and every new type renders its message (keeps the file compiling; the full redesign happens in US7).
+- [x] **Modify** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/MainViewModelTest.kt`: remove the `params = ...` named arguments from the two `ServerLogEntry(...)` constructions (the tests themselves are removed in Task 7.7).
 
 DoD:
-- [ ] No reference to `ServerLogEntry.params` or `MAX_PARAMS_LENGTH` remains anywhere in `app/src/`; `ServerLogEntryRow`'s `when` is exhaustive over all 7 `Type` values; the enum ids come from the file-private constants (no `MagicNumber` exposure, no suppression).
+- [x] No reference to `ServerLogEntry.params` or `MAX_PARAMS_LENGTH` remains anywhere in `app/src/`; `ServerLogEntryRow`'s `when` is exhaustive over all 7 `Type` values; the enum ids come from the file-private constants (no `MagicNumber` exposure, no suppression).
 
 ### Task 1.2 — Repository interface
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogRepository.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogRepository.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.data.repository
@@ -163,11 +163,11 @@ interface ServerLogRepository {
   Constraint: `ServerLogIndexEntry` has 8 constructor parameters — permitted because detekt's `LongParameterList` does not fire on data classes in this project's configuration (empirically: `PendingApproval` has 8 constructor parameters and main is lint-clean).
 
 DoD:
-- [ ] Interface compiles; no implementation yet referenced elsewhere.
+- [x] Interface compiles; no implementation yet referenced elsewhere.
 
 ### Task 1.3 — Segmented store engine
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogSegmentedStore.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogSegmentedStore.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.data.repository
@@ -446,11 +446,11 @@ internal object ServerLogSegmentFiles {
   Constraint: opening the append streams at init/clear creates the active segment's (possibly empty) files — `readSegmentIndexLocked` on an empty index file already returns an empty list, so this is harmless. `FileOutputStream` is unbuffered, so bytes written through the held streams are immediately visible to `readEntry`'s `RandomAccessFile`.
 
 DoD:
-- [ ] No Android dependency in the store (pure JVM: testable with `@TempDir`); `ServerLogSegmentedStore` has ≤ 11 member functions and `ServerLogSegmentFiles` ≤ 11 (no `TooManyFunctions` exposure, no suppression).
+- [x] No Android dependency in the store (pure JVM: testable with `@TempDir`); `ServerLogSegmentedStore` has ≤ 11 member functions and `ServerLogSegmentFiles` ≤ 11 (no `TooManyFunctions` exposure, no suppression).
 
 ### Task 1.4 — Repository implementation + DI binding
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogRepositoryImpl.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/ServerLogRepositoryImpl.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.data.repository
@@ -580,7 +580,7 @@ class ServerLogRepositoryImpl internal constructor(
 
   Constraint: `Logger.sanitize` is `internal` in the same module — usable directly. The writer loop catches `IOException` ONLY (the realistic disk failure: full disk, I/O error) so NO linting suppression is introduced. Fail-fast on any other exception is a DELIBERATE design decision: a non-IO exception in the append path is a programming error in our own store code; it must crash the writer and surface in the test suite (the store/repository tests exercise every append path) rather than be silently swallowed — the alternative, a generic catch, both hides bugs and requires a forbidden suppression. Lock ordering is ALWAYS `cacheMutex` → store mutex (writer, readIndex, recent, clear) — never the reverse — so no deadlock is possible.
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/di/AppModule.kt` — add to `RepositoryModule`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/di/AppModule.kt` — add to `RepositoryModule`:
 
 ```kotlin
     /** Binds the disk-backed server log used by the in-app logs viewer. */
@@ -590,11 +590,11 @@ class ServerLogRepositoryImpl internal constructor(
 ```
 
 DoD:
-- [ ] All imports in both files resolve; the Hilt `@Binds` resolves `ServerLogRepository` to the singleton impl.
+- [x] All imports in both files resolve; the Hilt `@Binds` resolves `ServerLogRepository` to the singleton impl.
 
 ### Task 1.5 — Shared test infrastructure
 
-- [ ] **Create** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/testutil/RecordingServerLogRepository.kt` (shared by unit + integration tests):
+- [x] **Create** `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/testutil/RecordingServerLogRepository.kt` (shared by unit + integration tests):
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.testutil
@@ -662,7 +662,7 @@ class RecordingServerLogRepository : ServerLogRepository {
 ```
 
 DoD:
-- [ ] Located under a new `testutil` package in the unit-test source set (reachable from `integration` tests — same source set).
+- [x] Located under a new `testutil` package in the unit-test source set (reachable from `integration` tests — same source set).
 
 ### Task 1.6 — Storage tests
 
@@ -709,7 +709,7 @@ DoD:
 | `writer survives an IOException and keeps draining` | store stub whose `append` throws `IOException` for one entry → no crash, the failed entry is skipped, subsequent entries persist and bump revision |
 
 DoD:
-- [ ] Tests written (NOT run — the full suite runs only in US8).
+- [x] Tests written (NOT run — the full suite runs only in US8).
 
 ---
 

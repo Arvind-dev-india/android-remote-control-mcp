@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.geo.DbIpGeoResolver
@@ -134,6 +136,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGeoIpResolver(impl: DbIpGeoResolver): GeoIpResolver
+
+    /** Binds the disk-backed server log used by the in-app logs viewer. */
+    @Binds
+    @Singleton
+    abstract fun bindServerLogRepository(impl: ServerLogRepositoryImpl): ServerLogRepository
 }
 
 @Suppress("TooManyFunctions")

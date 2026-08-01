@@ -111,20 +111,14 @@ private fun ServerLogEntryRow(entry: ServerLogEntry) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!entry.params.isNullOrEmpty()) {
-                Text(
-                    text = entry.params,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 56.dp, bottom = 4.dp),
-                )
-            }
         }
 
         ServerLogEntry.Type.TUNNEL,
         ServerLogEntry.Type.SERVER,
+        ServerLogEntry.Type.OAUTH,
+        ServerLogEntry.Type.AUTH,
+        ServerLogEntry.Type.CHANNEL,
+        ServerLogEntry.Type.SETTINGS,
         -> {
             Row(
                 modifier =
@@ -163,7 +157,6 @@ private fun ServerLogsSectionPreview() {
                         type = ServerLogEntry.Type.TOOL_CALL,
                         message = "tap",
                         toolName = "tap",
-                        params = """{"x": 500, "y": 800}""",
                         durationMs = 42,
                     ),
                     ServerLogEntry(
