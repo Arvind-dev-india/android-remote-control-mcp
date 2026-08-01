@@ -475,7 +475,7 @@ androidComponents {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    maxHeapSize = "4g"
+    maxHeapSize = "3g"
     // Distribute tests across all available CPU cores for faster execution.
     maxParallelForks = (Runtime.getRuntime().availableProcessors()).coerceAtLeast(1)
     // MockK uses byte-buddy/reflection internally; JDK 17 strong encapsulation
