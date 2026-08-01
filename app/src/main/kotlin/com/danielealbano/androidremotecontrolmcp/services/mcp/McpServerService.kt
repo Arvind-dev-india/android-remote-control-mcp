@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -287,16 +288,10 @@ class McpServerService : Service() {
             registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimitMb)
 
             // Create and start the Ktor server
-            val httpsMaterial =
-                if (keyStore != null && keyStorePassword != null) {
-                    HttpsMaterial(keyStore, keyStorePassword)
-                } else {
-                    null
-                }
             mcpServer =
                 McpServer(
                     config = config,
-                    httpsMaterial = httpsMaterial,
+                    httpsMaterial = buildHttpsMaterial(keyStore, keyStorePassword),
                     mcpSdkServer = sdkServer,
                     ephemeralFileLinkService = ephemeralFileLinkService,
                     oauth =
@@ -597,6 +592,17 @@ class McpServerService : Service() {
             private set
     }
 }
+
+/** Builds the HTTPS [HttpsMaterial] when both the keystore and its password are present, else null. */
+private fun buildHttpsMaterial(
+    keyStore: KeyStore?,
+    keyStorePassword: CharArray?,
+): HttpsMaterial? =
+    if (keyStore != null && keyStorePassword != null) {
+        HttpsMaterial(keyStore, keyStorePassword)
+    } else {
+        null
+    }
 
 /** Human-readable server-log message for a [ServerStatus] transition. */
 internal fun serverStatusLogMessage(status: ServerStatus): String =

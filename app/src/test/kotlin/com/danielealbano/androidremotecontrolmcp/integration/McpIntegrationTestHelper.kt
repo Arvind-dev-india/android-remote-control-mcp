@@ -228,6 +228,15 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
+        registerNonAccessibilityTools(registrar, deps, toolNamePrefix, perms)
+    }
+
+    private fun registerNonAccessibilityTools(
+        registrar: LoggedToolRegistrar,
+        deps: MockDependencies,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
         registerFileTools(registrar, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
         registerAppManagementTools(registrar, deps.appManager, toolNamePrefix, perms)
         registerCameraTools(registrar, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)

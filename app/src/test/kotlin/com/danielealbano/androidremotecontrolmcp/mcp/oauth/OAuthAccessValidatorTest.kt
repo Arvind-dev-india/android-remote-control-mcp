@@ -143,7 +143,13 @@ class OAuthAccessValidatorTest {
             coEvery { clientRepository.getClient("c1") } returns
                 client("c1", lastUsedAtMs = now - THIRTY_MIN_MS)
             val validator =
-                OAuthAccessValidator(tokenService, clientRepository, serverLog, debounceMs = ONE_MIN_MS, nowMs = { now })
+                OAuthAccessValidator(
+                    tokenService,
+                    clientRepository,
+                    serverLog,
+                    debounceMs = ONE_MIN_MS,
+                    nowMs = { now },
+                )
 
             validator.validate("tok", resource)
             now += 1000L

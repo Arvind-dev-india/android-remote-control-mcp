@@ -144,7 +144,8 @@ class ServerLogRepositoryImplTest {
                     entry = ServerLogIndexEntry(1, 0, 0L, ServerLogEntry.Type.SERVER, null, 0, 0, 0),
                     removedSegmentSeqs = emptyList(),
                 )
-            coEvery { store.append(any(), any(), any(), any(), any()) } throws IOException("disk full") andThen validResult
+            val diskFull = IOException("disk full")
+            coEvery { store.append(any(), any(), any(), any(), any()) } throws diskFull andThen validResult
 
             val repo = ServerLogRepositoryImpl(store, StandardTestDispatcher(testScheduler))
             repo.log(ServerLogEntry.Type.SERVER, "fails")

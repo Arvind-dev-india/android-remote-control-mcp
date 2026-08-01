@@ -93,8 +93,7 @@ class ServerLogRepositoryImpl internal constructor(
     override suspend fun readIndex(): List<ServerLogIndexEntry> =
         withContext(ioDispatcher) { cacheMutex.withLock { ensureCacheLocked().toList() } }
 
-    override suspend fun readEntry(ref: ServerLogIndexEntry): ServerLogEntry =
-        withContext(ioDispatcher) { store.readEntry(ref) }
+    override suspend fun readEntry(ref: ServerLogIndexEntry) = withContext(ioDispatcher) { store.readEntry(ref) }
 
     override suspend fun recent(count: Int): List<ServerLogEntry> =
         withContext(ioDispatcher) {

@@ -117,7 +117,9 @@ class ServerLogSegmentedStoreTest {
 
             val ref = store.readIndex().first()
             assertEquals(ServerLogSegmentedStore.MAX_TOOL_NAME_BYTES, ref.toolNameLen)
-            assertTrue(ref.messageLen <= ServerLogSegmentedStore.MAX_ENTRY_DATA_BYTES - ServerLogSegmentedStore.MAX_TOOL_NAME_BYTES)
+            val messageBudget =
+                ServerLogSegmentedStore.MAX_ENTRY_DATA_BYTES - ServerLogSegmentedStore.MAX_TOOL_NAME_BYTES
+            assertTrue(ref.messageLen <= messageBudget)
             assertTrue(ref.toolNameLen + ref.messageLen <= ServerLogSegmentedStore.MAX_ENTRY_DATA_BYTES)
         }
 

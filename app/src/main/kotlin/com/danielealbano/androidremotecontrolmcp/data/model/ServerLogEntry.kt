@@ -27,7 +27,9 @@ data class ServerLogEntry(
     val durationMs: Long? = null,
 ) {
     /** Categorizes log entries for display. Ids are the on-disk byte encoding — NEVER renumber. */
-    enum class Type(val id: Byte) {
+    enum class Type(
+        val id: Byte,
+    ) {
         /** An MCP tool call (has toolName, durationMs; message holds a failure marker or is empty). */
         TOOL_CALL(TYPE_ID_TOOL_CALL),
 

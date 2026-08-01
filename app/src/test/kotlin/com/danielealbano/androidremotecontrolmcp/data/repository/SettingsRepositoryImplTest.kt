@@ -66,14 +66,17 @@ class SettingsRepositoryImplTest {
                 scope = testScope.backgroundScope,
                 produceFile = { File(tempDir, "test_settings_$testFileCounter.preferences_pb") },
             )
+        val changeLogger =
+            SettingsChangeLogger(
+                RecordingServerLogRepository(),
+                testDispatcher,
+                SettingsChangeLogger.COALESCE_WINDOW_MS,
+            )
         repository =
             SettingsRepositoryImpl(
                 dataStore,
-                SettingsChangeLogger(
-                    RecordingServerLogRepository(),
-                    testDispatcher,
-                    SettingsChangeLogger.COALESCE_WINDOW_MS,
-                ),
+                changeLogger,
+                EventChannelSettingsImpl(dataStore, changeLogger),
             )
     }
 

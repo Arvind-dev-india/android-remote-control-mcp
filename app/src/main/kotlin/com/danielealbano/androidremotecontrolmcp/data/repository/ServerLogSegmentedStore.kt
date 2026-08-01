@@ -216,8 +216,7 @@ internal object ServerLogSegmentFiles {
             .orEmpty()
 
     /** Integer division silently ignores a truncated partial tail record (crash mid-write). */
-    fun indexRecordCount(file: File): Int =
-        if (file.isFile) (file.length() / INDEX_RECORD_BYTES).toInt() else 0
+    fun indexRecordCount(file: File): Int = if (file.isFile) (file.length() / INDEX_RECORD_BYTES).toInt() else 0
 
     fun readSegmentIndex(
         directory: File,

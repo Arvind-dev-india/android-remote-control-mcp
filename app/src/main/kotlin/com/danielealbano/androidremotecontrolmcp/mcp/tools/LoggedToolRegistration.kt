@@ -36,21 +36,23 @@ internal fun loggedToolHandler(
             val durationMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             val result = completed
             when {
-                result != null ->
+                result != null -> {
                     serverLog.log(
                         type = ServerLogEntry.Type.TOOL_CALL,
                         message = if (result.isError == true) FAILED_MARKER else "",
                         toolName = toolName,
                         durationMs = durationMs,
                     )
+                }
 
-                coroutineContext.isActive ->
+                coroutineContext.isActive -> {
                     serverLog.log(
                         type = ServerLogEntry.Type.TOOL_CALL,
                         message = FAILED_MARKER,
                         toolName = toolName,
                         durationMs = durationMs,
                     )
+                }
             }
         }
     }

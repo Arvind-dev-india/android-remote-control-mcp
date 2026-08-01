@@ -103,6 +103,10 @@ class EventChannelSettingsTest {
             SettingsRepositoryImpl(
                 mockk(relaxed = true),
                 SettingsChangeLogger(RecordingServerLogRepository(), Dispatchers.Unconfined, 0L),
+                EventChannelSettingsImpl(
+                    mockk(relaxed = true),
+                    SettingsChangeLogger(RecordingServerLogRepository(), Dispatchers.Unconfined, 0L),
+                ),
             )
 
         @Test

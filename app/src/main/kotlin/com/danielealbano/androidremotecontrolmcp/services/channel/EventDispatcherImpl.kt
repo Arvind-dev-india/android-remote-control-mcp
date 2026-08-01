@@ -43,11 +43,13 @@ class EventDispatcherImpl
             _connectionStatus.value = status
             when {
                 status is ChannelConnectionStatus.Error &&
-                    (previous as? ChannelConnectionStatus.Error)?.message != status.message ->
+                    (previous as? ChannelConnectionStatus.Error)?.message != status.message -> {
                     serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel error: ${status.message}")
+                }
 
-                status is ChannelConnectionStatus.Active && previous is ChannelConnectionStatus.Error ->
+                status is ChannelConnectionStatus.Active && previous is ChannelConnectionStatus.Error -> {
                     serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel recovered")
+                }
             }
         }
 

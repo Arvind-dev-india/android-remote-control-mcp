@@ -307,7 +307,11 @@ class EventDispatcherImplTest {
                         }
                     }
                 server.start(wait = false)
-                val port = server.engine.resolvedConnectors().first().port
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
                 try {
                     val dispatcher = EventDispatcherImpl(serverLog)
                     dispatcher.start("http://localhost:$port", "token")
@@ -343,7 +347,11 @@ class EventDispatcherImplTest {
                         }
                     }
                 server.start(wait = false)
-                val port = server.engine.resolvedConnectors().first().port
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
                 try {
                     val dispatcher = EventDispatcherImpl(serverLog)
                     dispatcher.start("http://localhost:$port", "token")
@@ -375,7 +383,11 @@ class EventDispatcherImplTest {
                         }
                     }
                 server.start(wait = false)
-                val port = server.engine.resolvedConnectors().first().port
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
                 try {
                     val dispatcher = EventDispatcherImpl(serverLog)
                     dispatcher.start("http://localhost:$port", "token")

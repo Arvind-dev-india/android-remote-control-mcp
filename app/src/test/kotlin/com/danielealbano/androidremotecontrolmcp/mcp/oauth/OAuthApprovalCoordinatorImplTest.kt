@@ -12,8 +12,7 @@ import org.junit.jupiter.api.Test
 
 @DisplayName("OAuthApprovalCoordinatorImpl")
 class OAuthApprovalCoordinatorImplTest {
-    private fun newCoordinator(serverLog: ServerLogRepository = RecordingServerLogRepository()) =
-        OAuthApprovalCoordinatorImpl(serverLog)
+    private fun newCoordinator(serverLog: ServerLogRepository) = OAuthApprovalCoordinatorImpl(serverLog)
 
     private fun req(
         logoUri: String? = null,
@@ -25,7 +24,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending appears in pending flow with 2-digit code")
     fun createPendingAppears() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             assertEquals(2, approval.matchCode.length)
             assertTrue(coordinator.observePending().value.any { it.id == approval.id })
@@ -35,7 +34,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending carries logoUri onto the pending approval")
     fun createPendingCarriesLogoUri() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(logoUri = "https://cdn.example/logo.png"), 0L)
             assertEquals("https://cdn.example/logo.png", approval.logoUri)
         }
@@ -44,7 +43,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending carries the client IP and geolocation onto the pending approval")
     fun createPendingCarriesIpAndGeo() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val geo = GeoLocation("US", "Mountain View")
             val approval = coordinator.createPending(req(clientIp = "8.8.8.8", clientGeo = geo), 0L)
             assertEquals("8.8.8.8", approval.clientIp)
@@ -55,7 +54,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("approve transitions and clears pending")
     fun approveTransitions() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.approve(approval.id, 1L)
             assertEquals(ApprovalState.APPROVED, coordinator.stateOf(approval.id, 1L))
@@ -66,7 +65,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("approve after the window has lapsed yields EXPIRED, not APPROVED")
     fun approveAfterExpiryYieldsExpired() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.approve(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
             assertEquals(ApprovalState.EXPIRED, coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1))
@@ -76,7 +75,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("deny transitions to DENIED")
     fun denyTransitions() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.deny(approval.id)
             assertEquals(ApprovalState.DENIED, coordinator.stateOf(approval.id, 1L))
@@ -87,7 +86,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("expiry yields EXPIRED")
     fun expiryYieldsExpired() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             assertEquals(ApprovalState.EXPIRED, coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1))
             assertTrue(coordinator.observePending().value.none { it.id == approval.id })
