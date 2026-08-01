@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
 import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
@@ -66,18 +68,8 @@ fun ServerScreen(
     val tunnelStatus by viewModel.tunnelStatus.collectAsStateWithLifecycle()
 
     val isAccessibilityEnabled by viewModel.isAccessibilityEnabled.collectAsStateWithLifecycle()
-    val isNotificationPermissionGranted by viewModel.isNotificationPermissionGranted.collectAsStateWithLifecycle()
-    val isCameraPermissionGranted by viewModel.isCameraPermissionGranted.collectAsStateWithLifecycle()
-    val isMicrophonePermissionGranted by viewModel.isMicrophonePermissionGranted.collectAsStateWithLifecycle()
-    val isNotificationListenerEnabled by viewModel.isNotificationListenerEnabled.collectAsStateWithLifecycle()
     val isBatteryOptimizationIgnored by viewModel.isBatteryOptimizationIgnored.collectAsStateWithLifecycle()
-
-    val hasAllPermissions =
-        isAccessibilityEnabled &&
-            isNotificationPermissionGranted &&
-            isCameraPermissionGranted &&
-            isMicrophonePermissionGranted &&
-            isNotificationListenerEnabled
+    val pendingApprovalCount by viewModel.pendingApprovalCount.collectAsStateWithLifecycle()
 
     val channelConfig by channelViewModel.eventChannelConfig.collectAsStateWithLifecycle()
     val channelStatus by channelViewModel.channelConnectionStatus.collectAsStateWithLifecycle()
@@ -98,7 +90,7 @@ fun ServerScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
         ) {
-            if (!hasAllPermissions) {
+            if (!isAccessibilityEnabled) {
                 PermissionWarningCard(onClick = onNavigateToPermissions)
                 Spacer(Modifier.height(16.dp))
             }
@@ -111,6 +103,14 @@ fun ServerScreen(
             if (!isBatteryOptimizationIgnored) {
                 BatteryOptimizationCard(
                     onRequestExemption = { viewModel.requestBatteryOptimizationExemption() },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (pendingApprovalCount > 0) {
+                PendingApprovalsCard(
+                    count = pendingApprovalCount,
+                    onClick = { context.startActivity(Intent(context, ApprovalActivity::class.java)) },
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -129,6 +129,7 @@ fun ServerScreen(
                     }
                 },
                 onChannelStopClick = { channelViewModel.stopChannel() },
+                startEnabled = isAccessibilityEnabled,
             )
 
             Spacer(Modifier.height(16.dp))
@@ -193,6 +194,33 @@ private fun NoAuthWarningCard() {
             Spacer(Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.access_no_auth_warning_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingApprovalsCard(
+    count: Int,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.server_pending_approvals_message, count),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )

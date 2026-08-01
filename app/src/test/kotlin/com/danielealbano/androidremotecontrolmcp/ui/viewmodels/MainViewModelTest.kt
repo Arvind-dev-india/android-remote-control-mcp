@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.ui.viewmodels
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import app.cash.turbine.test
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
@@ -15,6 +16,8 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelEndpoint
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.PendingApproval
 import com.danielealbano.androidremotecontrolmcp.services.power.BatteryOptimizationManager
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
@@ -56,8 +59,10 @@ class MainViewModelTest {
     private lateinit var tunnelManager: TunnelManager
     private lateinit var storageLocationProvider: StorageLocationProvider
     private lateinit var batteryOptimizationManager: BatteryOptimizationManager
+    private lateinit var approvalCoordinator: OAuthApprovalCoordinator
     private lateinit var configFlow: MutableStateFlow<ServerConfig>
     private lateinit var tunnelStatusFlow: MutableStateFlow<TunnelStatus>
+    private lateinit var pendingApprovalsFlow: MutableStateFlow<List<PendingApproval>>
     private lateinit var viewModel: MainViewModel
 
     @BeforeEach
@@ -97,6 +102,10 @@ class MainViewModelTest {
 
         batteryOptimizationManager = mockk(relaxed = true)
 
+        pendingApprovalsFlow = MutableStateFlow(emptyList())
+        approvalCoordinator = mockk(relaxed = true)
+        every { approvalCoordinator.observePending() } returns pendingApprovalsFlow
+
         viewModel =
             MainViewModel(
                 settingsRepository,
@@ -104,6 +113,7 @@ class MainViewModelTest {
                 storageLocationProvider,
                 batteryOptimizationManager,
                 testDispatcher,
+                approvalCoordinator,
             )
     }
 
@@ -112,6 +122,48 @@ class MainViewModelTest {
         Dispatchers.resetMain()
         unmockkStatic(Log::class)
     }
+
+    private fun pendingApproval(id: String): PendingApproval =
+        PendingApproval(
+            id = id,
+            clientName = "client-$id",
+            redirectHost = "example.com",
+            matchCode = "42",
+            expiresAtMs = 0L,
+        )
+
+    @Test
+    fun `pendingApprovalCount is zero when no pending approvals`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, expectMostRecentItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `pendingApprovalCount reflects list size`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
+                assertEquals(2, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `pendingApprovalCount updates on coordinator emission`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"))
+                assertEquals(1, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
+                assertEquals(2, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     @Test
     fun `initial state loads from repository`() =
@@ -458,6 +510,7 @@ class MainViewModelTest {
                     storageLocationProvider,
                     batteryOptimizationManager,
                     testDispatcher,
+                    approvalCoordinator,
                 )
             advanceUntilIdle()
 
@@ -499,6 +552,7 @@ class MainViewModelTest {
                     storageLocationProvider,
                     batteryOptimizationManager,
                     testDispatcher,
+                    approvalCoordinator,
                 )
             advanceUntilIdle()
 
@@ -1061,6 +1115,7 @@ class MainViewModelTest {
                     storageLocationProvider,
                     batteryOptimizationManager,
                     testDispatcher,
+                    approvalCoordinator,
                 )
             advanceUntilIdle()
 

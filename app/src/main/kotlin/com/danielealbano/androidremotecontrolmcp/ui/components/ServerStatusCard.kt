@@ -46,6 +46,7 @@ fun ServerStatusCard(
     onMcpStopClick: () -> Unit,
     onChannelStartClick: () -> Unit,
     onChannelStopClick: () -> Unit,
+    startEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -67,7 +68,7 @@ fun ServerStatusCard(
                 statusText = serverStatusToText(serverStatus),
                 statusColor = serverStatusToColor(serverStatus, isSystemInDarkTheme()),
                 buttonText = if (serverStatus is ServerStatus.Running) "Stop" else "Start",
-                buttonEnabled = serverStatus is ServerStatus.Running || serverStatus is ServerStatus.Stopped,
+                buttonEnabled = mcpStartStopButtonEnabled(serverStatus, startEnabled),
                 onButtonClick = if (serverStatus is ServerStatus.Running) onMcpStopClick else onMcpStartClick,
             )
 
@@ -79,12 +80,35 @@ fun ServerStatusCard(
                 statusText = channelStatusToText(channelStatus, channelEnabled),
                 statusColor = channelStatusToColor(channelStatus, channelEnabled, isSystemInDarkTheme()),
                 buttonText = if (channelEnabled) "Stop" else "Start",
-                buttonEnabled = true,
+                buttonEnabled = channelStartStopButtonEnabled(channelEnabled, startEnabled),
                 onButtonClick = if (channelEnabled) onChannelStopClick else onChannelStartClick,
             )
         }
     }
 }
+
+/**
+ * Whether the MCP Server start/stop button is enabled. Stop (Running) is always enabled;
+ * Start (Stopped) requires [startEnabled] (accessibility granted); transient states are disabled.
+ */
+internal fun mcpStartStopButtonEnabled(
+    status: ServerStatus,
+    startEnabled: Boolean,
+): Boolean =
+    when (status) {
+        is ServerStatus.Running -> true
+        is ServerStatus.Stopped -> startEnabled
+        else -> false
+    }
+
+/**
+ * Whether the Event Channel start/stop button is enabled. Stop (enabled) is always allowed;
+ * Start requires [startEnabled] (accessibility granted).
+ */
+internal fun channelStartStopButtonEnabled(
+    channelEnabled: Boolean,
+    startEnabled: Boolean,
+): Boolean = if (channelEnabled) true else startEnabled
 
 @Composable
 private fun ServiceRow(
@@ -225,6 +249,7 @@ private fun ServerStatusCardStoppedPreview() {
             onMcpStopClick = {},
             onChannelStartClick = {},
             onChannelStopClick = {},
+            startEnabled = true,
         )
     }
 }

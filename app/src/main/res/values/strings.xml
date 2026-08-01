@@ -31,6 +31,8 @@
     <string name="settings_mcp_tools_title">MCP Tools</string>
     <string name="settings_mcp_tools_subtitle">Enable or disable tools</string>
     <string name="settings_mcp_tools_placeholder">Tool permissions — available in next update</string>
+    <string name="settings_mcp_tools_missing_permission">Permission not granted — these tools are hidden from clients. Tap to grant.</string>
+    <string name="settings_mcp_tools_param_missing_permission">Permission not granted — this option is unavailable. Tap to grant.</string>
     <string name="settings_permissions_title">Permissions</string>
     <string name="settings_permissions_subtitle">Accessibility, camera, microphone</string>
     <string name="settings_storage_title">Storage</string>
@@ -120,8 +122,9 @@
     <string name="permission_location_rationale">Read GPS position.</string>
     <string name="permission_microphone_rationale">Adds audio to recorded video.</string>
 
-    <!-- Permission Warning -->
-    <string name="permission_warning_message">Some permissions are not granted. Tap to review.</string>
+    <!-- Permission Warning (main screen: accessibility is the one required permission) -->
+    <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
+    <string name="server_pending_approvals_message">%1$d pending connection approval(s). Tap to review.</string>
 
     <!-- Battery Optimization -->
     <string name="battery_optimization_card_title">Keep the server running</string>
