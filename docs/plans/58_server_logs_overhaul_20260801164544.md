@@ -718,13 +718,13 @@ DoD:
 Why: `SERVER` entries were never emitted; tunnel `Connecting`/stop were invisible; auth failures reached logcat only.
 
 Acceptance criteria:
-- [ ] Every `ServerStatus` transition produces a `SERVER` entry (Running includes binding:port).
-- [ ] Tunnel connecting/connected/error logged by the observer; "Tunnel stopped" logged by `TunnelManager.stop()` (covers the HTTPS gate and `onDestroy`, where the observer is already cancelled).
-- [ ] 401 responses produce an `AUTH` entry with the remote address info.
+- [x] Every `ServerStatus` transition produces a `SERVER` entry (Running includes binding:port).
+- [x] Tunnel connecting/connected/error logged by the observer; "Tunnel stopped" logged by `TunnelManager.stop()` (covers the HTTPS gate and `onDestroy`, where the observer is already cancelled).
+- [x] 401 responses produce an `AUTH` entry with the remote address info.
 
 ### Task 2.1 — Server status logging
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/mcp/McpServerService.kt`:
   - Add `@Inject lateinit var serverLogRepository: ServerLogRepository` after the `geoIpResolver` field.
   - Change `updateStatus` to:
 
@@ -752,11 +752,11 @@ internal fun serverStatusLogMessage(status: ServerStatus): String =
   Constraint: `ServerStatus` declares `Stopped`/`Starting`/`Stopping` as `data object` and `Running`/`Error` as `data class` — the `when` above matches that shape exactly and is exhaustive without `else`. `updateStatus(ServerStatus.Stopped)` runs after `coroutineScope.cancel()` in `onDestroy` — safe because `log()` uses the repository's own scope.
 
 Task DoD:
-- [ ] `serverStatusLogMessage` is a top-level `internal` function (unit-testable without the service); every `updateStatus` call site logs.
+- [x] `serverStatusLogMessage` is a top-level `internal` function (unit-testable without the service); every `updateStatus` call site logs.
 
 ### Task 2.2 — Tunnel stop logging
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/tunnel/TunnelManager.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/tunnel/TunnelManager.kt`:
   - Add constructor parameter `private val serverLogRepository: ServerLogRepository` (after the existing provider factories).
   - At the top of `stop()`, before cancelling the relay job:
 
@@ -767,11 +767,11 @@ Task DoD:
 ```
 
 Task DoD:
-- [ ] "Tunnel stopped" is emitted exactly once per running tunnel (guarded on the Disconnected state), covering both the HTTPS-gate stop and `onDestroy`.
+- [x] "Tunnel stopped" is emitted exactly once per running tunnel (guarded on the Disconnected state), covering both the HTTPS-gate stop and `onDestroy`.
 
 ### Task 2.3 — Tunnel observer revamp
 
-- [ ] **Modify** `McpServerService.startServer()` tunnel observer (current lines ~332-371):
+- [x] **Modify** `McpServerService.startServer()` tunnel observer (current lines ~332-371):
   - Add a top-level function next to `serverStatusLogMessage` (unit-testable):
 
 ```kotlin
@@ -789,14 +789,14 @@ internal fun tunnelStatusLogMessage(status: TunnelStatus): String? =
   - The companion `_serverLogEvents`/`serverLogEvents` SharedFlow MUST remain in place for now (removed in US7 together with its collector).
 
 Task DoD:
-- [ ] No `_serverLogEvents.tryEmit` call site remains anywhere (grep returns none).
+- [x] No `_serverLogEvents.tryEmit` call site remains anywhere (grep returns none).
 
 ### Task 2.4 — Auth-failure logging
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/auth/BearerTokenAuth.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/auth/BearerTokenAuth.kt`:
   - Add to `McpAuthConfig` (with KDoc `@property` line): `var onAuthFailure: ((remoteInfo: String) -> Unit)? = null` — invoked with the remote-address info on every 401.
   - In the plugin body: capture `val onAuthFailure = pluginConfig.onAuthFailure` alongside the other config vals; in the fail-closed branch, directly after `Log.w(TAG, "Authentication failed from $addrInfo")`, add `onAuthFailure?.invoke(addrInfo)`.
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/McpServer.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/mcp/McpServer.kt`:
   - detekt's default `LongParameterList` allows at most 6 constructor parameters and suppression is forbidden, so adding `serverLog` as a 7th is NOT allowed. Instead: add a top-level holder in this file and restructure the constructor to stay at 6 parameters — replace the `keyStore`/`keyStorePassword` pair with `httpsMaterial: HttpsMaterial?` and add `private val serverLog: ServerLogRepository` last (update the class KDoc `@param` list):
 
 ```kotlin
@@ -814,10 +814,10 @@ class HttpsMaterial(
             onAuthFailure = { serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
 ```
 
-- [ ] **Modify** `McpServerService.startServer()`: at the `McpServer(...)` construction site, replace the `keyStore`/`keyStorePassword` arguments with `httpsMaterial = <HttpsMaterial built from the existing keyStore/password locals when BOTH are non-null, else null>` and add `serverLog = serverLogRepository`.
+- [x] **Modify** `McpServerService.startServer()`: at the `McpServer(...)` construction site, replace the `keyStore`/`keyStorePassword` arguments with `httpsMaterial = <HttpsMaterial built from the existing keyStore/password locals when BOTH are non-null, else null>` and add `serverLog = serverLogRepository`.
 
 Task DoD:
-- [ ] `McpServer`'s constructor has exactly 6 parameters (no `LongParameterList` finding, no suppression); only the fail-closed 401 branch invokes `onAuthFailure` — open-server and excluded-path requests never do.
+- [x] `McpServer`'s constructor has exactly 6 parameters (no `LongParameterList` finding, no suppression); only the fail-closed 401 branch invokes `onAuthFailure` — open-server and excluded-path requests never do.
 
 ### Task 2.5 — Tests
 
@@ -850,7 +850,7 @@ Task DoD:
 Existing tests to update in this task: any test constructing `TunnelManager` or `McpServer` directly is updated to the new constructor shapes (`TunnelManager` gains `serverLogRepository`; `McpServer` uses `httpsMaterial` + `serverLog`) — find via grep; `MainViewModelTest` mocks `TunnelManager` via MockK — unaffected.
 
 Task DoD:
-- [ ] New tests written (not run); the helper's `installMcpBasePlugins` blocks mirror the production `onAuthFailure` wiring.
+- [x] New tests written (not run); the helper's `installMcpBasePlugins` blocks mirror the production `onAuthFailure` wiring.
 
 ---
 

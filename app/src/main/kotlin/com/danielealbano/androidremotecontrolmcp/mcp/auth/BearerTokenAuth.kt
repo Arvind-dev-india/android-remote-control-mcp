@@ -40,6 +40,7 @@ data class AuthErrorResponse(
  * @property excludedPaths Paths that skip authentication via EXACT match (e.g., "/health").
  * @property excludedPathPrefixes Paths whose (normalized) request path STARTS WITH any of these prefixes
  *   skip authentication. Use only for routes where the secret is in the path itself.
+ * @property onAuthFailure Invoked with the remote-address info on every 401 (fail-closed branch only).
  */
 class McpAuthConfig {
     var bearerTokenEnabled: Boolean = true
@@ -49,6 +50,7 @@ class McpAuthConfig {
     var baseUrlOf: (ApplicationCall) -> String = { deriveBaseUrl(it) }
     var excludedPaths: Set<String> = emptySet()
     var excludedPathPrefixes: Set<String> = emptySet()
+    var onAuthFailure: ((remoteInfo: String) -> Unit)? = null
 }
 
 /**
@@ -72,6 +74,7 @@ val McpAuthPlugin =
         val baseUrlOf = pluginConfig.baseUrlOf
         val excludedPaths = pluginConfig.excludedPaths
         val excludedPathPrefixes = pluginConfig.excludedPathPrefixes
+        val onAuthFailure = pluginConfig.onAuthFailure
 
         application.intercept(ApplicationCallPipeline.Plugins) {
             // Open server: neither method enabled.
@@ -114,6 +117,7 @@ val McpAuthPlugin =
             val forwardedFor = call.request.headers["X-Forwarded-For"]
             val addrInfo = if (forwardedFor != null) "$remoteAddr (forwarded-for: $forwardedFor)" else remoteAddr
             Log.w(TAG, "Authentication failed from $addrInfo")
+            onAuthFailure?.invoke(addrInfo)
             if (oauthEnabled) {
                 call.response.header(
                     "WWW-Authenticate",

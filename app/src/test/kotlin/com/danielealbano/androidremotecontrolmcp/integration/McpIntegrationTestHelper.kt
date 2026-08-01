@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.integration
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
@@ -55,6 +56,7 @@ import com.danielealbano.androidremotecontrolmcp.services.screencapture.Screensh
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -158,6 +160,7 @@ object McpIntegrationTestHelper {
             intentDispatcher = mockk(relaxed = true),
             notificationProvider = mockk(relaxed = true),
             locationProvider = mockk(relaxed = true),
+            serverLog = RecordingServerLogRepository(),
         )
 
     /**
@@ -295,7 +298,10 @@ object McpIntegrationTestHelper {
         testApplication {
             application {
                 // Uses the production base-plugin wiring (ContentNegotiation → CORS → auth).
-                installMcpBasePlugins { expectedToken = TEST_BEARER_TOKEN }
+                installMcpBasePlugins {
+                    expectedToken = TEST_BEARER_TOKEN
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
+                }
                 mcpStreamableHttp { sdkServer }
             }
 
@@ -352,6 +358,7 @@ object McpIntegrationTestHelper {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = if (bearerTokenEnabled) TEST_BEARER_TOKEN else ""
                     this.oauthEnabled = oauthEnabled
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
                 mcpStreamableHttp { sdkServer }
             }
@@ -415,6 +422,7 @@ object McpIntegrationTestHelper {
                     validateOAuthToken = { token, resource -> accessValidator.validate(token, resource) }
                     excludedPaths = setOf("/health", "/register", "/token", "/authorize", "/authorize/status")
                     excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX, "/.well-known/")
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
                 routing {
                     installOAuthRoutes(
@@ -465,4 +473,5 @@ data class MockDependencies(
     val intentDispatcher: IntentDispatcher,
     val notificationProvider: NotificationProvider,
     val locationProvider: LocationProvider,
+    val serverLog: RecordingServerLogRepository = RecordingServerLogRepository(),
 )

@@ -16,9 +16,11 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.geo.GeoIpResolver
 import com.danielealbano.androidremotecontrolmcp.mcp.CertificateManager
+import com.danielealbano.androidremotecontrolmcp.mcp.HttpsMaterial
 import com.danielealbano.androidremotecontrolmcp.mcp.McpServer
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStore
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
@@ -158,6 +160,8 @@ class McpServerService : Service() {
 
     @Inject lateinit var geoIpResolver: GeoIpResolver
 
+    @Inject lateinit var serverLogRepository: ServerLogRepository
+
     /** Config of the currently running server; used to build capability-link base URLs. */
     @Volatile
     private var activeConfig: ServerConfig? = null
@@ -285,11 +289,16 @@ class McpServerService : Service() {
             registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimitMb)
 
             // Create and start the Ktor server
+            val httpsMaterial =
+                if (keyStore != null && keyStorePassword != null) {
+                    HttpsMaterial(keyStore, keyStorePassword)
+                } else {
+                    null
+                }
             mcpServer =
                 McpServer(
                     config = config,
-                    keyStore = keyStore,
-                    keyStorePassword = keyStorePassword,
+                    httpsMaterial = httpsMaterial,
                     mcpSdkServer = sdkServer,
                     ephemeralFileLinkService = ephemeralFileLinkService,
                     oauth =
@@ -300,6 +309,7 @@ class McpServerService : Service() {
                             approvalCoordinator = approvalCoordinator,
                             geoIpResolver = geoIpResolver,
                         ),
+                    serverLog = serverLogRepository,
                 )
             mcpServer?.start()
 
@@ -332,6 +342,9 @@ class McpServerService : Service() {
             tunnelObserverJob =
                 coroutineScope.launch {
                     tunnelManager.tunnelStatus.collect { status ->
+                        tunnelStatusLogMessage(status)?.let {
+                            serverLogRepository.log(ServerLogEntry.Type.TUNNEL, it)
+                        }
                         when (status) {
                             is TunnelStatus.Connected -> {
                                 Log.i(
@@ -339,24 +352,10 @@ class McpServerService : Service() {
                                     "Tunnel connected: ${status.endpoints.joinToString { it.url }} " +
                                         "(provider: ${status.providerType})",
                                 )
-                                _serverLogEvents.tryEmit(
-                                    ServerLogEntry(
-                                        timestamp = System.currentTimeMillis(),
-                                        type = ServerLogEntry.Type.TUNNEL,
-                                        message = "Tunnel connected: ${status.endpoints.joinToString { it.url }}",
-                                    ),
-                                )
                             }
 
                             is TunnelStatus.Error -> {
                                 Log.w(TAG, "Tunnel error: ${status.message}")
-                                _serverLogEvents.tryEmit(
-                                    ServerLogEntry(
-                                        timestamp = System.currentTimeMillis(),
-                                        type = ServerLogEntry.Type.TUNNEL,
-                                        message = "Tunnel error: ${status.message}",
-                                    ),
-                                )
                             }
 
                             is TunnelStatus.Connecting -> {
@@ -556,6 +555,7 @@ class McpServerService : Service() {
 
     private fun updateStatus(status: ServerStatus) {
         _serverStatus.value = status
+        serverLogRepository.log(ServerLogEntry.Type.SERVER, serverStatusLogMessage(status))
     }
 
     private fun createNotification(): Notification {
@@ -609,3 +609,22 @@ class McpServerService : Service() {
             private set
     }
 }
+
+/** Human-readable server-log message for a [ServerStatus] transition. */
+internal fun serverStatusLogMessage(status: ServerStatus): String =
+    when (status) {
+        ServerStatus.Starting -> "Server starting"
+        is ServerStatus.Running -> "Server started on ${status.bindingAddress}:${status.port}"
+        ServerStatus.Stopping -> "Server stopping"
+        ServerStatus.Stopped -> "Server stopped"
+        is ServerStatus.Error -> "Server error: ${status.message}"
+    }
+
+/** Server-log message for a tunnel status transition; null when not logged by the observer. */
+internal fun tunnelStatusLogMessage(status: TunnelStatus): String? =
+    when (status) {
+        TunnelStatus.Connecting -> "Tunnel connecting…"
+        is TunnelStatus.Connected -> "Tunnel connected: ${status.endpoints.joinToString { it.url }}"
+        is TunnelStatus.Error -> "Tunnel error: ${status.message}"
+        TunnelStatus.Disconnected -> null // Logged by TunnelManager.stop()
+    }

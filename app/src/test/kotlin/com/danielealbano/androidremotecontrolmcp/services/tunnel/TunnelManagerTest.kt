@@ -1,10 +1,12 @@
 package com.danielealbano.androidremotecontrolmcp.services.tunnel
 
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelEndpoint
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -38,11 +40,14 @@ class TunnelManagerTest {
             every { get() } returns mockNgrokProvider
         }
 
+    private val serverLog = RecordingServerLogRepository()
+
     private fun createManager(): TunnelManager =
         TunnelManager(
             settingsRepository = mockSettingsRepository,
             cloudflareTunnelProviderFactory = cloudflareFactory,
             ngrokTunnelProviderFactory = ngrokFactory,
+            serverLogRepository = serverLog,
         )
 
     @Nested
@@ -186,6 +191,46 @@ class TunnelManagerTest {
                 manager.stop()
 
                 assertEquals(TunnelStatus.Disconnected, manager.tunnelStatus.value)
+            }
+
+        @Test
+        fun `stop logs Tunnel stopped once when tunnel active`() =
+            runTest {
+                val config =
+                    ServerConfig(
+                        tunnelEnabled = true,
+                        tunnelProvider = TunnelProviderType.CLOUDFLARE,
+                    )
+                every { mockSettingsRepository.serverConfig } returns flowOf(config)
+                val providerStatus = MutableStateFlow<TunnelStatus>(TunnelStatus.Disconnected)
+                every { mockCloudflareProvider.status } returns providerStatus
+                coEvery { mockCloudflareProvider.start(8080, config) } just Runs
+                coEvery { mockCloudflareProvider.stop() } just Runs
+
+                val manager = createManager()
+                manager.start(8080)
+                Thread.sleep(RELAY_PROPAGATION_DELAY_MS)
+                providerStatus.value =
+                    TunnelStatus.Connected(
+                        endpoints = listOf(TunnelEndpoint("https://test.trycloudflare.com", valid = true)),
+                        providerType = TunnelProviderType.CLOUDFLARE,
+                    )
+                Thread.sleep(RELAY_PROPAGATION_DELAY_MS)
+                manager.stop()
+
+                val tunnelEntries = serverLog.ofType(ServerLogEntry.Type.TUNNEL)
+                assertEquals(1, tunnelEntries.size)
+                assertEquals("Tunnel stopped", tunnelEntries.first().message)
+            }
+
+        @Test
+        fun `stop logs nothing when already disconnected`() =
+            runTest {
+                val manager = createManager()
+
+                manager.stop()
+
+                assertEquals(0, serverLog.ofType(ServerLogEntry.Type.TUNNEL).size)
             }
     }
 
