@@ -33,7 +33,12 @@ class PermissionGatedToolsIntegrationTest {
             val granted = setOf(OptionalToolPermission.LOCATION, OptionalToolPermission.NOTIFICATION_LISTENER)
 
             McpIntegrationTestHelper.withTestApplication(perms = permsFor(granted)) { client, _ ->
-                val toolNames = client.listTools().tools.map { it.name }.toSet()
+                val toolNames =
+                    client
+                        .listTools()
+                        .tools
+                        .map { it.name }
+                        .toSet()
                 PREFIXED_CAMERA_TOOLS.forEach { name ->
                     assertFalse(toolNames.contains(name), "$name should be hidden when camera not granted")
                 }
@@ -46,7 +51,12 @@ class PermissionGatedToolsIntegrationTest {
             val granted = ALL - OptionalToolPermission.LOCATION
 
             McpIntegrationTestHelper.withTestApplication(perms = permsFor(granted)) { client, _ ->
-                val toolNames = client.listTools().tools.map { it.name }.toSet()
+                val toolNames =
+                    client
+                        .listTools()
+                        .tools
+                        .map { it.name }
+                        .toSet()
                 assertFalse(
                     toolNames.contains("android_get_location"),
                     "android_get_location should be hidden when location not granted",
@@ -60,7 +70,12 @@ class PermissionGatedToolsIntegrationTest {
             val granted = ALL - OptionalToolPermission.NOTIFICATION_LISTENER
 
             McpIntegrationTestHelper.withTestApplication(perms = permsFor(granted)) { client, _ ->
-                val toolNames = client.listTools().tools.map { it.name }.toSet()
+                val toolNames =
+                    client
+                        .listTools()
+                        .tools
+                        .map { it.name }
+                        .toSet()
                 PREFIXED_NOTIFICATION_TOOLS.forEach { name ->
                     assertFalse(toolNames.contains(name), "$name should be hidden when listener not granted")
                 }
@@ -71,7 +86,12 @@ class PermissionGatedToolsIntegrationTest {
     fun `all optional tools present when all granted`() =
         runTest {
             McpIntegrationTestHelper.withTestApplication(perms = permsFor(ALL)) { client, _ ->
-                val toolNames = client.listTools().tools.map { it.name }.toSet()
+                val toolNames =
+                    client
+                        .listTools()
+                        .tools
+                        .map { it.name }
+                        .toSet()
                 (PREFIXED_CAMERA_TOOLS + "android_get_location" + PREFIXED_NOTIFICATION_TOOLS).forEach { name ->
                     assertTrue(toolNames.contains(name), "$name should be present when all optional perms granted")
                 }
@@ -103,7 +123,7 @@ class PermissionGatedToolsIntegrationTest {
 
             McpIntegrationTestHelper.withTestApplication(perms = permsFor(granted)) { client, _ ->
                 val tool = client.listTools().tools.find { it.name == "android_save_camera_video" }
-                assertTrue(tool != null, "android_save_camera_video should still be registered when only mic is missing")
+                assertTrue(tool != null, "save_camera_video should still be registered when only mic missing")
                 assertFalse(
                     tool!!.inputSchema.properties?.containsKey("audio") == true,
                     "audio should be absent from schema when mic not granted",

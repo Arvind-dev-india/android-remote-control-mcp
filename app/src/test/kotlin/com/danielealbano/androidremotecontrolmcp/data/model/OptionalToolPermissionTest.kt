@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.data.model
 
+import com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermissions.grantedPermissions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -109,31 +110,21 @@ class OptionalToolPermissionTest {
         assertNull(OptionalToolPermissions.permissionForParam("save_camera_video", "resolution"))
     }
 
+    private fun granted(
+        camera: Boolean = false,
+        microphone: Boolean = false,
+        location: Boolean = false,
+        notificationListener: Boolean = false,
+    ): Set<OptionalToolPermission> = grantedPermissions(camera, microphone, location, notificationListener)
+
     @Test
     fun `grantedPermissions maps booleans to enum set`() {
-        assertEquals(
-            setOf(OptionalToolPermission.CAMERA),
-            OptionalToolPermissions.grantedPermissions(camera = true, microphone = false, location = false, notificationListener = false),
-        )
-        assertEquals(
-            setOf(OptionalToolPermission.MICROPHONE),
-            OptionalToolPermissions.grantedPermissions(camera = false, microphone = true, location = false, notificationListener = false),
-        )
-        assertEquals(
-            setOf(OptionalToolPermission.LOCATION),
-            OptionalToolPermissions.grantedPermissions(camera = false, microphone = false, location = true, notificationListener = false),
-        )
-        assertEquals(
-            setOf(OptionalToolPermission.NOTIFICATION_LISTENER),
-            OptionalToolPermissions.grantedPermissions(camera = false, microphone = false, location = false, notificationListener = true),
-        )
-        assertEquals(
-            all,
-            OptionalToolPermissions.grantedPermissions(camera = true, microphone = true, location = true, notificationListener = true),
-        )
-        assertTrue(
-            OptionalToolPermissions.grantedPermissions(camera = false, microphone = false, location = false, notificationListener = false).isEmpty(),
-        )
+        assertEquals(setOf(OptionalToolPermission.CAMERA), granted(camera = true))
+        assertEquals(setOf(OptionalToolPermission.MICROPHONE), granted(microphone = true))
+        assertEquals(setOf(OptionalToolPermission.LOCATION), granted(location = true))
+        assertEquals(setOf(OptionalToolPermission.NOTIFICATION_LISTENER), granted(notificationListener = true))
+        assertEquals(all, granted(camera = true, microphone = true, location = true, notificationListener = true))
+        assertTrue(granted().isEmpty())
     }
 
     @Test

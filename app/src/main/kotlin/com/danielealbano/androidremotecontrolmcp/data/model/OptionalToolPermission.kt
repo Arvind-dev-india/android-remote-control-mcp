@@ -42,7 +42,11 @@ object OptionalToolPermissions {
 
     /** Tool names whose gating permission is NOT in [granted]. */
     fun toolsMissingPermission(granted: Set<OptionalToolPermission>): Set<String> =
-        TOOLS_BY_PERMISSION.filterKeys { it !in granted }.values.flatten().toSet()
+        TOOLS_BY_PERMISSION
+            .filterKeys { it !in granted }
+            .values
+            .flatten()
+            .toSet()
 
     /** Params (toolName -> paramNames) whose gating permission is NOT in [granted]. */
     fun paramsMissingPermission(granted: Set<OptionalToolPermission>): Map<String, Set<String>> {
@@ -53,16 +57,25 @@ object OptionalToolPermissions {
         return result.mapValues { it.value.toSet() }
     }
 
+    /** Reverse index: tool name -> gating permission. */
+    private val TOOL_TO_PERMISSION: Map<String, OptionalToolPermission> =
+        TOOLS_BY_PERMISSION.entries.flatMap { (perm, tools) -> tools.map { it to perm } }.toMap()
+
+    /** Reverse index: (tool name, param name) -> gating permission. */
+    private val PARAM_TO_PERMISSION: Map<Pair<String, String>, OptionalToolPermission> =
+        PARAMS_BY_PERMISSION.entries
+            .flatMap { (perm, tools) ->
+                tools.entries.flatMap { (tool, params) -> params.map { (tool to it) to perm } }
+            }.toMap()
+
     /** The optional permission gating [toolName], or null if the tool is not permission-gated. */
-    fun permissionForTool(toolName: String): OptionalToolPermission? =
-        TOOLS_BY_PERMISSION.entries.firstOrNull { toolName in it.value }?.key
+    fun permissionForTool(toolName: String): OptionalToolPermission? = TOOL_TO_PERMISSION[toolName]
 
     /** The optional permission gating [paramName] of [toolName], or null. */
     fun permissionForParam(
         toolName: String,
         paramName: String,
-    ): OptionalToolPermission? =
-        PARAMS_BY_PERMISSION.entries.firstOrNull { paramName in (it.value[toolName] ?: emptySet()) }?.key
+    ): OptionalToolPermission? = PARAM_TO_PERMISSION[toolName to paramName]
 
     /** Builds the granted-permission set from individual permission booleans (pure; unit-testable). */
     fun grantedPermissions(

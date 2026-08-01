@@ -38,6 +38,7 @@ import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermission
 import com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
+import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.ui.theme.WarningAmber
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 
@@ -216,7 +217,7 @@ fun McpToolsSettingsScreen(
     val locationGranted by viewModel.isLocationPermissionGranted.collectAsStateWithLifecycle()
     val notificationListenerGranted by viewModel.isNotificationListenerEnabled.collectAsStateWithLifecycle()
     val microphoneGranted by viewModel.isMicrophonePermissionGranted.collectAsStateWithLifecycle()
-    val isEnabled = serverStatus !is ServerStatus.Running && serverStatus !is ServerStatus.Starting
+    val controlsEnabled = serverStatus !is ServerStatus.Running && serverStatus !is ServerStatus.Starting
 
     // Refresh permissions on ON_RESUME — SAME pattern as PermissionsSettingsScreen.
     DisposableEffect(lifecycleOwner) {
@@ -230,13 +231,15 @@ fun McpToolsSettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    fun isGranted(permission: OptionalToolPermission): Boolean =
-        when (permission) {
-            OptionalToolPermission.CAMERA -> cameraGranted
-            OptionalToolPermission.LOCATION -> locationGranted
-            OptionalToolPermission.NOTIFICATION_LISTENER -> notificationListenerGranted
-            OptionalToolPermission.MICROPHONE -> microphoneGranted
-        }
+    val isGranted: (OptionalToolPermission) -> Boolean = { permission ->
+        isPermissionGranted(
+            permission = permission,
+            camera = cameraGranted,
+            location = locationGranted,
+            notificationListener = notificationListenerGranted,
+            microphone = microphoneGranted,
+        )
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -261,106 +264,163 @@ fun McpToolsSettingsScreen(
                 val categoryPermissions =
                     category.tools.mapNotNull { OptionalToolPermissions.permissionForTool(it.toolName) }.distinct()
                 item(key = "header_${category.header}") {
-                    val categoryMissingPermission = categoryPermissions.firstOrNull { !isGranted(it) }
-                    if (categoryMissingPermission == null) {
-                        Text(
-                            text = category.header,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-                        )
-                    } else {
-                        Column(modifier = Modifier.clickable { onNavigateToPermissions() }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = category.header,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp),
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = WarningAmber,
-                                )
-                            }
-                            Text(
-                                text = stringResource(R.string.settings_mcp_tools_missing_permission),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
-                            )
-                        }
-                    }
+                    ToolCategoryHeader(
+                        header = category.header,
+                        missingPermission = categoryPermissions.any { !isGranted(it) },
+                        onNavigateToPermissions = onNavigateToPermissions,
+                    )
                 }
                 items(category.tools, key = { it.toolName }) { tool ->
-                    val categoryGranted = categoryPermissions.all { isGranted(it) }
-                    val toolEnabled = perms.isToolEnabled(tool.toolName)
-                    ListItem(
-                        headlineContent = { Text(tool.displayName) },
-                        trailingContent = {
-                            Switch(
-                                checked = toolEnabled,
-                                onCheckedChange = { viewModel.updateToolEnabled(tool.toolName, it) },
-                                enabled = isEnabled && categoryGranted,
-                            )
-                        },
+                    ToolRow(
+                        tool = tool,
+                        perms = perms,
+                        controlsEnabled = controlsEnabled,
+                        categoryGranted = categoryPermissions.all { isGranted(it) },
+                        isGranted = isGranted,
+                        onNavigateToPermissions = onNavigateToPermissions,
+                        onToolToggle = viewModel::updateToolEnabled,
+                        onParamToggle = viewModel::updateParamEnabled,
                     )
-                    if (toolEnabled) {
-                        tool.params.forEach { param ->
-                            val paramPermission =
-                                OptionalToolPermissions.permissionForParam(tool.toolName, param.paramName)
-                            val paramGranted = paramPermission == null || isGranted(paramPermission)
-                            val showParamNote = categoryGranted && !paramGranted
-                            val leadingIcon: (@Composable () -> Unit)? =
-                                if (showParamNote) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Warning,
-                                            contentDescription = null,
-                                            tint = WarningAmber,
-                                        )
-                                    }
-                                } else {
-                                    null
-                                }
-                            val supportingNote: (@Composable () -> Unit)? =
-                                if (showParamNote) {
-                                    {
-                                        Text(
-                                            text = stringResource(R.string.settings_mcp_tools_param_missing_permission),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                } else {
-                                    null
-                                }
-                            ListItem(
-                                headlineContent = { Text(param.displayName) },
-                                modifier =
-                                    if (showParamNote) {
-                                        Modifier
-                                            .padding(start = 32.dp)
-                                            .clickable { onNavigateToPermissions() }
-                                    } else {
-                                        Modifier.padding(start = 32.dp)
-                                    },
-                                leadingContent = leadingIcon,
-                                supportingContent = supportingNote,
-                                trailingContent = {
-                                    Switch(
-                                        checked = perms.isParamEnabled(tool.toolName, param.paramName),
-                                        onCheckedChange = {
-                                            viewModel.updateParamEnabled(tool.toolName, param.paramName, it)
-                                        },
-                                        enabled = isEnabled && categoryGranted && paramGranted,
-                                    )
-                                },
-                            )
-                        }
-                    }
                 }
             }
         }
     }
+}
+
+/** Resolves whether an optional permission is granted from the individual permission flags. */
+private fun isPermissionGranted(
+    permission: OptionalToolPermission,
+    camera: Boolean,
+    location: Boolean,
+    notificationListener: Boolean,
+    microphone: Boolean,
+): Boolean =
+    when (permission) {
+        OptionalToolPermission.CAMERA -> camera
+        OptionalToolPermission.LOCATION -> location
+        OptionalToolPermission.NOTIFICATION_LISTENER -> notificationListener
+        OptionalToolPermission.MICROPHONE -> microphone
+    }
+
+@Composable
+private fun ToolCategoryHeader(
+    header: String,
+    missingPermission: Boolean,
+    onNavigateToPermissions: () -> Unit,
+) {
+    if (!missingPermission) {
+        Text(
+            text = header,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        )
+        return
+    }
+    Column(modifier = Modifier.clickable { onNavigateToPermissions() }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = header,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp),
+            )
+            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = WarningAmber)
+        }
+        Text(
+            text = stringResource(R.string.settings_mcp_tools_missing_permission),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun ToolRow(
+    tool: ToolEntry,
+    perms: ToolPermissionsConfig,
+    controlsEnabled: Boolean,
+    categoryGranted: Boolean,
+    isGranted: (OptionalToolPermission) -> Boolean,
+    onNavigateToPermissions: () -> Unit,
+    onToolToggle: (String, Boolean) -> Unit,
+    onParamToggle: (String, String, Boolean) -> Unit,
+) {
+    val toolEnabled = perms.isToolEnabled(tool.toolName)
+    ListItem(
+        headlineContent = { Text(tool.displayName) },
+        trailingContent = {
+            Switch(
+                checked = toolEnabled,
+                onCheckedChange = { onToolToggle(tool.toolName, it) },
+                enabled = controlsEnabled && categoryGranted,
+            )
+        },
+    )
+    if (toolEnabled) {
+        tool.params.forEach { param ->
+            ToolParamRow(
+                toolName = tool.toolName,
+                param = param,
+                perms = perms,
+                controlsEnabled = controlsEnabled,
+                categoryGranted = categoryGranted,
+                isGranted = isGranted,
+                onNavigateToPermissions = onNavigateToPermissions,
+                onParamToggle = onParamToggle,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolParamRow(
+    toolName: String,
+    param: ParamEntry,
+    perms: ToolPermissionsConfig,
+    controlsEnabled: Boolean,
+    categoryGranted: Boolean,
+    isGranted: (OptionalToolPermission) -> Boolean,
+    onNavigateToPermissions: () -> Unit,
+    onParamToggle: (String, String, Boolean) -> Unit,
+) {
+    val paramPermission = OptionalToolPermissions.permissionForParam(toolName, param.paramName)
+    val paramGranted = paramPermission == null || isGranted(paramPermission)
+    val showParamNote = categoryGranted && !paramGranted
+    val leadingIcon: (@Composable () -> Unit)? =
+        if (showParamNote) {
+            { Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = WarningAmber) }
+        } else {
+            null
+        }
+    val supportingNote: (@Composable () -> Unit)? =
+        if (showParamNote) {
+            {
+                Text(
+                    text = stringResource(R.string.settings_mcp_tools_param_missing_permission),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            null
+        }
+    ListItem(
+        headlineContent = { Text(param.displayName) },
+        modifier =
+            if (showParamNote) {
+                Modifier.padding(start = 32.dp).clickable { onNavigateToPermissions() }
+            } else {
+                Modifier.padding(start = 32.dp)
+            },
+        leadingContent = leadingIcon,
+        supportingContent = supportingNote,
+        trailingContent = {
+            Switch(
+                checked = perms.isParamEnabled(toolName, param.paramName),
+                onCheckedChange = { onParamToggle(toolName, param.paramName, it) },
+                enabled = controlsEnabled && categoryGranted && paramGranted,
+            )
+        },
+    )
 }
