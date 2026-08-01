@@ -144,9 +144,10 @@ class MainViewModelTest {
     @Test
     fun `pendingApprovalCount reflects list size`() =
         runTest {
-            pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
             viewModel.pendingApprovalCount.test {
-                assertEquals(2, expectMostRecentItem())
+                assertEquals(0, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
+                assertEquals(2, awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
         }
