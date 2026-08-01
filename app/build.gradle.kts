@@ -6,7 +6,6 @@ import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
@@ -215,7 +214,7 @@ configurations.matching { it.name.startsWith("ktlint") }.configureEach {
 
 android {
     namespace = "com.danielealbano.androidremotecontrolmcp"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.danielealbano.androidremotecontrolmcp"
