@@ -76,7 +76,10 @@ fun SettingsScreen(
             TunnelSettingsScreen(onBack = { navController.popBackStack() }, viewModel = viewModel)
         }
         composable(SettingsRoute.McpTools.route) {
-            McpToolsSettingsScreen(onBack = { navController.popBackStack() })
+            McpToolsSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToPermissions = { navController.navigate(SettingsRoute.Permissions.route) },
+            )
         }
         composable(SettingsRoute.Permissions.route) {
             PermissionsSettingsScreen(

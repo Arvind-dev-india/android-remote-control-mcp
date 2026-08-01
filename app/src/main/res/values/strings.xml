@@ -31,6 +31,8 @@
     <string name="settings_mcp_tools_title">MCP Tools</string>
     <string name="settings_mcp_tools_subtitle">Enable or disable tools</string>
     <string name="settings_mcp_tools_placeholder">Tool permissions — available in next update</string>
+    <string name="settings_mcp_tools_missing_permission">Permission not granted — these tools are hidden from clients. Tap to grant.</string>
+    <string name="settings_mcp_tools_param_missing_permission">Permission not granted — this option is unavailable. Tap to grant.</string>
     <string name="settings_permissions_title">Permissions</string>
     <string name="settings_permissions_subtitle">Accessibility, camera, microphone</string>
     <string name="settings_storage_title">Storage</string>

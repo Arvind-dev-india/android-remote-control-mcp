@@ -240,7 +240,7 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolP
 
 ### Task 2.1 — Add strings (defined before their first use)
 
-- [ ] **Modify** `app/src/main/res/values/strings.xml` — add:
+- [x] **Modify** `app/src/main/res/values/strings.xml` — add:
 
 ```xml
 <string name="settings_mcp_tools_missing_permission">Permission not granted — these tools are hidden from clients. Tap to grant.</string>
@@ -248,31 +248,31 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolP
 ```
 
 **DoD**:
-- [ ] String keys are unique in the file.
-- [ ] The category note uses `settings_mcp_tools_missing_permission` (tools hidden); the param note uses `settings_mcp_tools_param_missing_permission` (option unavailable — the tool is NOT hidden).
+- [x] String keys are unique in the file.
+- [x] The category note uses `settings_mcp_tools_missing_permission` (tools hidden); the param note uses `settings_mcp_tools_param_missing_permission` (option unavailable — the tool is NOT hidden).
 
 ### Task 2.2 — Add a shared warning-amber color to the theme (single source of truth)
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/theme/Color.kt` — add:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/theme/Color.kt` — add:
 
 ```kotlin
 /** Amber used for advisory warnings (yellow triangle). ARGB 0xFFF9A825. */
 val WarningAmber = Color(0xFFF9A825)
 ```
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ConnectionInfoCard.kt`:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/components/ConnectionInfoCard.kt`:
   - Remove the now-duplicate private definitions `private const val WARNING_AMBER_ARGB = 0xFFF9A825L` and `private val WarningAmber = Color(WARNING_AMBER_ARGB)` (lines ~54-55).
   - Add import `com.danielealbano.androidremotecontrolmcp.ui.theme.WarningAmber`. The two existing usages (`tint = WarningAmber`, lines ~286 and ~308) then resolve to the shared token.
   - Remove the now-unused import `androidx.compose.ui.graphics.Color` (line ~34). After deleting line 55, `Color` has NO other use in this file (verified: `Color` appears only at the import and the deleted definition — no `: Color` types, no other `Color(...)`/`Color.*` usages), so leaving the import triggers ktlint `standard:no-unused-imports` / detekt `UnusedImports`.
   - This migration is a direct consequence of introducing the shared color — it prevents two identical amber constants coexisting.
 
 **DoD**:
-- [ ] `WarningAmber` is public and importable from `ui.theme`; `Color.kt` already has `@file:Suppress("MagicNumber")`.
-- [ ] `ConnectionInfoCard.kt` no longer defines its own `WarningAmber`/`WARNING_AMBER_ARGB`, imports the shared token, has NO unused `Color` import, and its rendered color is unchanged (same ARGB).
+- [x] `WarningAmber` is public and importable from `ui.theme`; `Color.kt` already has `@file:Suppress("MagicNumber")`.
+- [x] `ConnectionInfoCard.kt` no longer defines its own `WarningAmber`/`WARNING_AMBER_ARGB`, imports the shared token, has NO unused `Color` import, and its rendered color is unchanged (same ARGB).
 
 ### Task 2.3 — Wire permission gating into `McpToolsSettingsScreen`
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/settings/McpToolsSettingsScreen.kt`
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/settings/McpToolsSettingsScreen.kt`
 
 Changes (the private `ALL_TOOL_CATEGORIES` catalog and the `ToolEntry`/`ParamEntry`/`ToolCategory` data classes are **NOT** modified — gating is derived from `OptionalToolPermissions`):
 
@@ -327,13 +327,13 @@ val categoryPermissions = category.tools.mapNotNull { OptionalToolPermissions.pe
 Add imports: `com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermission`, `com.danielealbano.androidremotecontrolmcp.data.model.OptionalToolPermissions`, `com.danielealbano.androidremotecontrolmcp.ui.theme.WarningAmber`, `androidx.compose.material.icons.filled.Warning`, `androidx.compose.foundation.clickable`, `androidx.compose.foundation.layout.Row`, `androidx.compose.ui.Alignment`, `androidx.compose.runtime.DisposableEffect`, `androidx.compose.ui.platform.LocalContext`, `androidx.lifecycle.compose.LocalLifecycleOwner`, `androidx.lifecycle.LifecycleEventObserver`, `androidx.lifecycle.Lifecycle`. (`Column`, `Icon`, `Text`, `MaterialTheme`, `Modifier`, `padding`, `collectAsStateWithLifecycle`, `stringResource`, `dp` are already imported.)
 
 **DoD**:
-- [ ] `viewModel.updateToolEnabled` / `updateParamEnabled` are never called as a side effect of permission state (stored flags untouched).
-- [ ] Header note + triangle appear only for gated categories with a missing permission; the `audio` param row shows its own note + triangle when mic is missing.
-- [ ] No new ktlint/detekt violations.
+- [x] `viewModel.updateToolEnabled` / `updateParamEnabled` are never called as a side effect of permission state (stored flags untouched).
+- [x] Header note + triangle appear only for gated categories with a missing permission; the `audio` param row shows its own note + triangle when mic is missing.
+- [x] No new ktlint/detekt violations.
 
 ### Task 2.4 — Pass the navigate-to-Permissions callback
 
-- [ ] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/SettingsScreen.kt` — the `SettingsRoute.McpTools` composable:
+- [x] **Modify** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/SettingsScreen.kt` — the `SettingsRoute.McpTools` composable:
 
 ```kotlin
 composable(SettingsRoute.McpTools.route) {
@@ -345,7 +345,7 @@ composable(SettingsRoute.McpTools.route) {
 ```
 
 **DoD**:
-- [ ] Navigation lands on the existing `SettingsRoute.Permissions` destination.
+- [x] Navigation lands on the existing `SettingsRoute.Permissions` destination.
 
 ---
 

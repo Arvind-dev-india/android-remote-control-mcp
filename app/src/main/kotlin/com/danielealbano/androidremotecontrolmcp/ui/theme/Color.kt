@@ -66,6 +66,9 @@ val OnSurfaceVariantDark = Color(0xFFC7C5D0)
 val OutlineDark = Color(0xFF90909A)
 val OutlineVariantDark = Color(0xFF46464F)
 
+/** Amber used for advisory warnings (yellow triangle). ARGB 0xFFF9A825. */
+val WarningAmber = Color(0xFFF9A825)
+
 val LightColorScheme =
     lightColorScheme(
         primary = PrimaryLight,
