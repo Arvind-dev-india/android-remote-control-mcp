@@ -506,11 +506,11 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity`, `a
 
 ### Task 4.2 — Plan-compliance code review
 
-- [ ] Spawn `code-reviewer` in plan-compliance mode; fix ALL findings; re-run until clean.
+- [x] Spawn `code-reviewer` in plan-compliance mode; fix ALL findings; re-run until clean. (2 rounds: round 1 raised 2 INFO — the mandatory detekt-driven divergences, recorded as accepted in Review Findings; round 2 = PASS, 0 findings.)
 
 ### Task 4.3 — Final ground-up double-check (LAST ITEM — do after 4.1 and 4.2)
 
-- [ ] Re-read, from scratch, each created/modified file and confirm it matches its task exactly and the final state is coherent:
+- [x] Re-read, from scratch, each created/modified file and confirm it matches its task exactly and the final state is coherent:
   - `data/model/OptionalToolPermission.kt` (new)
   - `services/mcp/McpServerService.kt`
   - `ui/theme/Color.kt`
@@ -522,14 +522,14 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity`, `a
   - `ui/screens/ServerScreen.kt`
   - `res/values/strings.xml`
   - test files: `OptionalToolPermissionTest.kt`, `PermissionGatedToolsIntegrationTest.kt`, `MainViewModelTest.kt`, `ServerStatusCardTest.kt`
-- [ ] Confirm the five agreed decisions hold: start-time computation only; only Camera/Location/Notifications gate tools + mic gates the `audio` param; File Ops/Sharing NOT gated; both start buttons disabled without accessibility & main warning accessibility-only; OAuth card only when pending>0.
-- [ ] Confirm NO registrar (`register*Tools`) file was modified and NO stored `ToolPermissionsConfig` write path was touched (stored flags never mutated by permission state).
-- [ ] Confirm NO file outside this plan's scope was altered.
-- [ ] Confirm the tool/param name strings in `OptionalToolPermissions` still exactly match the handler `TOOL_NAME`/param constants and the `McpToolsSettingsScreen` catalog.
-- [ ] Confirm all quality gates (4.1) are green and the code review (4.2) is clean.
+- [x] Confirm the five agreed decisions hold: start-time computation only; only Camera/Location/Notifications gate tools + mic gates the `audio` param; File Ops/Sharing NOT gated; both start buttons disabled without accessibility & main warning accessibility-only; OAuth card only when pending>0.
+- [x] Confirm NO registrar (`register*Tools`) file was modified and NO stored `ToolPermissionsConfig` write path was touched (stored flags never mutated by permission state).
+- [x] Confirm NO file outside this plan's scope was altered.
+- [x] Confirm the tool/param name strings in `OptionalToolPermissions` still exactly match the handler `TOOL_NAME`/param constants and the `McpToolsSettingsScreen` catalog.
+- [x] Confirm all quality gates (4.1) are green and the code review (4.2) is clean.
 
 ### Definition of Done (whole plan)
-- [ ] Every task above checked; all acceptance criteria met; all quality gates green; code review clean; final ground-up double-check (Task 4.3) complete.
+- [x] Every task above checked; all acceptance criteria met; all quality gates green; code review clean; final ground-up double-check (Task 4.3) complete. (Manual QA on a device is the one deferred item — it requires a physical device/emulator.)
 
 ---
 
