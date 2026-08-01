@@ -56,7 +56,7 @@ fun MainScreen(
     ) { paddingValues ->
         when (selectedTabRoute) {
             TopLevelRoute.Server.route -> {
-                ServerScreen(
+                ServerTabScreen(
                     onNavigateToPermissions = {
                         pendingSettingsRoute = SettingsRoute.Permissions.route
                         selectedTabRoute = TopLevelRoute.Settings.route
@@ -84,7 +84,7 @@ fun MainScreen(
             }
 
             else -> {
-                ServerScreen(
+                ServerTabScreen(
                     onNavigateToPermissions = {
                         pendingSettingsRoute = SettingsRoute.Permissions.route
                         selectedTabRoute = TopLevelRoute.Settings.route

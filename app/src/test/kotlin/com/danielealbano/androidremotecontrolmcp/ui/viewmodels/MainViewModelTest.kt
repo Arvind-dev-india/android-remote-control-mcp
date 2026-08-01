@@ -8,7 +8,6 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -376,53 +375,6 @@ class MainViewModelTest {
 
             assertNull(viewModel.hostnameError.value)
             coVerify { settingsRepository.updateCertificateHostname("mydevice") }
-        }
-
-    @Test
-    fun `addServerLogEntry adds entry to logs`() =
-        runTest {
-            advanceUntilIdle()
-
-            val entry =
-                ServerLogEntry(
-                    timestamp = 1000L,
-                    type = ServerLogEntry.Type.TOOL_CALL,
-                    message = "screen_tap",
-                    toolName = "screen_tap",
-                    durationMs = 42L,
-                )
-            viewModel.addServerLogEntry(entry)
-
-            assertEquals(1, viewModel.serverLogs.value.size)
-            assertEquals(entry, viewModel.serverLogs.value[0])
-        }
-
-    @Test
-    fun `addServerLogEntry trims list to max 100 entries`() =
-        runTest {
-            advanceUntilIdle()
-
-            repeat(105) { i ->
-                viewModel.addServerLogEntry(
-                    ServerLogEntry(
-                        timestamp = i.toLong(),
-                        type = ServerLogEntry.Type.TOOL_CALL,
-                        message = "tool_$i",
-                        toolName = "tool_$i",
-                        durationMs = i.toLong(),
-                    ),
-                )
-            }
-
-            assertEquals(100, viewModel.serverLogs.value.size)
-            assertEquals("tool_5", viewModel.serverLogs.value[0].toolName)
-            assertEquals("tool_104", viewModel.serverLogs.value[99].toolName)
-        }
-
-    @Test
-    fun `initial server logs list is empty`() =
-        runTest {
-            assertEquals(emptyList<ServerLogEntry>(), viewModel.serverLogs.value)
         }
 
     @Test

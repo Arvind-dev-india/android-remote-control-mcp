@@ -1614,13 +1614,13 @@ DoD:
 Why: the agreed UX — 5 most recent entries on the Server screen, "Show more" to a dedicated page with type filters and Clear — and the removal of the now-dead SharedFlow pipeline.
 
 Acceptance criteria:
-- [ ] Server screen card shows the 5 newest entries and a "Show more" button.
-- [ ] Logs page: virtualized list (index preloaded, row text loaded on demand), newest first, 7 type filter chips (all on by default), Clear with confirm dialog, back navigation.
-- [ ] `McpServerService` companion `_serverLogEvents`/`serverLogEvents` and `MainViewModel._serverLogs`/`addServerLogEntry`/`MAX_LOG_ENTRIES` are GONE.
+- [x] Server screen card shows the 5 newest entries and a "Show more" button.
+- [x] Logs page: virtualized list (index preloaded, row text loaded on demand), newest first, 7 type filter chips (all on by default), Clear with confirm dialog, back navigation.
+- [x] `McpServerService` companion `_serverLogEvents`/`serverLogEvents` and `MainViewModel._serverLogs`/`addServerLogEntry`/`MAX_LOG_ENTRIES` are GONE.
 
 ### Task 7.1 — Strings
 
-- [ ] **Modify** `app/src/main/res/values/strings.xml` — add next to the existing `server_logs_*` strings:
+- [x] **Modify** `app/src/main/res/values/strings.xml` — add next to the existing `server_logs_*` strings:
 
 ```xml
     <string name="server_logs_show_more">Show more</string>
@@ -1639,20 +1639,20 @@ Acceptance criteria:
 ```
 
 Task DoD:
-- [ ] All 13 strings present; no duplicates of existing keys.
+- [x] All 13 strings present; no duplicates of existing keys.
 
 ### Task 7.2 — MainViewModel cleanup + companion flow removal
 
-- [ ] **Modify** `ui/viewmodels/MainViewModel.kt` — DELETIONS ONLY, the constructor MUST NOT change (it already has 6 parameters, detekt's constructor cap; the recent-logs state moves to `LogsViewModel` in Task 7.3 instead):
+- [x] **Modify** `ui/viewmodels/MainViewModel.kt` — DELETIONS ONLY, the constructor MUST NOT change (it already has 6 parameters, detekt's constructor cap; the recent-logs state moves to `LogsViewModel` in Task 7.3 instead):
   - DELETE `_serverLogs`, `serverLogs`, `addServerLogEntry`, `MAX_LOG_ENTRIES`, ONLY the single `viewModelScope.launch { McpServerService.serverLogEvents.collect { ... } }` statement inside the (one and only) `init` block — the other launches in that same `init` (server status, tunnel status, config collection) MUST stay — and the now-unused `ServerLogEntry` import.
-- [ ] **Modify** `services/mcp/McpServerService.kt` — DELETE the companion `_serverLogEvents`/`serverLogEvents` declarations, their KDoc, and the now-unused `SharedFlow`/`asSharedFlow`/`MutableSharedFlow` imports (verify no other use first).
+- [x] **Modify** `services/mcp/McpServerService.kt` — DELETE the companion `_serverLogEvents`/`serverLogEvents` declarations, their KDoc, and the now-unused `SharedFlow`/`asSharedFlow`/`MutableSharedFlow` imports (verify no other use first).
 
 Task DoD:
-- [ ] The old pipeline is fully gone from `MainViewModel` and `McpServerService`; `MainViewModel`'s constructor is unchanged. (`ServerScreen` still references the deleted `serverLogs` until Task 7.5 — the tree compiles again from Task 7.6 on.)
+- [x] The old pipeline is fully gone from `MainViewModel` and `McpServerService`; `MainViewModel`'s constructor is unchanged. (`ServerScreen` still references the deleted `serverLogs` until Task 7.5 — the tree compiles again from Task 7.6 on.)
 
 ### Task 7.3 — LogsViewModel
 
-- [ ] **Create** `ui/viewmodels/LogsViewModel.kt`:
+- [x] **Create** `ui/viewmodels/LogsViewModel.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.ui.viewmodels
@@ -1756,11 +1756,11 @@ class LogsViewModel
 ```
 
 Task DoD:
-- [ ] Repository reads happen off the main thread (`flowOn(ioDispatcher)`); recomputes are throttled to at most one per `REFRESH_THROTTLE_MS` per flow while always converging on the latest revision; the entry cache is bounded at 200 and keyed by `cacheKey`; `recentServerLogs` lives HERE (not in `MainViewModel`) and is capped at 5, newest first.
+- [x] Repository reads happen off the main thread (`flowOn(ioDispatcher)`); recomputes are throttled to at most one per `REFRESH_THROTTLE_MS` per flow while always converging on the latest revision; the entry cache is bounded at 200 and keyed by `cacheKey`; `recentServerLogs` lives HERE (not in `MainViewModel`) and is capped at 5, newest first.
 
 ### Task 7.4 — LogsScreen
 
-- [ ] **Create** `ui/screens/LogsScreen.kt`. The file-level suppression is the EXACT one every existing Compose screen file carries (e.g. `ServerScreen.kt:1`): Compose mandates PascalCase composables, which genuinely and unavoidably conflicts with detekt's default `FunctionNaming`; this replicates the established, codebase-wide pattern (user-approved, A58-001):
+- [x] **Create** `ui/screens/LogsScreen.kt`. The file-level suppression is the EXACT one every existing Compose screen file carries (e.g. `ServerScreen.kt:1`): Compose mandates PascalCase composables, which genuinely and unavoidably conflicts with detekt's default `FunctionNaming`; this replicates the established, codebase-wide pattern (user-approved, A58-001):
 
 ```kotlin
 @file:Suppress("FunctionNaming", "LongMethod", "MagicNumber")
@@ -1997,11 +1997,11 @@ private fun typeLabel(type: ServerLogEntry.Type): String =
   Constraint: while `entry == null` (row text still loading) the first line renders from the index data alone — graceful placeholder, no spinner. The back arrow uses `contentDescription = null` (same convention as the settings screens); the Delete action carries a content description.
 
 Task DoD:
-- [ ] Complete implementation (no placeholders): chips, virtualized list with on-demand row loading, empty state, clear dialog, back navigation; 48dp touch targets and content descriptions on the icon buttons per the project a11y rules.
+- [x] Complete implementation (no placeholders): chips, virtualized list with on-demand row loading, empty state, clear dialog, back navigation; 48dp touch targets and content descriptions on the icon buttons per the project a11y rules.
 
 ### Task 7.5 — Recent card + ServerScreen
 
-- [ ] **Modify** `ui/components/ServerLogsSection.kt` — `logs` arrives NEWEST FIRST (from `recent(5)`); replace the `ServerLogsSection` composable with (the `LazyColumn`+`heightIn` goes away — 5 rows need no virtualization, and a `LazyColumn` inside the screen's `verticalScroll` was only legal because of the height cap):
+- [x] **Modify** `ui/components/ServerLogsSection.kt` — `logs` arrives NEWEST FIRST (from `recent(5)`); replace the `ServerLogsSection` composable with (the `LazyColumn`+`heightIn` goes away — 5 rows need no virtualization, and a `LazyColumn` inside the screen's `verticalScroll` was only legal because of the height cap):
 
 ```kotlin
 @Composable
@@ -2069,17 +2069,17 @@ fun ServerLogsSection(
 
   - Remove the now-unused symbols this leaves behind: the `MAX_LOG_LIST_HEIGHT_DP` constant and the unused imports (`LazyColumn`, `items`, `heightIn`, `remember` if unused, and any others ktlint reports); add the new ones (`TextButton`, `Arrangement`).
   - Update the `@Preview` accordingly (pass an `onShowMore = {}`).
-- [ ] **Modify** `ui/screens/ServerScreen.kt`:
+- [x] **Modify** `ui/screens/ServerScreen.kt`:
   - Add parameter `onShowAllLogs: () -> Unit` (after `onNavigateToPermissions`) — the signature then has exactly 5 value parameters, detekt's `LongParameterList` function cap, so NO further parameter may be added: obtain the logs ViewModel INSIDE the body instead — `val logsViewModel: LogsViewModel = hiltViewModel()` as a local in the composable (same ViewModelStoreOwner, identical instance semantics; `MainViewModel` deliberately does not carry log state, see Task 7.2).
   - Replace `val serverLogs by viewModel.serverLogs...` with `val recentServerLogs by logsViewModel.recentServerLogs.collectAsStateWithLifecycle()`.
   - `ServerLogsSection(logs = recentServerLogs, onShowMore = onShowAllLogs)`.
 
 Task DoD:
-- [ ] Recent card renders at most 5 entries newest-first with no internal scrolling; `ServerScreen` has exactly 5 value parameters (no `LongParameterList` exposure). (`MainScreen` still calls `ServerScreen` without the new parameter until Task 7.6 rewires it.)
+- [x] Recent card renders at most 5 entries newest-first with no internal scrolling; `ServerScreen` has exactly 5 value parameters (no `LongParameterList` exposure). (`MainScreen` still calls `ServerScreen` without the new parameter until Task 7.6 rewires it.)
 
 ### Task 7.6 — Routes and Server tab NavHost
 
-- [ ] **Modify** `ui/navigation/Routes.kt` — append:
+- [x] **Modify** `ui/navigation/Routes.kt` — append:
 
 ```kotlin
 sealed class ServerRoute(
@@ -2091,7 +2091,7 @@ sealed class ServerRoute(
 }
 ```
 
-- [ ] **Create** `ui/screens/ServerTabScreen.kt` — mirrors the Settings tab pattern (`SettingsScreen`'s internal `NavHost`); the file-level `FunctionNaming` suppression is the established Compose-file pattern (see Task 7.4):
+- [x] **Create** `ui/screens/ServerTabScreen.kt` — mirrors the Settings tab pattern (`SettingsScreen`'s internal `NavHost`); the file-level `FunctionNaming` suppression is the established Compose-file pattern (see Task 7.4):
 
 ```kotlin
 @file:Suppress("FunctionNaming")
@@ -2133,14 +2133,14 @@ fun ServerTabScreen(
 }
 ```
 
-- [ ] **Modify** `ui/screens/MainScreen.kt` — `ServerScreen` is called at TWO sites: the `TopLevelRoute.Server.route ->` branch AND the `else ->` fallback branch. Replace BOTH with `ServerTabScreen(...)`, keeping the same arguments currently passed to `ServerScreen` at each site (including `modifier = Modifier.padding(paddingValues)` and `viewModel = viewModel`).
+- [x] **Modify** `ui/screens/MainScreen.kt` — `ServerScreen` is called at TWO sites: the `TopLevelRoute.Server.route ->` branch AND the `else ->` fallback branch. Replace BOTH with `ServerTabScreen(...)`, keeping the same arguments currently passed to `ServerScreen` at each site (including `modifier = Modifier.padding(paddingValues)` and `viewModel = viewModel`).
 
 Task DoD:
-- [ ] No `ServerScreen(` call remains in `MainScreen.kt` (both branches use `ServerTabScreen`); Server tab opens on the index screen; "Show more" navigates to the Logs page; system/app back returns to the index; the tree compiles.
+- [x] No `ServerScreen(` call remains in `MainScreen.kt` (both branches use `ServerTabScreen`); Server tab opens on the index screen; "Show more" navigates to the Logs page; system/app back returns to the index; the tree compiles.
 
 ### Task 7.7 — Tests
 
-- [ ] **Modify** `ui/viewmodels/MainViewModelTest.kt`: DELETE the tests of `addServerLogEntry`/`serverLogs` (the constructor is unchanged — no new mock needed).
+- [x] **Modify** `ui/viewmodels/MainViewModelTest.kt`: DELETE the tests of `addServerLogEntry`/`serverLogs` (the constructor is unchanged — no new mock needed).
 
 **File**: `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/ui/viewmodels/LogsViewModelTest.kt`
 
@@ -2155,7 +2155,7 @@ Task DoD:
 | `entryAt caches loaded entries` | second call for same ref does not re-read (spy/counter on repository) |
 
 Task DoD:
-- [ ] Tests written (not run); `grep -rn "serverLogEvents\|addServerLogEntry\|MAX_LOG_ENTRIES" app/src/` returns 0 hits. The interactive UI acceptance criteria (chip toggling, clear dialog, back navigation, on-demand row loading while scrolling) are verified by the Manual QA steps in Task 8.2 — the JVM test suite has no Compose UI test infrastructure, and the underlying logic is unit-tested via `LogsViewModelTest`.
+- [x] Tests written (not run); `grep -rn "serverLogEvents\|addServerLogEntry\|MAX_LOG_ENTRIES" app/src/` returns 0 hits. The interactive UI acceptance criteria (chip toggling, clear dialog, back navigation, on-demand row loading while scrolling) are verified by the Manual QA steps in Task 8.2 — the JVM test suite has no Compose UI test infrastructure, and the underlying logic is unit-tested via `LogsViewModelTest`.
 
 ---
 

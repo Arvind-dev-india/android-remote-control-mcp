@@ -78,11 +78,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -594,17 +591,6 @@ class McpServerService : Service() {
          */
         private val _serverStatus = MutableStateFlow<ServerStatus>(ServerStatus.Stopped)
         val serverStatus: StateFlow<ServerStatus> = _serverStatus.asStateFlow()
-
-        /**
-         * Shared server log events flow. Collected by MainViewModel to display
-         * log entries in the UI. Uses a SharedFlow (not StateFlow) because each
-         * event is a discrete emission, not a current-state snapshot.
-         *
-         * extraBufferCapacity = 64 prevents dropped events during brief UI
-         * collection pauses (e.g., during configuration changes).
-         */
-        private val _serverLogEvents = MutableSharedFlow<ServerLogEntry>(extraBufferCapacity = 64)
-        val serverLogEvents: SharedFlow<ServerLogEntry> = _serverLogEvents.asSharedFlow()
 
         @Volatile
         var instance: McpServerService? = null
