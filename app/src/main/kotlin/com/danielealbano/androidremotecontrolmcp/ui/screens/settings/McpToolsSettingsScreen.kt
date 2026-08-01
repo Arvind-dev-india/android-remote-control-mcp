@@ -311,7 +311,7 @@ private fun ToolCategoryHeader(
     if (!missingPermission) {
         Text(
             text = header,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         )
@@ -321,7 +321,7 @@ private fun ToolCategoryHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = header,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp),
             )
