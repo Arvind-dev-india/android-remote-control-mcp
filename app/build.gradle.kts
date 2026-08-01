@@ -594,7 +594,11 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
  * builder. A proper typed task (vs a bare Exec writing into the source tree) so AGP can wire it as a
  * generated assets source with correct task dependencies. Keyed on [month] so it refreshes monthly.
  */
+@CacheableTask
 abstract class GenerateLocationDbTask : DefaultTask() {
+    // NONE: only the script's content matters for the output, not its path on disk — so the
+    // cache entry stays valid across differently-rooted checkouts (e.g. CI vs local).
+    @get:PathSensitive(PathSensitivity.NONE)
     @get:InputFile
     abstract val script: RegularFileProperty
 
