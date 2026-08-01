@@ -6,7 +6,9 @@ import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 
@@ -21,6 +23,7 @@ import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocatio
 class AdbConfigHandler(
     private val settingsRepository: SettingsRepository,
     private val storageLocationProvider: StorageLocationProvider,
+    private val serverLogRepository: ServerLogRepository,
 ) {
     /**
      * Dispatches the intent to the appropriate handler based on its action.
@@ -40,6 +43,7 @@ class AdbConfigHandler(
     @Suppress("LongMethod")
     private suspend fun handleConfigure(intent: Intent) {
         Log.i(TAG, "Received ADB configuration broadcast")
+        serverLogRepository.log(ServerLogEntry.Type.SETTINGS, "Configuration update received via ADB")
 
         applyBearerToken(intent)
         applyOauthEnabled(intent)

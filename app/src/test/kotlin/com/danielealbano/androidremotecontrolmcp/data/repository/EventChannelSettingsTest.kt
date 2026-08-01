@@ -7,6 +7,8 @@ package com.danielealbano.androidremotecontrolmcp.data.repository
 
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
+import kotlinx.coroutines.Dispatchers
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -97,7 +99,11 @@ class EventChannelSettingsTest {
     @Nested
     @DisplayName("URL validation")
     inner class UrlValidation {
-        private val repo = SettingsRepositoryImpl(mockk(relaxed = true))
+        private val repo =
+            SettingsRepositoryImpl(
+                mockk(relaxed = true),
+                SettingsChangeLogger(RecordingServerLogRepository(), Dispatchers.Unconfined, 0L),
+            )
 
         @Test
         fun `validateEndpointUrl rejects invalid URL`() {

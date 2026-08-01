@@ -1310,11 +1310,11 @@ DoD:
 Why: UI and ADB writes converge on the singleton `SettingsRepositoryImpl`, so repository-level instrumentation covers both. Text fields persist per keystroke, so entries are coalesced per setting key (2 s quiet window, pre-burst old value, no-op bursts dropped).
 
 Acceptance criteria:
-- [ ] Every mutation method in the table below emits (coalesced) `SETTINGS` entries; secrets never log values; ADB configure broadcasts add a marker entry.
+- [x] Every mutation method in the table below emits (coalesced) `SETTINGS` entries; secrets never log values; ADB configure broadcasts add a marker entry.
 
 ### Task 6.1 — Coalescing logger
 
-- [ ] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsChangeLogger.kt`:
+- [x] **Create** `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsChangeLogger.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.data.repository
@@ -1424,11 +1424,11 @@ class SettingsChangeLogger internal constructor(
 ```
 
 Task DoD:
-- [ ] Hilt injects via the secondary constructor; the window is overridable ONLY through the `internal` primary constructor (tests).
+- [x] Hilt injects via the secondary constructor; the window is overridable ONLY through the `internal` primary constructor (tests).
 
 ### Task 6.2 — Repository instrumentation
 
-- [ ] **Modify** `data/repository/SettingsRepositoryImpl.kt`: constructor gains `private val settingsChangeLogger: SettingsChangeLogger` (after `dataStore`). Instrument each method per the table. Pattern for scalar prefs methods — read the old value inside the `edit` lambda with the SAME fallback default `mapPreferencesToServerConfig` uses for that key, write, then `submit`:
+- [x] **Modify** `data/repository/SettingsRepositoryImpl.kt`: constructor gains `private val settingsChangeLogger: SettingsChangeLogger` (after `dataStore`). Instrument each method per the table. Pattern for scalar prefs methods — read the old value inside the `edit` lambda with the SAME fallback default `mapPreferencesToServerConfig` uses for that key, write, then `submit`:
 
 ```kotlin
         override suspend fun updatePort(port: Int) {
@@ -1559,19 +1559,19 @@ Task DoD:
   NOT instrumented (by design, see header): `updateServerRunning`, `ensureAuthModelMigrated`, `getOrCreateJwtSigningSecret`, pure `validate*` functions, getters/Flows.
 
 Task DoD:
-- [ ] Every method in the three tables above (plus the tool-permissions trio) is instrumented; the excluded methods are untouched; secrets never pass through a render lambda that outputs them.
+- [x] Every method in the three tables above (plus the tool-permissions trio) is instrumented; the excluded methods are untouched; secrets never pass through a render lambda that outputs them.
 
 ### Task 6.3 — ADB marker
 
-- [ ] **Modify** `services/mcp/AdbConfigHandler.kt`: constructor gains `private val serverLogRepository: ServerLogRepository` (last). In `handleConfigure`, directly after the `Log.i(TAG, "Received ADB configuration broadcast")`, add `serverLogRepository.log(ServerLogEntry.Type.SETTINGS, "Configuration update received via ADB")`.
-- [ ] **Modify** `services/mcp/AdbConfigReceiver.kt`: add `@Inject lateinit var serverLogRepository: ServerLogRepository` and pass it at the `AdbConfigHandler(...)` construction site.
+- [x] **Modify** `services/mcp/AdbConfigHandler.kt`: constructor gains `private val serverLogRepository: ServerLogRepository` (last). In `handleConfigure`, directly after the `Log.i(TAG, "Received ADB configuration broadcast")`, add `serverLogRepository.log(ServerLogEntry.Type.SETTINGS, "Configuration update received via ADB")`.
+- [x] **Modify** `services/mcp/AdbConfigReceiver.kt`: add `@Inject lateinit var serverLogRepository: ServerLogRepository` and pass it at the `AdbConfigHandler(...)` construction site.
 
 Task DoD:
-- [ ] The marker entry is emitted before any `apply*` runs, for every ACTION_CONFIGURE broadcast, exactly once.
+- [x] The marker entry is emitted before any `apply*` runs, for every ACTION_CONFIGURE broadcast, exactly once.
 
 ### Task 6.4 — Tests
 
-- [ ] Update constructor call sites in: `SettingsRepositoryImplTest.kt`, `EventChannelSettingsTest.kt`, `SettingsRepositoryServerRunningTest.kt`, `AdbConfigHandlerTest.kt`, plus ANY other test-source construction site of the changed classes found via grep — real `SettingsChangeLogger` built with a `RecordingServerLogRepository` + `StandardTestDispatcher` + `windowMs` suited to the test (use the internal constructor).
+- [x] Update constructor call sites in: `SettingsRepositoryImplTest.kt`, `EventChannelSettingsTest.kt`, `SettingsRepositoryServerRunningTest.kt`, `AdbConfigHandlerTest.kt`, plus ANY other test-source construction site of the changed classes found via grep — real `SettingsChangeLogger` built with a `RecordingServerLogRepository` + `StandardTestDispatcher` + `windowMs` suited to the test (use the internal constructor).
 
 **File**: `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/data/repository/SettingsChangeLoggerTest.kt`
 
@@ -1605,7 +1605,7 @@ Task DoD:
 | `configure broadcast records ADB marker` | one SETTINGS entry `Configuration update received via ADB` |
 
 DoD:
-- [ ] Grep of test assertions confirms no secret value string is ever asserted present in a message.
+- [x] Grep of test assertions confirms no secret value string is ever asserted present in a message.
 
 ---
 

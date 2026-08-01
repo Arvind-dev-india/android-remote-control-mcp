@@ -45,6 +45,7 @@ class SettingsRepositoryImpl
     @Inject
     constructor(
         private val dataStore: DataStore<Preferences>,
+        private val settingsChangeLogger: SettingsChangeLogger,
     ) : SettingsRepository {
         override val serverConfig: Flow<ServerConfig> =
             dataStore.data.map { prefs ->
@@ -76,20 +77,38 @@ class SettingsRepositoryImpl
         }
 
         override suspend fun updateOauthEnabled(enabled: Boolean) {
-            dataStore.edit { prefs -> prefs[OAUTH_ENABLED_KEY] = enabled }
+            dataStore.edit { prefs ->
+                val old = prefs[OAUTH_ENABLED_KEY] ?: true
+                prefs[OAUTH_ENABLED_KEY] = enabled
+                settingsChangeLogger.submit("oauth_enabled", old.toString(), enabled.toString()) { _, n ->
+                    "OAuth ${if (n.toBoolean()) "enabled" else "disabled"}"
+                }
+            }
         }
 
         override suspend fun updateBearerTokenEnabled(enabled: Boolean) {
             dataStore.edit { prefs ->
+                val old = prefs[BEARER_TOKEN_ENABLED_KEY] ?: true
                 prefs[BEARER_TOKEN_ENABLED_KEY] = enabled
+                settingsChangeLogger.submit("bearer_token_enabled", old.toString(), enabled.toString()) { _, n ->
+                    "Bearer token auth ${if (n.toBoolean()) "enabled" else "disabled"}"
+                }
                 if (enabled && prefs[BEARER_TOKEN_KEY].isNullOrEmpty()) {
-                    prefs[BEARER_TOKEN_KEY] = generateTokenString()
+                    val generated = generateTokenString()
+                    prefs[BEARER_TOKEN_KEY] = generated
+                    settingsChangeLogger.submit("bearer_token", "", generated) { _, _ -> "Bearer token changed" }
                 }
             }
         }
 
         override suspend fun updatePublicUrlOverride(url: String) {
-            dataStore.edit { prefs -> prefs[PUBLIC_URL_OVERRIDE_KEY] = url }
+            dataStore.edit { prefs ->
+                val old = prefs[PUBLIC_URL_OVERRIDE_KEY] ?: ""
+                prefs[PUBLIC_URL_OVERRIDE_KEY] = url
+                settingsChangeLogger.submit("public_url_override", old, url) { o, n ->
+                    "Public URL override changed ${o.ifEmpty { "(none)" }} → ${n.ifEmpty { "(none)" }}"
+                }
+            }
         }
 
         override fun validatePublicUrlOverride(url: String): Result<String> {
@@ -131,19 +150,29 @@ class SettingsRepositoryImpl
 
         override suspend fun updatePort(port: Int) {
             dataStore.edit { prefs ->
+                val old = prefs[PORT_KEY] ?: ServerConfig.DEFAULT_PORT
                 prefs[PORT_KEY] = port
+                settingsChangeLogger.submit("port", old.toString(), port.toString()) { o, n ->
+                    "Port changed $o → $n"
+                }
             }
         }
 
         override suspend fun updateBindingAddress(bindingAddress: BindingAddress) {
             dataStore.edit { prefs ->
+                val old = prefs[BINDING_ADDRESS_KEY] ?: BindingAddress.LOCALHOST.name
                 prefs[BINDING_ADDRESS_KEY] = bindingAddress.name
+                settingsChangeLogger.submit("binding_address", old, bindingAddress.name) { o, n ->
+                    "Binding address changed $o → $n"
+                }
             }
         }
 
         override suspend fun updateBearerToken(token: String) {
             dataStore.edit { prefs ->
+                val old = prefs[BEARER_TOKEN_KEY] ?: ""
                 prefs[BEARER_TOKEN_KEY] = token
+                settingsChangeLogger.submit("bearer_token", old, token) { _, _ -> "Bearer token changed" }
             }
         }
 
@@ -155,7 +184,11 @@ class SettingsRepositoryImpl
 
         override suspend fun updateAutoStartOnBoot(enabled: Boolean) {
             dataStore.edit { prefs ->
+                val old = prefs[AUTO_START_KEY] ?: false
                 prefs[AUTO_START_KEY] = enabled
+                settingsChangeLogger.submit("auto_start", old.toString(), enabled.toString()) { _, n ->
+                    "Auto-start on boot ${if (n.toBoolean()) "enabled" else "disabled"}"
+                }
             }
         }
 
@@ -168,49 +201,99 @@ class SettingsRepositoryImpl
 
         override suspend fun updateHttpsEnabled(enabled: Boolean) {
             dataStore.edit { prefs ->
+                val old = prefs[HTTPS_ENABLED_KEY] ?: false
                 prefs[HTTPS_ENABLED_KEY] = enabled
+                settingsChangeLogger.submit("https_enabled", old.toString(), enabled.toString()) { _, n ->
+                    "HTTPS ${if (n.toBoolean()) "enabled" else "disabled"}"
+                }
             }
         }
 
         override suspend fun updateCertificateSource(source: CertificateSource) {
             dataStore.edit { prefs ->
+                val old = prefs[CERTIFICATE_SOURCE_KEY] ?: CertificateSource.AUTO_GENERATED.name
                 prefs[CERTIFICATE_SOURCE_KEY] = source.name
+                settingsChangeLogger.submit("certificate_source", old, source.name) { o, n ->
+                    "Certificate source changed $o → $n"
+                }
             }
         }
 
         override suspend fun updateCertificateHostname(hostname: String) {
             dataStore.edit { prefs ->
+                val old = prefs[CERTIFICATE_HOSTNAME_KEY] ?: ServerConfig.DEFAULT_CERTIFICATE_HOSTNAME
                 prefs[CERTIFICATE_HOSTNAME_KEY] = hostname
+                settingsChangeLogger.submit("certificate_hostname", old, hostname) { o, n ->
+                    "Certificate hostname changed $o → $n"
+                }
             }
         }
 
         override suspend fun updateTunnelEnabled(enabled: Boolean) {
-            dataStore.edit { prefs -> prefs[TUNNEL_ENABLED_KEY] = enabled }
+            dataStore.edit { prefs ->
+                val old = prefs[TUNNEL_ENABLED_KEY] ?: false
+                prefs[TUNNEL_ENABLED_KEY] = enabled
+                settingsChangeLogger.submit("tunnel_enabled", old.toString(), enabled.toString()) { _, n ->
+                    "Remote access tunnel ${if (n.toBoolean()) "enabled" else "disabled"}"
+                }
+            }
         }
 
         override suspend fun updateTunnelProvider(provider: TunnelProviderType) {
-            dataStore.edit { prefs -> prefs[TUNNEL_PROVIDER_KEY] = provider.name }
+            dataStore.edit { prefs ->
+                val old = prefs[TUNNEL_PROVIDER_KEY] ?: TunnelProviderType.CLOUDFLARE.name
+                prefs[TUNNEL_PROVIDER_KEY] = provider.name
+                settingsChangeLogger.submit("tunnel_provider", old, provider.name) { o, n ->
+                    "Tunnel provider changed $o → $n"
+                }
+            }
         }
 
         override suspend fun updateNgrokAuthtoken(authtoken: String) {
-            dataStore.edit { prefs -> prefs[NGROK_AUTHTOKEN_KEY] = authtoken }
+            dataStore.edit { prefs ->
+                val old = prefs[NGROK_AUTHTOKEN_KEY] ?: ""
+                prefs[NGROK_AUTHTOKEN_KEY] = authtoken
+                settingsChangeLogger.submit("ngrok_authtoken", old, authtoken) { _, _ -> "ngrok authtoken changed" }
+            }
         }
 
         override suspend fun updateNgrokDomain(domain: String) {
-            dataStore.edit { prefs -> prefs[NGROK_DOMAIN_KEY] = domain }
+            dataStore.edit { prefs ->
+                val old = prefs[NGROK_DOMAIN_KEY] ?: ""
+                prefs[NGROK_DOMAIN_KEY] = domain
+                settingsChangeLogger.submit("ngrok_domain", old, domain) { o, n ->
+                    "ngrok domain changed $o → $n"
+                }
+            }
         }
 
         override suspend fun updateCloudflareTunnelMode(mode: CloudflareTunnelMode) {
-            dataStore.edit { prefs -> prefs[CLOUDFLARE_TUNNEL_MODE_KEY] = mode.name }
+            dataStore.edit { prefs ->
+                val old = prefs[CLOUDFLARE_TUNNEL_MODE_KEY] ?: CloudflareTunnelMode.FREE.name
+                prefs[CLOUDFLARE_TUNNEL_MODE_KEY] = mode.name
+                settingsChangeLogger.submit("cloudflare_tunnel_mode", old, mode.name) { o, n ->
+                    "Cloudflare tunnel mode changed $o → $n"
+                }
+            }
         }
 
         override suspend fun updateCloudflareTunnelToken(token: String) {
-            dataStore.edit { prefs -> prefs[CLOUDFLARE_TUNNEL_TOKEN_KEY] = token }
+            dataStore.edit { prefs ->
+                val old = prefs[CLOUDFLARE_TUNNEL_TOKEN_KEY] ?: ""
+                prefs[CLOUDFLARE_TUNNEL_TOKEN_KEY] = token
+                settingsChangeLogger.submit("cloudflare_tunnel_token", old, token) { _, _ ->
+                    "Cloudflare tunnel token changed"
+                }
+            }
         }
 
         override suspend fun updateFileSizeLimit(limitMb: Int) {
             dataStore.edit { prefs ->
+                val old = prefs[FILE_SIZE_LIMIT_KEY] ?: ServerConfig.DEFAULT_FILE_SIZE_LIMIT_MB
                 prefs[FILE_SIZE_LIMIT_KEY] = limitMb
+                settingsChangeLogger.submit("file_size_limit", old.toString(), limitMb.toString()) { o, n ->
+                    "File size limit changed $o → $n MB"
+                }
             }
         }
 
@@ -228,31 +311,51 @@ class SettingsRepositoryImpl
 
         override suspend fun updateAllowHttpDownloads(enabled: Boolean) {
             dataStore.edit { prefs ->
+                val old = prefs[ALLOW_HTTP_DOWNLOADS_KEY] ?: false
                 prefs[ALLOW_HTTP_DOWNLOADS_KEY] = enabled
+                settingsChangeLogger.submit("allow_http_downloads", old.toString(), enabled.toString()) { _, n ->
+                    "HTTP downloads ${if (n.toBoolean()) "allowed" else "disallowed"}"
+                }
             }
         }
 
         override suspend fun updateAllowUnverifiedHttpsCerts(enabled: Boolean) {
             dataStore.edit { prefs ->
+                val old = prefs[ALLOW_UNVERIFIED_HTTPS_KEY] ?: false
                 prefs[ALLOW_UNVERIFIED_HTTPS_KEY] = enabled
+                settingsChangeLogger.submit(
+                    "allow_unverified_https_certs",
+                    old.toString(),
+                    enabled.toString(),
+                ) { _, n -> "Unverified HTTPS certificates ${if (n.toBoolean()) "allowed" else "disallowed"}" }
             }
         }
 
         override suspend fun updateDownloadTimeout(seconds: Int) {
             dataStore.edit { prefs ->
+                val old = prefs[DOWNLOAD_TIMEOUT_KEY] ?: ServerConfig.DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
                 prefs[DOWNLOAD_TIMEOUT_KEY] = seconds
+                settingsChangeLogger.submit("download_timeout", old.toString(), seconds.toString()) { o, n ->
+                    "Download timeout changed $o → $n s"
+                }
             }
         }
 
         override suspend fun updateDeviceSlug(slug: String) {
             dataStore.edit { prefs ->
+                val old = prefs[DEVICE_SLUG_KEY] ?: ""
                 prefs[DEVICE_SLUG_KEY] = slug
+                settingsChangeLogger.submit("device_slug", old, slug) { o, n ->
+                    "Device slug changed $o → $n"
+                }
             }
         }
 
         override suspend fun updateToolPermissionsConfig(config: ToolPermissionsConfig) {
             dataStore.edit { prefs ->
+                val old = ToolPermissionsConfig.fromJsonOrDefault(prefs[TOOL_PERMISSIONS_KEY])
                 prefs[TOOL_PERMISSIONS_KEY] = config.toJson()
+                logToolPermissionsDiff(old, config)
             }
         }
 
@@ -269,6 +372,7 @@ class SettingsRepositoryImpl
                         current.copy(disabledTools = current.disabledTools + toolName)
                     }
                 prefs[TOOL_PERMISSIONS_KEY] = updated.toJson()
+                logToolPermissionsDiff(current, updated)
             }
         }
 
@@ -287,7 +391,35 @@ class SettingsRepositoryImpl
                     } else {
                         current.disabledParams + (toolName to newParams)
                     }
-                prefs[TOOL_PERMISSIONS_KEY] = current.copy(disabledParams = newDisabledParams).toJson()
+                val updated = current.copy(disabledParams = newDisabledParams)
+                prefs[TOOL_PERMISSIONS_KEY] = updated.toJson()
+                logToolPermissionsDiff(current, updated)
+            }
+        }
+
+        private fun logToolPermissionsDiff(
+            old: ToolPermissionsConfig,
+            new: ToolPermissionsConfig,
+        ) {
+            (new.disabledTools - old.disabledTools).forEach { tool ->
+                settingsChangeLogger.submit("tool:$tool", "enabled", "disabled") { _, _ -> "Tool '$tool' disabled" }
+            }
+            (old.disabledTools - new.disabledTools).forEach { tool ->
+                settingsChangeLogger.submit("tool:$tool", "disabled", "enabled") { _, _ -> "Tool '$tool' enabled" }
+            }
+            (new.disabledParams.keys + old.disabledParams.keys).forEach { tool ->
+                val oldParams = old.disabledParams[tool].orEmpty()
+                val newParams = new.disabledParams[tool].orEmpty()
+                (newParams - oldParams).forEach { param ->
+                    settingsChangeLogger.submit("param:$tool:$param", "enabled", "disabled") { _, _ ->
+                        "Parameter '$param' of tool '$tool' disabled"
+                    }
+                }
+                (oldParams - newParams).forEach { param ->
+                    settingsChangeLogger.submit("param:$tool:$param", "disabled", "enabled") { _, _ ->
+                        "Parameter '$param' of tool '$tool' enabled"
+                    }
+                }
             }
         }
 
@@ -333,14 +465,23 @@ class SettingsRepositoryImpl
                 val existing = parseStoredLocationsJson(prefs[AUTHORIZED_LOCATIONS_KEY]).toMutableList()
                 existing.add(location)
                 prefs[AUTHORIZED_LOCATIONS_KEY] = serializeStoredLocationsJson(existing)
+                settingsChangeLogger.submit("storage_add:${location.id}", "absent", "present") { _, _ ->
+                    "Storage location added: ${location.description}"
+                }
             }
         }
 
         override suspend fun removeStoredLocation(locationId: String) {
             dataStore.edit { prefs ->
                 val existing = parseStoredLocationsJson(prefs[AUTHORIZED_LOCATIONS_KEY]).toMutableList()
+                val removed = existing.firstOrNull { it.id == locationId }
                 existing.removeAll { it.id == locationId }
                 prefs[AUTHORIZED_LOCATIONS_KEY] = serializeStoredLocationsJson(existing)
+                if (removed != null) {
+                    settingsChangeLogger.submit("storage_remove:$locationId", "present", "absent") { _, _ ->
+                        "Storage location removed: ${removed.description}"
+                    }
+                }
             }
         }
 
@@ -352,8 +493,12 @@ class SettingsRepositoryImpl
                 val existing = parseStoredLocationsJson(prefs[AUTHORIZED_LOCATIONS_KEY]).toMutableList()
                 val index = existing.indexOfFirst { it.id == locationId }
                 if (index >= 0) {
+                    val oldDescription = existing[index].description
                     existing[index] = existing[index].copy(description = description)
                     prefs[AUTHORIZED_LOCATIONS_KEY] = serializeStoredLocationsJson(existing)
+                    settingsChangeLogger.submit("storage_desc:$locationId", oldDescription, description) { o, n ->
+                        "Storage location renamed $o → $n"
+                    }
                 } else {
                     Log.w(TAG, "updateLocationDescription: location ${sanitizeLocationId(locationId)} not found, no-op")
                 }
@@ -368,8 +513,17 @@ class SettingsRepositoryImpl
                 val existing = parseStoredLocationsJson(prefs[AUTHORIZED_LOCATIONS_KEY]).toMutableList()
                 val index = existing.indexOfFirst { it.id == locationId }
                 if (index >= 0) {
+                    val description = existing[index].description
+                    val old = existing[index].allowWrite
                     existing[index] = existing[index].copy(allowWrite = allowWrite)
                     prefs[AUTHORIZED_LOCATIONS_KEY] = serializeStoredLocationsJson(existing)
+                    settingsChangeLogger.submit(
+                        "storage_write:$locationId",
+                        old.toString(),
+                        allowWrite.toString(),
+                    ) { _, n ->
+                        "Storage location '$description' write access ${if (n.toBoolean()) "allowed" else "revoked"}"
+                    }
                 } else {
                     Log.w(TAG, "updateLocationAllowWrite: location ${sanitizeLocationId(locationId)} not found, no-op")
                 }
@@ -384,8 +538,17 @@ class SettingsRepositoryImpl
                 val existing = parseStoredLocationsJson(prefs[AUTHORIZED_LOCATIONS_KEY]).toMutableList()
                 val index = existing.indexOfFirst { it.id == locationId }
                 if (index >= 0) {
+                    val description = existing[index].description
+                    val old = existing[index].allowDelete
                     existing[index] = existing[index].copy(allowDelete = allowDelete)
                     prefs[AUTHORIZED_LOCATIONS_KEY] = serializeStoredLocationsJson(existing)
+                    settingsChangeLogger.submit(
+                        "storage_delete:$locationId",
+                        old.toString(),
+                        allowDelete.toString(),
+                    ) { _, n ->
+                        "Storage location '$description' delete access ${if (n.toBoolean()) "allowed" else "revoked"}"
+                    }
                 } else {
                     Log.w(TAG, "updateLocationAllowDelete: location ${sanitizeLocationId(locationId)} not found, no-op")
                 }
@@ -407,6 +570,13 @@ class SettingsRepositoryImpl
                 val existing = current[locationId] ?: BuiltinPermissions()
                 val updated = current + (locationId to existing.copy(allowWrite = allowWrite))
                 prefs[BUILTIN_LOCATION_PERMISSIONS_KEY] = serializeBuiltinPermissions(updated)
+                settingsChangeLogger.submit(
+                    "storage_write:$locationId",
+                    existing.allowWrite.toString(),
+                    allowWrite.toString(),
+                ) { _, n ->
+                    "Storage location '$locationId' write access ${if (n.toBoolean()) "allowed" else "revoked"}"
+                }
             }
         }
 
@@ -419,6 +589,13 @@ class SettingsRepositoryImpl
                 val existing = current[locationId] ?: BuiltinPermissions()
                 val updated = current + (locationId to existing.copy(allowDelete = allowDelete))
                 prefs[BUILTIN_LOCATION_PERMISSIONS_KEY] = serializeBuiltinPermissions(updated)
+                settingsChangeLogger.submit(
+                    "storage_delete:$locationId",
+                    existing.allowDelete.toString(),
+                    allowDelete.toString(),
+                ) { _, n ->
+                    "Storage location '$locationId' delete access ${if (n.toBoolean()) "allowed" else "revoked"}"
+                }
             }
         }
 
@@ -646,24 +823,36 @@ class SettingsRepositoryImpl
 
         override suspend fun getEventChannelConfig(): EventChannelConfig = eventChannelConfig.first()
 
-        private suspend fun updateEventChannelConfig(transform: (EventChannelConfig) -> EventChannelConfig) {
+        private suspend fun updateEventChannelConfig(
+            transform: (EventChannelConfig) -> EventChannelConfig,
+        ): Pair<EventChannelConfig, EventChannelConfig> {
             val current = getEventChannelConfig()
             val updated = transform(current)
             dataStore.edit { prefs ->
                 prefs[EVENT_CHANNEL_CONFIG_KEY] = updated.toJson()
             }
+            return current to updated
         }
 
         override suspend fun updateEventChannelEnabled(enabled: Boolean) {
-            updateEventChannelConfig { it.copy(enabled = enabled) }
+            val (old, new) = updateEventChannelConfig { it.copy(enabled = enabled) }
+            settingsChangeLogger.submit("channel_enabled", old.enabled.toString(), new.enabled.toString()) { _, n ->
+                "Event channel ${if (n.toBoolean()) "enabled" else "disabled"}"
+            }
         }
 
         override suspend fun updateEventChannelEndpointUrl(url: String) {
-            updateEventChannelConfig { it.copy(endpointUrl = url) }
+            val (old, new) = updateEventChannelConfig { it.copy(endpointUrl = url) }
+            settingsChangeLogger.submit("channel_endpoint", old.endpointUrl, new.endpointUrl) { o, n ->
+                "Event channel endpoint changed $o → $n"
+            }
         }
 
         override suspend fun updateEventChannelAuthToken(token: String) {
-            updateEventChannelConfig { it.copy(authToken = token) }
+            val (old, new) = updateEventChannelConfig { it.copy(authToken = token) }
+            settingsChangeLogger.submit("channel_auth_token", old.authToken, new.authToken) { _, _ ->
+                "Event channel auth token changed"
+            }
         }
 
         override suspend fun generateNewEventChannelAuthToken(): String {
@@ -690,33 +879,93 @@ class SettingsRepositoryImpl
             }
         }
 
-        override suspend fun updateNotificationChannelEnabled(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(notifications = it.notifications.copy(enabled = enabled)) }
-
-        override suspend fun updateNotificationFilterMode(mode: NotificationFilterMode) =
-            updateEventChannelConfig { it.copy(notifications = it.notifications.copy(filterMode = mode)) }
-
-        override suspend fun updateNotificationFilterApps(apps: Set<String>) =
-            updateEventChannelConfig { it.copy(notifications = it.notifications.copy(filterApps = apps)) }
-
-        override suspend fun updateWifiChannelEnabled(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(enabled = enabled)) }
-
-        override suspend fun updateWifiSsids(ssids: Set<String>) {
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(ssids = ssids)) }
+        override suspend fun updateNotificationChannelEnabled(enabled: Boolean) {
+            val (old, new) =
+                updateEventChannelConfig { it.copy(notifications = it.notifications.copy(enabled = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_notifications",
+                old.notifications.enabled.toString(),
+                new.notifications.enabled.toString(),
+            ) { _, n -> "Notification events ${if (n.toBoolean()) "enabled" else "disabled"}" }
         }
 
-        override suspend fun updateWifiNotifyOnDiscovered(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnDiscovered = enabled)) }
+        override suspend fun updateNotificationFilterMode(mode: NotificationFilterMode) {
+            val (old, new) =
+                updateEventChannelConfig { it.copy(notifications = it.notifications.copy(filterMode = mode)) }
+            settingsChangeLogger.submit(
+                "channel_notif_filter_mode",
+                old.notifications.filterMode.name,
+                new.notifications.filterMode.name,
+            ) { o, n -> "Notification filter mode changed $o → $n" }
+        }
 
-        override suspend fun updateWifiNotifyOnLost(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnLost = enabled)) }
+        override suspend fun updateNotificationFilterApps(apps: Set<String>) {
+            val (old, new) =
+                updateEventChannelConfig { it.copy(notifications = it.notifications.copy(filterApps = apps)) }
+            settingsChangeLogger.submit(
+                "channel_notif_filter_apps",
+                serializeSet(old.notifications.filterApps),
+                serializeSet(new.notifications.filterApps),
+            ) { o, n -> "Notification filter apps changed ${serializedSetCount(o)} → ${serializedSetCount(n)}" }
+        }
 
-        override suspend fun updateWifiNotifyOnConnected(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnConnected = enabled)) }
+        override suspend fun updateWifiChannelEnabled(enabled: Boolean) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(enabled = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_wifi",
+                old.wifi.enabled.toString(),
+                new.wifi.enabled.toString(),
+            ) { _, n -> "Wi-Fi events ${if (n.toBoolean()) "enabled" else "disabled"}" }
+        }
 
-        override suspend fun updateWifiNotifyOnDisconnected(enabled: Boolean) =
-            updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnDisconnected = enabled)) }
+        override suspend fun updateWifiSsids(ssids: Set<String>) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(ssids = ssids)) }
+            settingsChangeLogger.submit(
+                "channel_wifi_ssids",
+                serializeSet(old.wifi.ssids),
+                serializeSet(new.wifi.ssids),
+            ) { o, n -> "Wi-Fi monitored SSIDs changed ${serializedSetCount(o)} → ${serializedSetCount(n)}" }
+        }
+
+        override suspend fun updateWifiNotifyOnDiscovered(enabled: Boolean) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnDiscovered = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_wifi_discovered",
+                old.wifi.notifyOnDiscovered.toString(),
+                new.wifi.notifyOnDiscovered.toString(),
+            ) { _, n -> "Wi-Fi notify-on-discovered ${if (n.toBoolean()) "enabled" else "disabled"}" }
+        }
+
+        override suspend fun updateWifiNotifyOnLost(enabled: Boolean) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnLost = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_wifi_lost",
+                old.wifi.notifyOnLost.toString(),
+                new.wifi.notifyOnLost.toString(),
+            ) { _, n -> "Wi-Fi notify-on-lost ${if (n.toBoolean()) "enabled" else "disabled"}" }
+        }
+
+        override suspend fun updateWifiNotifyOnConnected(enabled: Boolean) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnConnected = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_wifi_connected",
+                old.wifi.notifyOnConnected.toString(),
+                new.wifi.notifyOnConnected.toString(),
+            ) { _, n -> "Wi-Fi notify-on-connected ${if (n.toBoolean()) "enabled" else "disabled"}" }
+        }
+
+        override suspend fun updateWifiNotifyOnDisconnected(enabled: Boolean) {
+            val (old, new) = updateEventChannelConfig { it.copy(wifi = it.wifi.copy(notifyOnDisconnected = enabled)) }
+            settingsChangeLogger.submit(
+                "channel_wifi_disconnected",
+                old.wifi.notifyOnDisconnected.toString(),
+                new.wifi.notifyOnDisconnected.toString(),
+            ) { _, n -> "Wi-Fi notify-on-disconnected ${if (n.toBoolean()) "enabled" else "disabled"}" }
+        }
+
+        private fun serializeSet(values: Set<String>): String = values.sorted().joinToString("\n")
+
+        private fun serializedSetCount(value: String): Int = if (value.isEmpty()) 0 else value.split('\n').size
 
         companion object {
             private const val TAG = "MCP:SettingsRepo"
