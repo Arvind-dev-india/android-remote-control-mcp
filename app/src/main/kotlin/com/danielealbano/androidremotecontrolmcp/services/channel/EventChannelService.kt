@@ -10,6 +10,8 @@ import android.os.IBinder
 import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelConnectionStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.channel.listeners.NotificationEventListener
 import com.danielealbano.androidremotecontrolmcp.services.channel.listeners.WifiEventListener
@@ -36,8 +38,15 @@ class EventChannelService : Service() {
     @Inject
     lateinit var geofenceController: GeofenceChannelController
 
+    @Inject
+    lateinit var serverLogRepository: ServerLogRepository
+
     private var notificationEventListener: NotificationEventListener? = null
     private var wifiEventListener: WifiEventListener? = null
+
+    @Volatile
+    private var startLogged = false
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -64,11 +73,14 @@ class EventChannelService : Service() {
             val config = settingsRepository.getEventChannelConfig()
             if (config.endpointUrl.isBlank()) {
                 Logger.e(TAG, "Cannot start: endpoint URL is empty")
+                serverLogRepository.log(ServerLogEntry.Type.CHANNEL, CHANNEL_START_FAILED_LOG_MESSAGE)
                 stopSelf()
                 return@launch
             }
 
             eventDispatcher.start(config.endpointUrl, config.authToken)
+            startLogged = true
+            serverLogRepository.log(ServerLogEntry.Type.CHANNEL, channelStartedLogMessage(config.endpointUrl))
 
             // Immediate health check on start
             eventDispatcher.healthCheck()
@@ -169,6 +181,10 @@ class EventChannelService : Service() {
         wifiEventListener?.stop()
         geofenceController.onChannelStopped()
         eventDispatcher.stop()
+        if (startLogged) {
+            serverLogRepository.log(ServerLogEntry.Type.CHANNEL, CHANNEL_STOPPED_LOG_MESSAGE)
+            startLogged = false
+        }
         serviceScope.cancel()
         _serviceStatus.value = ChannelConnectionStatus.Idle
         Logger.i(TAG, "Event channel service destroyed")
@@ -192,3 +208,9 @@ class EventChannelService : Service() {
         val serviceStatus: StateFlow<ChannelConnectionStatus> = _serviceStatus.asStateFlow()
     }
 }
+
+internal fun channelStartedLogMessage(endpointUrl: String): String = "Event channel started (endpoint: $endpointUrl)"
+
+internal const val CHANNEL_STOPPED_LOG_MESSAGE = "Event channel stopped"
+
+internal const val CHANNEL_START_FAILED_LOG_MESSAGE = "Event channel failed to start: endpoint URL is empty"

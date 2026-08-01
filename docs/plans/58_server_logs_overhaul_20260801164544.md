@@ -1227,11 +1227,11 @@ Task DoD:
 Why: the channel currently has zero log-viewer presence; `EventDispatcherImpl` status assignments are the single choke point for delivery health, and the service owns start/stop.
 
 Acceptance criteria:
-- [ ] Start (with endpoint), stop, failed-start, error transitions (deduped by message), and recovery all emit `CHANNEL` entries.
+- [x] Start (with endpoint), stop, failed-start, error transitions (deduped by message), and recovery all emit `CHANNEL` entries.
 
 ### Task 5.1 — Dispatcher status transitions
 
-- [ ] **Modify** `services/channel/EventDispatcherImpl.kt`:
+- [x] **Modify** `services/channel/EventDispatcherImpl.kt`:
   - Constructor becomes `@Inject constructor(private val serverLog: ServerLogRepository)`.
   - Add:
 
@@ -1253,11 +1253,11 @@ Acceptance criteria:
   - Replace ALL 8 direct `_connectionStatus.value = ...` assignments (in `start`, `stop`, `dispatch` ×3, `healthCheck` ×3) with `setStatus(...)`.
 
 Task DoD:
-- [ ] `grep -n "_connectionStatus.value =" EventDispatcherImpl.kt` matches ONLY the assignment inside `setStatus`.
+- [x] `grep -n "_connectionStatus.value =" EventDispatcherImpl.kt` matches ONLY the assignment inside `setStatus`.
 
 ### Task 5.2 — Service lifecycle
 
-- [ ] **Modify** `services/channel/EventChannelService.kt`:
+- [x] **Modify** `services/channel/EventChannelService.kt`:
   - Add top-level message builders at the end of the file (unit-testable):
 
 ```kotlin
@@ -1280,7 +1280,7 @@ internal const val CHANNEL_START_FAILED_LOG_MESSAGE = "Event channel failed to s
 ```
 
 Task DoD:
-- [ ] The three lifecycle messages come ONLY from the shared internal builders (unit-tested in Task 5.3); the `startLogged` guard yields exactly one started/stopped pair per channel session, and a failed start (blank endpoint) logs the failure entry and never a "stopped" entry (guard is set only after a successful start).
+- [x] The three lifecycle messages come ONLY from the shared internal builders (unit-tested in Task 5.3); the `startLogged` guard yields exactly one started/stopped pair per channel session, and a failed start (blank endpoint) logs the failure entry and never a "stopped" entry (guard is set only after a successful start).
 
 ### Task 5.3 — Tests
 
@@ -1301,7 +1301,7 @@ Task DoD:
 | `stopped and failed-start messages are the shared constants` | exact strings of `CHANNEL_STOPPED_LOG_MESSAGE` / `CHANNEL_START_FAILED_LOG_MESSAGE` |
 
 DoD:
-- [ ] The endpoint URL appears in the started entry (covered by `EventChannelLogMessagesTest`); the auth token never appears anywhere. The service-level start/stop sequencing (Android `Service` lifecycle) is exercised by the Manual QA steps in Task 8.2.
+- [x] The endpoint URL appears in the started entry (covered by `EventChannelLogMessagesTest`); the auth token never appears anywhere. The service-level start/stop sequencing (Android `Service` lifecycle) is exercised by the Manual QA steps in Task 8.2.
 
 ---
 
