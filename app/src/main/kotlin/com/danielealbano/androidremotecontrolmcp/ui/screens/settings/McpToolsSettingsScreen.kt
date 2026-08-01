@@ -326,12 +326,15 @@ private fun ToolCategoryHeader(
         return
     }
     Column(modifier = Modifier.clickable { onNavigateToPermissions() }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 text = header,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp),
+                modifier = Modifier.padding(end = 8.dp),
             )
             Icon(
                 imageVector = Icons.Default.Warning,
