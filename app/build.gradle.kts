@@ -308,6 +308,20 @@ kotlin {
     }
 }
 
+// AGP's Unified Test Platform (com.android.tools.utp) drags a vulnerable netty 4.1.x onto the
+// build/test-tooling classpath via grpc-netty. It never ships in the APK and this project never runs
+// UTP, but Dependabot still flags it. A scoped `constraints {}` cannot reach AGP's internal UTP
+// configurations, so force every netty 4.1.x transitive up to the first patched 4.1 release across
+// ALL configurations. The 4.2.x line used by the shipping Ktor engine is untouched.
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.netty" && requested.version?.startsWith("4.1.") == true) {
+            useVersion("4.1.136.Final")
+            because("CVE-patched netty; UTP/grpc-netty pulls a vulnerable 4.1.x build-tooling transitive")
+        }
+    }
+}
+
 dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
