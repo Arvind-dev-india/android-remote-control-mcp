@@ -530,3 +530,14 @@ Add imports: `com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity`, `a
 
 ### Definition of Done (whole plan)
 - [ ] Every task above checked; all acceptance criteria met; all quality gates green; code review clean; final ground-up double-check (Task 4.3) complete.
+
+---
+
+## Review Findings (accepted, mandatory divergences from the plan's literal code)
+
+These two divergences were introduced DURING implementation to satisfy the quality gates (detekt) and are **behavior-preserving**. Reverting them to the plan's literal code would REINTRODUCE detekt failures, so they MUST be preserved.
+
+- **F56-001 — Reverse-index maps in `OptionalToolPermission.kt`** (Task 1.1). The plan's literal `permissionForTool`/`permissionForParam` used inline `entries.firstOrNull { ... }`. ktlint (no `max_line_length` set) collapses those expression bodies onto single lines >120 cols, which detekt `MaxLineLength` (120) rejects. Fixed by adding two private `TOOL_TO_PERMISSION` / `PARAM_TO_PERMISSION` reverse maps (computed once) that the functions delegate to. Behavior-identical, O(1) lookup. **Accepted.**
+- **F56-002 — Extracted composables in `McpToolsSettingsScreen.kt`** (Task 2.3). The plan's inline `item {}`/`items {}` gating produced a composable with cyclomatic complexity 20 (> detekt limit 14). Fixed by extracting `ToolCategoryHeader`, `ToolRow`, `ToolParamRow` composables and a top-level `isPermissionGranted` helper; `isGranted` is a `val` lambda; `isEnabled` renamed `controlsEnabled`; the header `clickable` wraps the `Column` (note also tappable). Recomposition scoping preserved (permission state read only inside the slot-invoked composables); stored flags never modified. Behavior-preserving. **Accepted.**
+
+Also fixed during gates (behavior-preserving, in-scope): the `pendingApprovalCount reflects list size` test subscribes-then-awaits (deterministic under `StandardTestDispatcher`); the transient `.editorconfig` `max_line_length` experiment was reverted and the two `gms` Geofence files it briefly reformatted were restored to `main`.
