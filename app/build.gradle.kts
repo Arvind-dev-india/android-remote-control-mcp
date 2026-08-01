@@ -6,7 +6,6 @@ import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
@@ -215,7 +214,7 @@ configurations.matching { it.name.startsWith("ktlint") }.configureEach {
 
 android {
     namespace = "com.danielealbano.androidremotecontrolmcp"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.danielealbano.androidremotecontrolmcp"
@@ -306,6 +305,20 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+// AGP's Unified Test Platform (com.android.tools.utp) drags a vulnerable netty 4.1.x onto the
+// build/test-tooling classpath via grpc-netty. It never ships in the APK and this project never runs
+// UTP, but Dependabot still flags it. A scoped `constraints {}` cannot reach AGP's internal UTP
+// configurations, so force every netty 4.1.x transitive up to the first patched 4.1 release across
+// ALL configurations. The 4.2.x line used by the shipping Ktor engine is untouched.
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.netty" && requested.version?.startsWith("4.1.") == true) {
+            useVersion("4.1.136.Final")
+            because("CVE-patched netty; UTP/grpc-netty pulls a vulnerable 4.1.x build-tooling transitive")
+        }
     }
 }
 
@@ -476,7 +489,7 @@ androidComponents {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    maxHeapSize = "4g"
+    maxHeapSize = "3g"
     // Distribute tests across all available CPU cores for faster execution.
     maxParallelForks = (Runtime.getRuntime().availableProcessors()).coerceAtLeast(1)
     // MockK uses byte-buddy/reflection internally; JDK 17 strong encapsulation

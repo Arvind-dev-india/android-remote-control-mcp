@@ -244,12 +244,8 @@ class CameraProviderImpl
                         }
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (e: McpToolException) {
-                        throw e
                     } catch (e: Exception) {
-                        throw McpToolException.ActionFailed(
-                            "Photo capture failed: ${e.message ?: "Unknown error"}",
-                        )
+                        mapCameraFailure(e, "Photo capture")
                     } finally {
                         withContext(NonCancellable + Dispatchers.Main) {
                             lifecycleOwner.stop()
@@ -319,12 +315,8 @@ class CameraProviderImpl
                         getFileSize(outputUri)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (e: McpToolException) {
-                        throw e
                     } catch (e: Exception) {
-                        throw McpToolException.ActionFailed(
-                            "Photo save failed: ${e.message ?: "Unknown error"}",
-                        )
+                        mapCameraFailure(e, "Photo save")
                     } finally {
                         withContext(NonCancellable + Dispatchers.Main) {
                             lifecycleOwner.stop()
@@ -350,17 +342,7 @@ class CameraProviderImpl
             flashMode: String,
         ): VideoRecordingResult {
             requireCameraPermission()
-            if (audio && !isMicrophonePermissionGranted()) {
-                throw McpToolException.PermissionDenied(
-                    "RECORD_AUDIO permission not granted. Required for video recording with audio.",
-                )
-            }
-            if (durationSeconds < 1 || durationSeconds > CameraProvider.MAX_VIDEO_DURATION_SECONDS) {
-                throw McpToolException.InvalidParams(
-                    "Duration must be between 1 and ${CameraProvider.MAX_VIDEO_DURATION_SECONDS} " +
-                        "seconds, got: $durationSeconds",
-                )
-            }
+            validateVideoParams(audio, durationSeconds)
 
             val timeoutMs =
                 CameraProvider.VIDEO_OPERATION_BASE_TIMEOUT_MS +
@@ -479,12 +461,8 @@ class CameraProviderImpl
                         )
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (e: McpToolException) {
-                        throw e
                     } catch (e: Exception) {
-                        throw McpToolException.ActionFailed(
-                            "Video recording failed: ${e.message ?: "Unknown error"}",
-                        )
+                        mapCameraFailure(e, "Video recording")
                     } finally {
                         pfd?.close()
                         withContext(NonCancellable + Dispatchers.Main) {
@@ -506,6 +484,44 @@ class CameraProviderImpl
                 )
             }
         }
+
+        /**
+         * Validates the parameters of a video-recording request.
+         *
+         * @throws McpToolException.PermissionDenied if [audio] is requested without the mic permission.
+         * @throws McpToolException.InvalidParams if [durationSeconds] is out of the allowed range.
+         */
+        private fun validateVideoParams(
+            audio: Boolean,
+            durationSeconds: Int,
+        ) {
+            if (audio && !isMicrophonePermissionGranted()) {
+                throw McpToolException.PermissionDenied(
+                    "RECORD_AUDIO permission not granted. Required for video recording with audio.",
+                )
+            }
+            if (durationSeconds < 1 || durationSeconds > CameraProvider.MAX_VIDEO_DURATION_SECONDS) {
+                throw McpToolException.InvalidParams(
+                    "Duration must be between 1 and ${CameraProvider.MAX_VIDEO_DURATION_SECONDS} " +
+                        "seconds, got: $durationSeconds",
+                )
+            }
+        }
+
+        /**
+         * Rethrows an [McpToolException] unchanged and wraps any other failure as an
+         * [McpToolException.ActionFailed] describing the failed [action]. Never returns normally,
+         * so it can terminate a `catch` block in place of an inline `throw`.
+         */
+        private fun mapCameraFailure(
+            e: Exception,
+            action: String,
+        ): Nothing =
+            throw if (e is McpToolException) {
+                e
+            } else {
+                McpToolException.ActionFailed("$action failed: ${e.message ?: "Unknown error"}")
+            }
 
         private suspend fun getCameraProvider(): ProcessCameraProvider =
             suspendCancellableCoroutine { continuation ->
