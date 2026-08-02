@@ -59,7 +59,11 @@ import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotif
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
@@ -169,6 +173,12 @@ class McpServerService : Service() {
     @Inject lateinit var placeholderSubstitutor: PlaceholderSubstitutor
 
     @Inject lateinit var screenshotRedactor: ScreenshotRedactor
+
+    @Inject lateinit var privacyModeManager: PrivacyModeManager
+
+    @Inject lateinit var pseudonymStore: PseudonymStore
+
+    @Inject lateinit var nerCache: NerCache
 
     /** Config of the currently running server; used to build capability-link base URLs. */
     @Volatile
@@ -318,6 +328,22 @@ class McpServerService : Service() {
             // Warm the geolocation DB off the request path so the first /authorize doesn't pay the
             // one-time gzip-inflate + mmap cost. Best-effort; a failure just leaves it lazy.
             coroutineScope.launch { geoIpResolver.resolve("8.8.8.8") }
+
+            // Surface Privacy Mode readiness at start so the user learns of a failure now, not at the
+            // first data-returning tool call. Off the request path; the result updates the manager status.
+            if (config.privacyModeConfig.enabled) {
+                coroutineScope.launch {
+                    val message =
+                        when (val status = privacyModeManager.selfCheck()) {
+                            is PrivacyModeStatus.Ready -> "Privacy mode ready (model)"
+                            is PrivacyModeStatus.ReadyDeterministicOnly -> "Privacy mode ready (deterministic only)"
+                            is PrivacyModeStatus.Unavailable ->
+                                "Privacy mode UNAVAILABLE: ${status.reason} — data-returning tools are blocked"
+                            is PrivacyModeStatus.Disabled -> "Privacy mode disabled"
+                        }
+                    serverLogRepository.log(ServerLogEntry.Type.PRIVACY, message)
+                }
+            }
 
             updateStatus(
                 ServerStatus.Running(
@@ -502,6 +528,10 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         screenStateSnapshotCache.clear()
+        // Release the Privacy Mode model and clear session-scoped pseudonym/NER caches (never persisted).
+        privacyModeManager.shutdown()
+        pseudonymStore.clear()
+        nerCache.clear()
         Log.i(TAG, "McpServerService destroying")
         updateStatus(ServerStatus.Stopping)
 

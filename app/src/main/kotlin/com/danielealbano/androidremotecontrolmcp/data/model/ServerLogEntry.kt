@@ -8,6 +8,7 @@ private const val TYPE_ID_OAUTH: Byte = 3
 private const val TYPE_ID_AUTH: Byte = 4
 private const val TYPE_ID_CHANNEL: Byte = 5
 private const val TYPE_ID_SETTINGS: Byte = 6
+private const val TYPE_ID_PRIVACY: Byte = 7
 
 /**
  * Represents a single log entry from the MCP server, displayed in the
@@ -50,6 +51,9 @@ data class ServerLogEntry(
 
         /** A settings change (UI or ADB). */
         SETTINGS(TYPE_ID_SETTINGS),
+
+        /** A Privacy Mode lifecycle event (self-check result at server start). */
+        PRIVACY(TYPE_ID_PRIVACY),
 
         ;
 

@@ -58,12 +58,14 @@ class PrivacyModeManagerTest {
         }
 
     @Test
-    fun `selfCheck unavailable when model files missing`() =
+    fun `selfCheck unavailable when model required and store not ready`() =
         runTest {
             withConfig(PrivacyModeConfig(enabled = true))
             every { store.isReady() } returns false
 
-            assertTrue(manager.selfCheck() is PrivacyModeStatus.Unavailable)
+            val status = manager.selfCheck()
+            assertTrue(status is PrivacyModeStatus.Unavailable)
+            assertTrue((status as PrivacyModeStatus.Unavailable).reason.contains("download"))
         }
 
     @Test

@@ -1115,13 +1115,13 @@ Definition of Done:
 Why: decision — the user must learn immediately at server start that Privacy Mode is failing, not at the first failing tool call.
 
 Acceptance criteria:
-- [ ] Self-check runs at server start when Privacy Mode is enabled; result logged to server logs and reflected in `PrivacyModeManager.status`.
-- [ ] Privacy resources cleaned up on service destroy.
+- [x] Self-check runs at server start when Privacy Mode is enabled; result logged to server logs and reflected in `PrivacyModeManager.status`.
+- [x] Privacy resources cleaned up on service destroy.
 
 ### Task 9.1 — Self-check wiring
 
-- [ ] **Action**: modify `.../data/model/ServerLogEntry.kt` — add `PRIVACY(TYPE_ID_PRIVACY)` to the `Type(val id: Byte)` enum with a NEW `private const val TYPE_ID_PRIVACY: Byte = 7` (the next unused id after `SETTINGS(6)`; the file's convention is "ids are the on-disk byte encoding — NEVER renumber existing ones"). Ensure `Type.fromId` covers it.
-- [ ] **Action**: modify `.../services/mcp/McpServerService.kt` (field injection — `@Inject lateinit var`; `serverLogRepository: ServerLogRepository` is ALREADY injected):
+- [x] **Action**: modify `.../data/model/ServerLogEntry.kt` — add `PRIVACY(TYPE_ID_PRIVACY)` to the `Type(val id: Byte)` enum with a NEW `private const val TYPE_ID_PRIVACY: Byte = 7` (the next unused id after `SETTINGS(6)`; the file's convention is "ids are the on-disk byte encoding — NEVER renumber existing ones"). Ensure `Type.fromId` covers it.
+- [x] **Action**: modify `.../services/mcp/McpServerService.kt` (field injection — `@Inject lateinit var`; `serverLogRepository: ServerLogRepository` is ALREADY injected):
   - Add `@Inject lateinit var privacyModeManager: PrivacyModeManager`, `@Inject lateinit var pseudonymStore: PseudonymStore`, `@Inject lateinit var nerCache: NerCache`.
   - In `startServer()` after `registerAllTools(...)` (and after `mcpServer?.start()`): if `config.privacyModeConfig.enabled` → `coroutineScope.launch { val status = privacyModeManager.selfCheck(); serverLogRepository.log(ServerLogEntry.Type.PRIVACY, <"Privacy mode ready (model)" | "Privacy mode ready (deterministic only)" | "Privacy mode UNAVAILABLE: <reason> — data-returning tools are blocked">) }` (use `serverLogRepository.log(type, message)` — the old `_serverLogEvents.tryEmit` no longer exists).
   - In `onDestroy()` (alongside the existing `screenStateSnapshotCache.clear()`): `privacyModeManager.shutdown()`, `pseudonymStore.clear()`, `nerCache.clear()`.
@@ -1137,7 +1137,7 @@ Acceptance criteria:
 | `selfCheck deterministic only when model categories disabled` | ReadyDeterministicOnly without touching runner |
 
 Definition of Done:
-- [ ] Self-check runs on start, log entry emitted, cleanup on destroy.
+- [x] Self-check runs on start, log entry emitted, cleanup on destroy.
 
 ---
 
