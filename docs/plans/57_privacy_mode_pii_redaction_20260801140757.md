@@ -938,16 +938,16 @@ Definition of Done:
 Why: the pipeline only protects data if every in-scope egress path goes through it; scope per Design constants (FileTools excluded; camera/shared images and server-generated links have no device text to redact; camera hardware enumerations contain no user-generated text).
 
 Acceptance criteria:
-- [ ] Every in-scope tool output passes through the pipeline; fail-closed propagates as tool error.
-- [ ] Screenshots masked with opaque boxes over flagged node bounds BEFORE annotation.
-- [ ] Placeholders in tool string arguments substituted back before execution.
-- [ ] Event-channel notification events redacted, or dropped when fail-closed.
+- [x] Every in-scope tool output passes through the pipeline; fail-closed propagates as tool error.
+- [x] Screenshots masked with opaque boxes over flagged node bounds BEFORE annotation.
+- [x] Placeholders in tool string arguments substituted back before execution.
+- [x] Event-channel notification events redacted, or dropped when fail-closed.
 
 ### Task 8.1 — Gate, DI
 
 (The `processTexts` batch method + `TextItem` are already defined on `PrivacyPipeline` in US7 Task 7.3 — no interface edit here.)
 
-- [ ] **Action**: create `.../privacy/PrivacyToolGate.kt`:
+- [x] **Action**: create `.../privacy/PrivacyToolGate.kt`:
   ```kotlin
   @Singleton
   class PrivacyToolGate @Inject constructor(private val pipeline: PrivacyPipeline) {
@@ -959,7 +959,7 @@ Acceptance criteria:
       suspend fun tree(result: MultiWindowResult): ProcessedTree = pipeline.processTree(result)
   }
   ```
-- [ ] **Action**: modify `.../di/AppModule.kt` — `ServiceModule` additions:
+- [x] **Action**: modify `.../di/AppModule.kt` — `ServiceModule` additions:
   ```kotlin
   @Binds @Singleton abstract fun bindPrivacyPipeline(impl: PrivacyPipelineImpl): PrivacyPipeline
 
@@ -968,7 +968,7 @@ Acceptance criteria:
 
 ### Task 8.2 — Screenshot masking
 
-- [ ] **Action**: create `.../services/screencapture/ScreenshotRedactor.kt`:
+- [x] **Action**: create `.../services/screencapture/ScreenshotRedactor.kt`:
   ```kotlin
   class ScreenshotRedactor @Inject constructor() {
       /** Opaque black FILL rects over each bounds scaled by bitmapW/screenWidth, bitmapH/screenHeight,
@@ -985,7 +985,7 @@ Acceptance criteria:
 
 ### Task 8.3 — `get_screen_state`
 
-- [ ] **Action**: modify `.../mcp/tools/ScreenIntrospectionTools.kt`:
+- [x] **Action**: modify `.../mcp/tools/ScreenIntrospectionTools.kt`:
   - `GetScreenStateHandler` constructor gains `private val privacyToolGate: PrivacyToolGate`, `private val screenshotRedactor: ScreenshotRedactor`.
   - Fresh path: after `webViewNodeMerger.merge(...)` insert `val processed = privacyToolGate.tree(mergedResult)`; ALL downstream uses (`countKeptNodes`, snapshot store, `formatMultiWindow`, element list for annotation) switch to `processed.result`. The snapshot therefore stores the REDACTED tree — paged output and pseudonym mappings stay consistent (decision).
   - Screenshot path: between capture/resize and `screenshotAnnotator.annotate(...)` insert `val maskedBitmap = screenshotRedactor.mask(resizedBitmap, processed.flaggedBounds, screenInfo.width, screenInfo.height)` and annotate the masked bitmap.
@@ -994,11 +994,11 @@ Acceptance criteria:
 
 ### Task 8.4 — Node query tools
 
-- [ ] **Action**: modify `.../mcp/tools/NodeActionTools.kt` — `find_nodes`:
+- [x] **Action**: modify `.../mcp/tools/NodeActionTools.kt` — `find_nodes`:
   - Argument: `value = substitutor.substitute(McpToolUtils.requireString(arguments, "value"))` (placeholder → original before search).
   - Results: batch-redact `ElementInfo.text` and `ElementInfo.contentDescription` of every match via `privacyToolGate.texts(...)` before serialization.
   - `registerNodeActionTools(...)` gains `privacyToolGate` + `substitutor` params; only `find_nodes` uses them.
-- [ ] **Action**: modify `.../mcp/tools/UtilityTools.kt`:
+- [x] **Action**: modify `.../mcp/tools/UtilityTools.kt`:
   - `get_node_details`: redact node `text`, `content_description`, `hint_text` (if emitted) fields via `privacyToolGate.texts(...)`.
   - `wait_for_node`: redact any node text/desc fields present in its success payload the same way; its search `value` argument gets `substitutor.substitute(...)`.
   - `get_clipboard`: `put("text", privacyToolGate.text(text, "clipboard"))`.
@@ -1007,14 +1007,14 @@ Acceptance criteria:
 
 ### Task 8.5 — Notifications, apps, location, sharing
 
-- [ ] **Action**: modify `.../mcp/tools/NotificationTools.kt` — `notification_list`: batch-redact per notification `app_name`, `title`, `text`, `big_text`, `sub_text`, and each action `title` (field names as context, e.g. `"notification title"`); `notification_reply` reply-text argument gets `substitutor.substitute(...)`. `registerNotificationTools(...)` gains the two params.
-- [ ] **Action**: modify `.../mcp/tools/AppManagementTools.kt` — `list_apps`: batch-redact app label fields. `registerAppManagementTools(...)` gains `privacyToolGate`.
-- [ ] **Action**: modify `.../mcp/tools/LocationTools.kt` — `get_location`: batch-redact geocoded address string fields (street/locality/full address — exact field names verified at implementation from the handler's JSON builder); numeric lat/lon untouched. `registerLocationTools(...)` gains `privacyToolGate`.
-- [ ] **Action**: modify `.../mcp/tools/SharingTools.kt`:
+- [x] **Action**: modify `.../mcp/tools/NotificationTools.kt` — `notification_list`: batch-redact per notification `app_name`, `title`, `text`, `big_text`, `sub_text`, and each action `title` (field names as context, e.g. `"notification title"`); `notification_reply` reply-text argument gets `substitutor.substitute(...)`. `registerNotificationTools(...)` gains the two params.
+- [x] **Action**: modify `.../mcp/tools/AppManagementTools.kt` — `list_apps`: batch-redact app label fields. `registerAppManagementTools(...)` gains `privacyToolGate`.
+- [x] **Action**: modify `.../mcp/tools/LocationTools.kt` — `get_location`: batch-redact geocoded address string fields (street/locality/full address — exact field names verified at implementation from the handler's JSON builder); numeric lat/lon untouched. `registerLocationTools(...)` gains `privacyToolGate`.
+- [x] **Action**: modify `.../mcp/tools/SharingTools.kt`:
   - `get_shared_content`: redact every `TextContent.text` in the returned content list via `privacyToolGate.texts(...)` (shared image/binary items pass through).
   - `share_file_via_web`: its result string (SharingTools.kt:184) embeds the device-derived `result.fileName` (which can contain PII, e.g. `Passport_John_Doe.pdf`) — redact it via `privacyToolGate.text(result.fileName, "file name")` before building the result string (the `mimeType` and server-generated link/token need no redaction).
   - The public registration function is `registerSharingTools(...)` in SharingTools.kt (line 251; current first param `registrar: LoggedToolRegistrar`) — it gains `privacyToolGate`. NOTE: the private `registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)` wrapper in `McpServerService.kt` (lines 467-483) that calls it MUST also be updated to forward `privacyToolGate`.
-- [ ] **Action**: modify `.../mcp/tools/TextInputTools.kt`:
+- [x] **Action**: modify `.../mcp/tools/TextInputTools.kt`:
   - **Input substitution** — `type_append_text`, `type_insert_text`, `type_replace_text`: after `requireString(arguments, "text")`, apply `substitutor.substitute(text)` and run `validateTextLength` on the SUBSTITUTED value (real typed length is what matters).
   - **Output redaction (in scope per D20 — the returned field content is device-derived and wrapped in `untrustedTextResult`)** — `type_append_text`, `type_insert_text`, `type_replace_text`, `type_clear_text` each return the post-operation `fieldContent` from `readFieldContent(...)` (current sites: TextInputTools.kt 442-445, 583-587, 788-791, and `type_clear_text` at 914-916 (empty-field early return) + 949-951). The `fieldContent` MUST be redacted via `privacyToolGate.text(fieldContent, "field content")` before building the `untrustedTextResult` (it may contain pre-existing PII the LLM never saw).
   - `registerTextInputTools(...)` gains BOTH `substitutor` and `privacyToolGate`.
@@ -1023,16 +1023,16 @@ Camera tools: no change (hardware enumerations only; photos have no masking mech
 
 ### Task 8.6 — Registration wiring
 
-- [ ] **Action**: modify `.../services/mcp/McpServerService.kt` — add `@Inject lateinit var privacyToolGate: PrivacyToolGate` and `@Inject lateinit var placeholderSubstitutor: PlaceholderSubstitutor` (the service uses field injection). `registerAllTools(...)` (current: builds `val registrar = LoggedToolRegistrar(server, serverLogRepository)` then calls each `registerXxxTools(registrar, …)`) forwards `privacyToolGate`/`placeholderSubstitutor` to every register-function whose signature changed in T8.3–T8.5 (registration still flows through `LoggedToolRegistrar` — unchanged; only the extra params are added).
+- [x] **Action**: modify `.../services/mcp/McpServerService.kt` — add `@Inject lateinit var privacyToolGate: PrivacyToolGate` and `@Inject lateinit var placeholderSubstitutor: PlaceholderSubstitutor` (the service uses field injection). `registerAllTools(...)` (current: builds `val registrar = LoggedToolRegistrar(server, serverLogRepository)` then calls each `registerXxxTools(registrar, …)`) forwards `privacyToolGate`/`placeholderSubstitutor` to every register-function whose signature changed in T8.3–T8.5 (registration still flows through `LoggedToolRegistrar` — unchanged; only the extra params are added).
 
 ### Task 8.7 — Event channel
 
-- [ ] **Action**: modify `.../services/channel/listeners/NotificationEventListener.kt` — current constructor is `(eventDispatcher: EventDispatcher, scope: CoroutineScope)`; add `privacyToolGate: PrivacyToolGate`. Before `ChannelEventFactory.notification(...)`, redact the notification's `appName`, `title`, `text`, `bigText`, `subText` via `privacyToolGate.texts(...)` and build the event from the redacted copy. `McpToolException.PrivacyModeUnavailable` → DROP the event (do not dispatch) and log a warning (decision: fail-closed must not leak).
-- [ ] **Action**: modify `.../services/channel/EventChannelService.kt` — add `@Inject lateinit var privacyToolGate: PrivacyToolGate` (mirroring its existing `serverLogRepository` injection) and pass it to BOTH `NotificationEventListener(...)` construction sites (currently lines 127 in `startListeners()` and 139 in `reconfigureListeners()`).
+- [x] **Action**: modify `.../services/channel/listeners/NotificationEventListener.kt` — current constructor is `(eventDispatcher: EventDispatcher, scope: CoroutineScope)`; add `privacyToolGate: PrivacyToolGate`. Before `ChannelEventFactory.notification(...)`, redact the notification's `appName`, `title`, `text`, `bigText`, `subText` via `privacyToolGate.texts(...)` and build the event from the redacted copy. `McpToolException.PrivacyModeUnavailable` → DROP the event (do not dispatch) and log a warning (decision: fail-closed must not leak).
+- [x] **Action**: modify `.../services/channel/EventChannelService.kt` — add `@Inject lateinit var privacyToolGate: PrivacyToolGate` (mirroring its existing `serverLogRepository` injection) and pass it to BOTH `NotificationEventListener(...)` construction sites (currently lines 127 in `startListeners()` and 139 in `reconfigureListeners()`).
 
 ### Task 8.8 — Integration tests
 
-- [ ] **Action**: modify `app/src/test/kotlin/.../integration/McpIntegrationTestHelper.kt` (shared infra — provided IN FULL). Config is driven by a `MutableStateFlow` so `setPrivacy` mutates what `currentConfig()` observes (no ad-hoc holder class). Additions:
+- [x] **Action**: modify `app/src/test/kotlin/.../integration/McpIntegrationTestHelper.kt` (shared infra — provided IN FULL). Config is driven by a `MutableStateFlow` so `setPrivacy` mutates what `currentConfig()` observes (no ad-hoc holder class). Additions:
   ```kotlin
   // MockDependencies data class — add fields:
   //   val privacyStatusFlow: MutableStateFlow<PrivacyModeStatus>,
@@ -1106,7 +1106,7 @@ Camera tools: no change (hardware enumerations only; photos have no masking mech
 **File**: `.../services/channel/listeners/NotificationEventListenerTest.kt` (extend/create) — redacted fields in dispatched `ChannelEvent`; event dropped + not dispatched when gate throws `PrivacyModeUnavailable`. **File**: `.../services/screencapture/ScreenshotRedactorTest.kt` — `computeMaskRects` scaling/padding/clamping (pure math; drawing wrapper follows the untested-thin-wrapper precedent of `ScreenshotAnnotator`).
 
 Definition of Done:
-- [ ] All in-scope tools + channel wired; integration suite written; no in-scope egress path bypasses the gate.
+- [x] All in-scope tools + channel wired; integration suite written; no in-scope egress path bypasses the gate.
 
 ---
 

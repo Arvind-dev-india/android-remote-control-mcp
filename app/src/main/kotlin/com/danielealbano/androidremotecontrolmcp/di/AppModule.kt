@@ -34,6 +34,10 @@ import com.danielealbano.androidremotecontrolmcp.services.apps.AppManager
 import com.danielealbano.androidremotecontrolmcp.services.apps.AppManagerImpl
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProviderImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcherImpl
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
@@ -246,4 +250,12 @@ abstract class ServiceModule {
     @Binds
     @Singleton
     abstract fun bindOAuthApprovalCoordinator(impl: OAuthApprovalCoordinatorImpl): OAuthApprovalCoordinator
+
+    @Binds
+    @Singleton
+    abstract fun bindPrivacyPipeline(impl: PrivacyPipelineImpl): PrivacyPipeline
+
+    @Binds
+    @Singleton
+    abstract fun bindPiiModelInference(impl: OrtPiiModelRunner): PiiModelInference
 }

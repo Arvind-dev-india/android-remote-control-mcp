@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.integration
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
@@ -35,6 +36,24 @@ import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSystemActionT
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTextInputTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTouchActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerUtilityTools
+import com.danielealbano.androidremotecontrolmcp.privacy.ContextExtractor
+import com.danielealbano.androidremotecontrolmcp.privacy.DeterministicEngine
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.Redactor
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CardDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CredentialDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.EmailDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.IbanDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.NationalIdDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.PhoneDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerEngine
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -55,6 +74,7 @@ import com.danielealbano.androidremotecontrolmcp.services.notifications.Notifica
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
@@ -62,6 +82,7 @@ import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepo
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -73,6 +94,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Integration test helper that configures a Ktor [testApplication] with the same
@@ -143,8 +165,34 @@ object McpIntegrationTestHelper {
     /**
      * Creates mocked service dependencies used by all tool handlers.
      */
-    fun createMockDependencies(): MockDependencies =
-        MockDependencies(
+    fun createMockDependencies(): MockDependencies {
+        val statusFlow = MutableStateFlow<PrivacyModeStatus>(PrivacyModeStatus.Disabled)
+        // disabled by default; setPrivacy() changes it
+        val configFlow = MutableStateFlow(PrivacyModeConfig())
+        val pseudonymStore = PseudonymStore()
+        val piiModelInference = mockk<PiiModelInference>()
+        coEvery { piiModelInference.infer(any()) } returns emptyList()
+        val manager = mockk<PrivacyModeManager>()
+        // reads the LATEST value each call
+        coEvery { manager.currentConfig() } answers { configFlow.value }
+        every { manager.status } returns statusFlow
+        val pipeline =
+            PrivacyPipelineImpl(
+                manager = manager,
+                deterministicEngine =
+                    DeterministicEngine(
+                        CredentialDetector(),
+                        CardDetector(),
+                        IbanDetector(),
+                        EmailDetector(),
+                        PhoneDetector(),
+                        NationalIdDetector(),
+                    ),
+                nerEngine = NerEngine(piiModelInference, NerCache()),
+                contextExtractor = ContextExtractor(),
+                redactor = Redactor(pseudonymStore),
+            )
+        return MockDependencies(
             actionExecutor = mockk(relaxed = true),
             accessibilityServiceProvider = mockk(relaxed = true),
             screenCaptureProvider = mockk(relaxed = true),
@@ -162,8 +210,29 @@ object McpIntegrationTestHelper {
             intentDispatcher = mockk(relaxed = true),
             notificationProvider = mockk(relaxed = true),
             locationProvider = mockk(relaxed = true),
+            privacyStatusFlow = statusFlow,
+            privacyConfigFlow = configFlow,
+            privacyModeManager = manager,
+            piiModelInference = piiModelInference,
+            pseudonymStore = pseudonymStore,
+            privacyToolGate = PrivacyToolGate(pipeline),
+            placeholderSubstitutor = PlaceholderSubstitutor(pseudonymStore),
             serverLog = RecordingServerLogRepository(),
         )
+    }
+
+    /**
+     * Reconfigures privacy per test case. Both flows are live-read by the pipeline,
+     * so mutating them changes what the gate observes on the next call.
+     */
+    fun setPrivacy(
+        deps: MockDependencies,
+        config: PrivacyModeConfig,
+        status: PrivacyModeStatus,
+    ) {
+        deps.privacyConfigFlow.value = config
+        deps.privacyStatusFlow.value = status
+    }
 
     /**
      * Registers all MCP tools with the given [Server] using mocked dependencies.
@@ -187,6 +256,8 @@ object McpIntegrationTestHelper {
             deps.nodeCache,
             deps.screenStateSnapshotCache,
             WebViewNodeMerger(),
+            deps.privacyToolGate,
+            ScreenshotRedactor(),
             toolNamePrefix,
             perms,
         )
@@ -206,6 +277,8 @@ object McpIntegrationTestHelper {
             deps.actionExecutor,
             deps.accessibilityServiceProvider,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -216,6 +289,8 @@ object McpIntegrationTestHelper {
             deps.accessibilityServiceProvider,
             deps.typeInputController,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -225,6 +300,8 @@ object McpIntegrationTestHelper {
             deps.elementFinder,
             deps.accessibilityServiceProvider,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -238,11 +315,18 @@ object McpIntegrationTestHelper {
         perms: ToolPermissionsConfig,
     ) {
         registerFileTools(registrar, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(registrar, deps.appManager, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, deps.appManager, deps.privacyToolGate, toolNamePrefix, perms)
         registerCameraTools(registrar, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
         registerIntentTools(registrar, deps.intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(registrar, deps.notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(registrar, deps.locationProvider, toolNamePrefix, perms)
+        registerNotificationTools(
+            registrar,
+            deps.notificationProvider,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
+            toolNamePrefix,
+            perms,
+        )
+        registerLocationTools(registrar, deps.locationProvider, deps.privacyToolGate, toolNamePrefix, perms)
     }
 
     /**
@@ -495,5 +579,12 @@ data class MockDependencies(
     val intentDispatcher: IntentDispatcher,
     val notificationProvider: NotificationProvider,
     val locationProvider: LocationProvider,
+    val privacyStatusFlow: MutableStateFlow<PrivacyModeStatus>,
+    val privacyConfigFlow: MutableStateFlow<PrivacyModeConfig>,
+    val privacyModeManager: PrivacyModeManager,
+    val piiModelInference: PiiModelInference,
+    val pseudonymStore: PseudonymStore,
+    val privacyToolGate: PrivacyToolGate,
+    val placeholderSubstitutor: PlaceholderSubstitutor,
     val serverLog: RecordingServerLogRepository = RecordingServerLogRepository(),
 )

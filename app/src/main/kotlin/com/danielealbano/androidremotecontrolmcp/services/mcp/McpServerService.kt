@@ -58,7 +58,10 @@ import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvi
 import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
@@ -160,6 +163,12 @@ class McpServerService : Service() {
     @Inject lateinit var geoIpResolver: GeoIpResolver
 
     @Inject lateinit var serverLogRepository: ServerLogRepository
+
+    @Inject lateinit var privacyToolGate: PrivacyToolGate
+
+    @Inject lateinit var placeholderSubstitutor: PlaceholderSubstitutor
+
+    @Inject lateinit var screenshotRedactor: ScreenshotRedactor
 
     /** Config of the currently running server; used to build capability-link base URLs. */
     @Volatile
@@ -420,6 +429,8 @@ class McpServerService : Service() {
             nodeCache,
             screenStateSnapshotCache,
             webViewNodeMerger,
+            privacyToolGate,
+            screenshotRedactor,
             toolNamePrefix,
             perms,
         )
@@ -433,6 +444,8 @@ class McpServerService : Service() {
             actionExecutor,
             accessibilityServiceProvider,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -443,6 +456,8 @@ class McpServerService : Service() {
             accessibilityServiceProvider,
             typeInputController,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -452,15 +467,17 @@ class McpServerService : Service() {
             elementFinder,
             accessibilityServiceProvider,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
         registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(registrar, appManager, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
         registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
         registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(registrar, notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(registrar, locationProvider, toolNamePrefix, perms)
+        registerNotificationTools(registrar, notificationProvider, privacyToolGate, placeholderSubstitutor, toolNamePrefix, perms)
+        registerLocationTools(registrar, locationProvider, privacyToolGate, toolNamePrefix, perms)
         registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
     }
 
@@ -477,6 +494,7 @@ class McpServerService : Service() {
             fileOperationProvider,
             fileSizeLimitMb,
             currentBaseUrl,
+            privacyToolGate,
             toolNamePrefix,
             perms,
         )

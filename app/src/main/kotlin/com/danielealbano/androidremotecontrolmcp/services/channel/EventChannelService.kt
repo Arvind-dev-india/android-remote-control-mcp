@@ -13,6 +13,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.channel.listeners.NotificationEventListener
 import com.danielealbano.androidremotecontrolmcp.services.channel.listeners.WifiEventListener
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
@@ -40,6 +41,9 @@ class EventChannelService : Service() {
 
     @Inject
     lateinit var serverLogRepository: ServerLogRepository
+
+    @Inject
+    lateinit var privacyToolGate: PrivacyToolGate
 
     private var notificationEventListener: NotificationEventListener? = null
     private var wifiEventListener: WifiEventListener? = null
@@ -124,7 +128,7 @@ class EventChannelService : Service() {
 
     private fun startListeners(config: EventChannelConfig) {
         if (config.notifications.enabled) {
-            notificationEventListener = NotificationEventListener(eventDispatcher, serviceScope)
+            notificationEventListener = NotificationEventListener(eventDispatcher, serviceScope, privacyToolGate)
             notificationEventListener?.start(config.notifications)
         }
         if (config.wifi.enabled) {
@@ -136,7 +140,7 @@ class EventChannelService : Service() {
     private fun reconfigureListeners(config: EventChannelConfig) {
         // Notification listener
         if (config.notifications.enabled && notificationEventListener == null) {
-            notificationEventListener = NotificationEventListener(eventDispatcher, serviceScope)
+            notificationEventListener = NotificationEventListener(eventDispatcher, serviceScope, privacyToolGate)
             notificationEventListener?.start(config.notifications)
         } else if (!config.notifications.enabled) {
             notificationEventListener?.stop()

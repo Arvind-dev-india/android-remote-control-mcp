@@ -8,6 +8,8 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeLock
@@ -384,6 +386,8 @@ class TypeAppendTextTool
         private val accessibilityServiceProvider: AccessibilityServiceProvider,
         private val typeInputController: TypeInputController,
         private val nodeCache: AccessibilityNodeCache,
+        private val privacyToolGate: PrivacyToolGate,
+        private val substitutor: PlaceholderSubstitutor,
     ) {
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -392,7 +396,8 @@ class TypeAppendTextTool
                 throw McpToolException.InvalidParams("Parameter 'node_id' must be non-empty")
             }
 
-            val text = McpToolUtils.requireString(arguments, "text")
+            // Reverse any pseudonym placeholder so the real value is typed; length checks use the real length.
+            val text = substitutor.substitute(McpToolUtils.requireString(arguments, "text"))
             if (text.isEmpty()) {
                 throw McpToolException.InvalidParams("Parameter 'text' must be non-empty")
             }
@@ -439,9 +444,10 @@ class TypeAppendTextTool
                 }
 
             Log.d(TAG, "type_append_text: typed ${text.length} chars on node '$nodeId'")
+            val redactedFieldContent = privacyToolGate.text(fieldContent, "field content").orEmpty()
             return McpToolUtils.untrustedTextResult(
                 "Typed ${text.length} characters at end of node '$nodeId'.\n" +
-                    "Field content: $fieldContent",
+                    "Field content: $redactedFieldContent",
             )
         }
 
@@ -514,6 +520,8 @@ class TypeInsertTextTool
         private val accessibilityServiceProvider: AccessibilityServiceProvider,
         private val typeInputController: TypeInputController,
         private val nodeCache: AccessibilityNodeCache,
+        private val privacyToolGate: PrivacyToolGate,
+        private val substitutor: PlaceholderSubstitutor,
     ) {
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -522,7 +530,7 @@ class TypeInsertTextTool
                 throw McpToolException.InvalidParams("Parameter 'node_id' must be non-empty")
             }
 
-            val text = McpToolUtils.requireString(arguments, "text")
+            val text = substitutor.substitute(McpToolUtils.requireString(arguments, "text"))
             if (text.isEmpty()) {
                 throw McpToolException.InvalidParams("Parameter 'text' must be non-empty")
             }
@@ -580,9 +588,10 @@ class TypeInsertTextTool
                 }
 
             Log.d(TAG, "type_insert_text: typed ${text.length} chars at offset $offset on '$nodeId'")
+            val redactedFieldContent = privacyToolGate.text(fieldContent, "field content").orEmpty()
             return McpToolUtils.untrustedTextResult(
                 "Typed ${text.length} characters at offset $offset in node '$nodeId'.\n" +
-                    "Field content: $fieldContent",
+                    "Field content: $redactedFieldContent",
             )
         }
 
@@ -688,6 +697,8 @@ class TypeReplaceTextTool
         private val accessibilityServiceProvider: AccessibilityServiceProvider,
         private val typeInputController: TypeInputController,
         private val nodeCache: AccessibilityNodeCache,
+        private val privacyToolGate: PrivacyToolGate,
+        private val substitutor: PlaceholderSubstitutor,
     ) {
         @Suppress("ThrowsCount", "LongMethod")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -696,7 +707,8 @@ class TypeReplaceTextTool
                 throw McpToolException.InvalidParams("Parameter 'node_id' must be non-empty")
             }
 
-            val search = McpToolUtils.requireString(arguments, "search")
+            // Substitute both the search term (to match the real field content) and the replacement value.
+            val search = substitutor.substitute(McpToolUtils.requireString(arguments, "search"))
             if (search.isEmpty()) {
                 throw McpToolException.InvalidParams("Parameter 'search' must be non-empty")
             }
@@ -707,7 +719,7 @@ class TypeReplaceTextTool
                 )
             }
 
-            val newText = McpToolUtils.requireString(arguments, "new_text")
+            val newText = substitutor.substitute(McpToolUtils.requireString(arguments, "new_text"))
             if (newText.isNotEmpty()) {
                 validateTextLength(newText, "new_text")
             }
@@ -785,9 +797,10 @@ class TypeReplaceTextTool
                 "type_replace_text: replaced ${search.length} chars " +
                     "with ${newText.length} chars on '$nodeId'",
             )
+            val redactedFieldContent = privacyToolGate.text(fieldContent, "field content").orEmpty()
             return McpToolUtils.untrustedTextResult(
                 "Replaced ${search.length} characters with ${newText.length} characters in node '$nodeId'.\n" +
-                    "Field content: $fieldContent",
+                    "Field content: $redactedFieldContent",
             )
         }
 
@@ -883,6 +896,7 @@ class TypeClearTextTool
         private val accessibilityServiceProvider: AccessibilityServiceProvider,
         private val typeInputController: TypeInputController,
         private val nodeCache: AccessibilityNodeCache,
+        private val privacyToolGate: PrivacyToolGate,
     ) {
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -946,8 +960,9 @@ class TypeClearTextTool
                 }
 
             Log.d(TAG, "type_clear_text: cleared text on node '$nodeId'")
+            val redactedFieldContent = privacyToolGate.text(fieldContent, "field content").orEmpty()
             return McpToolUtils.untrustedTextResult(
-                "Text cleared from node '$nodeId'.\nField content: $fieldContent",
+                "Text cleared from node '$nodeId'.\nField content: $redactedFieldContent",
             )
         }
 
@@ -1176,24 +1191,33 @@ fun registerTextInputTools(
     accessibilityServiceProvider: AccessibilityServiceProvider,
     typeInputController: TypeInputController,
     nodeCache: AccessibilityNodeCache,
+    privacyToolGate: PrivacyToolGate,
+    substitutor: PlaceholderSubstitutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(TypeAppendTextTool.TOOL_NAME)) {
-        TypeAppendTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(registrar, toolNamePrefix)
+        TypeAppendTextTool(
+            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
+            privacyToolGate, substitutor,
+        ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeInsertTextTool.TOOL_NAME)) {
-        TypeInsertTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(registrar, toolNamePrefix)
+        TypeInsertTextTool(
+            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
+            privacyToolGate, substitutor,
+        ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeReplaceTextTool.TOOL_NAME)) {
-        TypeReplaceTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(registrar, toolNamePrefix)
+        TypeReplaceTextTool(
+            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
+            privacyToolGate, substitutor,
+        ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeClearTextTool.TOOL_NAME)) {
-        TypeClearTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(registrar, toolNamePrefix)
+        TypeClearTextTool(
+            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache, privacyToolGate,
+        ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressKeyTool.TOOL_NAME)) {
         PressKeyTool(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)

@@ -5,6 +5,7 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.mcp.currentRequestBaseUrl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentClassifier
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
@@ -35,6 +36,7 @@ class GetSharedContentHandler(
     private val inbox: SharedContentInbox,
     private val linkService: EphemeralFileLinkService,
     private val baseUrlProvider: () -> String,
+    private val privacyToolGate: PrivacyToolGate,
 ) {
     suspend fun execute(): CallToolResult {
         val items = inbox.drainAll()
@@ -47,6 +49,14 @@ class GetSharedContentHandler(
         val content = mutableListOf<ContentBlock>()
         for (item in items) {
             appendItem(item, content)
+        }
+
+        // Redact every device-derived text block; image/binary blocks pass through unchanged.
+        val textIndices = content.indices.filter { content[it] is TextContent }
+        val redacted =
+            privacyToolGate.texts(textIndices.map { (content[it] as TextContent).text to "shared content" })
+        textIndices.forEachIndexed { batchIndex, contentIndex ->
+            content[contentIndex] = TextContent(text = redacted[batchIndex].orEmpty())
         }
 
         return McpToolUtils.untrustedResult(content)
@@ -170,6 +180,7 @@ class ShareFileViaWebHandler(
     private val linkService: EphemeralFileLinkService,
     private val fileSizeLimitMb: Int,
     private val baseUrlProvider: () -> String,
+    private val privacyToolGate: PrivacyToolGate,
 ) {
     suspend fun execute(arguments: JsonObject?): CallToolResult {
         val locationId = McpToolUtils.requireString(arguments, "location_id")
@@ -179,8 +190,10 @@ class ShareFileViaWebHandler(
         val token = linkService.register(result.bytes, result.mimeType, result.fileName)
         val url = currentRequestBaseUrl { baseUrlProvider() } + linkService.pathFor(token)
 
+        // The filename is device-derived and can carry PII (e.g. Passport_John_Doe.pdf); redact it.
+        val displayName = privacyToolGate.text(result.fileName, "file name")
         val message =
-            "File '${result.fileName}' ${result.mimeType} (${result.sizeBytes} bytes) at $url " +
+            "File '$displayName' ${result.mimeType} (${result.sizeBytes} bytes) at $url " +
                 "(expires 1h). web_fetch can read text/PDF; other types are download-only."
         return McpToolUtils.untrustedTextResult(message)
     }
@@ -255,11 +268,12 @@ fun registerSharingTools(
     fileOperationProvider: FileOperationProvider,
     fileSizeLimitMb: Int,
     baseUrlProvider: () -> String,
+    privacyToolGate: PrivacyToolGate,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(GetSharedContentHandler.TOOL_NAME)) {
-        GetSharedContentHandler(inbox, linkService, baseUrlProvider)
+        GetSharedContentHandler(inbox, linkService, baseUrlProvider, privacyToolGate)
             .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ShareFileViaWebHandler.TOOL_NAME)) {
@@ -268,6 +282,7 @@ fun registerSharingTools(
             linkService,
             fileSizeLimitMb,
             baseUrlProvider,
+            privacyToolGate,
         ).register(registrar, toolNamePrefix)
     }
 }
