@@ -61,6 +61,14 @@ fun MainScreen(
                         pendingSettingsRoute = SettingsRoute.Permissions.route
                         selectedTabRoute = TopLevelRoute.Settings.route
                     },
+                    onNavigateToNetworkSettings = {
+                        pendingSettingsRoute = SettingsRoute.General.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
+                    onNavigateToTunnelSettings = {
+                        pendingSettingsRoute = SettingsRoute.Tunnel.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
                     modifier = Modifier.padding(paddingValues),
                     viewModel = viewModel,
                 )
@@ -87,6 +95,14 @@ fun MainScreen(
                 ServerTabScreen(
                     onNavigateToPermissions = {
                         pendingSettingsRoute = SettingsRoute.Permissions.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
+                    onNavigateToNetworkSettings = {
+                        pendingSettingsRoute = SettingsRoute.General.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
+                    onNavigateToTunnelSettings = {
+                        pendingSettingsRoute = SettingsRoute.Tunnel.route
                         selectedTabRoute = TopLevelRoute.Settings.route
                     },
                     modifier = Modifier.padding(paddingValues),
