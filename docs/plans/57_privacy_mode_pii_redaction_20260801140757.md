@@ -507,27 +507,27 @@ Definition of Done:
 Why: on-device text→token-ID conversion with exact parity to the reference tokenizer; hardcoded pipeline (decision), data loaded from `tokenizer.json`.
 
 Acceptance criteria:
-- [ ] Exact ID and offset parity with Python `tokenizers` on committed fixtures (standard + edge cases + fuzz).
-- [ ] Works on desktop JVM (with `UNICODE_CHARACTER_CLASS`) and Android (ICU default) via try/catch flag fallback.
-- [ ] Tokenizer throughput measured and reported by a test (no threshold gate — decision).
+- [x] Exact ID and offset parity with Python `tokenizers` on committed fixtures (standard + edge cases + fuzz).
+- [x] Works on desktop JVM (with `UNICODE_CHARACTER_CLASS`) and Android (ICU default) via try/catch flag fallback.
+- [x] Tokenizer throughput measured and reported by a test (no threshold gate — decision).
 
 ### Task 4.1 — Fixture generator (offline dev script)
 
-- [ ] **Action**: create `scripts/privacy/generate_tokenizer_fixtures.py` — Python 3, deps `tokenizers` (documented in file header docstring with usage: `python3 -m venv venv && venv/bin/pip install tokenizers && venv/bin/python generate_tokenizer_fixtures.py <tokenizer.json> <out_dir>`). Behavior:
+- [x] **Action**: create `scripts/privacy/generate_tokenizer_fixtures.py` — Python 3, deps `tokenizers` (documented in file header docstring with usage: `python3 -m venv venv && venv/bin/pip install tokenizers && venv/bin/python generate_tokenizer_fixtures.py <tokenizer.json> <out_dir>`). Behavior:
   - Loads `Tokenizer.from_file(tokenizer.json)`.
   - Emits three JSON fixture files, each an array of `{"text": str, "ids": [int], "offsets": [[start,end]]}` (offsets from `encode(text).offsets`, ids from `.ids`, `add_special_tokens=True`):
     - `standard.json`: ≥60 cases — plain sentences in en/fr/de/es/it/nl/hi/te, PII-shaped strings (emails, phones, cards, IBANs, names, addresses), UI-style `label: value` constructed inputs, short button texts, empty string, single char.
     - `edge_cases.json`: ≥60 cases — added tokens mid-text (`|||EMAIL_ADDRESS|||`, `<|endoftext|>`, `[MASK]` with lstrip), 2–24 space runs, Unicode whitespace (NBSP U+00A0, U+2002, U+3000, ZWSP U+200B), NFD input requiring NFC (`café` decomposed), CJK/Devanagari/Telugu/Arabic/Cyrillic, emoji + ZWJ sequences, curly apostrophes, contractions, adversarial added-token fragments (`|||IP_ADDRESS||||||EMAIL|<|endoftext|>[MASK]`), mixed-script words, strings longer than 1536 tokens (truncation case).
     - `fuzz.json`: 500 seeded cases (fixed `random.seed(57)`) built from pools: latin words, digits runs, unicode whitespace, CJK, Devanagari, Arabic, emoji, punctuation clusters, added-token fragments.
   - Full script code MUST be committed (~120 lines, deterministic output ordering).
-- [ ] **Action**: run the script against the release `tokenizer.json` (SHA-256 verified per Design constants) and commit outputs to `app/src/test/resources/privacy/tokenizer_fixtures/{standard,edge_cases,fuzz}.json`.
-- [ ] **Action**: commit the verified `tokenizer.json` to `app/src/test/resources/privacy/tokenizer.json` (test input; 3.5 MB).
+- [x] **Action**: run the script against the release `tokenizer.json` (SHA-256 verified per Design constants) and commit outputs to `app/src/test/resources/privacy/tokenizer_fixtures/{standard,edge_cases,fuzz}.json`.
+- [x] **Action**: commit the verified `tokenizer.json` to `app/src/test/resources/privacy/tokenizer.json` (test input; 3.5 MB).
 
 ### Task 4.2 — Tokenizer implementation
 
 All files under `.../privacy/tokenizer/`.
 
-- [ ] **Action**: create `TokenizerData.kt` — loads from a `tokenizer.json` stream using `kotlinx.serialization.json.Json.parseToJsonElement`:
+- [x] **Action**: create `TokenizerData.kt` — loads from a `tokenizer.json` stream using `kotlinx.serialization.json.Json.parseToJsonElement`:
   ```kotlin
   class TokenizerData(
       val vocab: Map<String, Int>,               // model.vocab
@@ -543,8 +543,8 @@ All files under `.../privacy/tokenizer/`.
       val lstrip: Boolean, val rstrip: Boolean, val normalized: Boolean, val special: Boolean,
   )
   ```
-- [ ] **Action**: create `ByteLevelMapping.kt` — `object` with the GPT-2 byte→unicode char table (printable `!..~`, `0xA1..0xAC`, `0xAE..0xFF` identity; other 68 bytes map to `U+0100 + n` in order) and reverse map. Full implementation.
-- [ ] **Action**: create `BpePreTokenizer.kt` — compiles `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+` with:
+- [x] **Action**: create `ByteLevelMapping.kt` — `object` with the GPT-2 byte→unicode char table (printable `!..~`, `0xA1..0xAC`, `0xAE..0xFF` identity; other 68 bytes map to `U+0100 + n` in order) and reverse map. Full implementation.
+- [x] **Action**: create `BpePreTokenizer.kt` — compiles `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+` with:
   ```kotlin
   private val pattern: Pattern =
       try {
@@ -554,8 +554,8 @@ All files under `.../privacy/tokenizer/`.
       }
   ```
   `fun split(text: String): List<Piece>` where `Piece(text, start, end)` carries original char offsets.
-- [ ] **Action**: create `AddedTokenSplitter.kt` — longest-match scan of the input for added-token contents BEFORE BPE (space-run tokens included), honoring `lstrip` (consume preceding whitespace into the token match, `[MASK]` case). Returns alternating raw-text segments and matched-token segments, all with original char offsets.
-- [ ] **Action**: create `ModernBertTokenizer.kt`:
+- [x] **Action**: create `AddedTokenSplitter.kt` — longest-match scan of the input for added-token contents BEFORE BPE (space-run tokens included), honoring `lstrip` (consume preceding whitespace into the token match, `[MASK]` case). Returns alternating raw-text segments and matched-token segments, all with original char offsets.
+- [x] **Action**: create `ModernBertTokenizer.kt`:
   ```kotlin
   class ModernBertTokenizer(private val data: TokenizerData) {
 
@@ -594,7 +594,7 @@ All files under `.../privacy/tokenizer/`.
 **File**: `.../tokenizer/TokenizerDataTest.kt` — vocab size 50280; both merges serialization forms parsed; CLS/SEP ids 50281/50282; added tokens count 116. **File**: `.../tokenizer/TokenizerPerformanceTest.kt` — measures and PRINTS median encode time over the fuzz corpus and tokens/sec (no assertion beyond completing; decision: measure-and-report).
 
 Definition of Done:
-- [ ] Generator script + fixtures + tokenizer committed; parity suite green locally (executed at final gates).
+- [x] Generator script + fixtures + tokenizer committed; parity suite green locally (executed at final gates).
 
 ---
 
