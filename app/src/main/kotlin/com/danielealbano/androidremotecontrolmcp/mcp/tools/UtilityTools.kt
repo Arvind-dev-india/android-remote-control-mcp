@@ -85,10 +85,11 @@ class GetClipboardTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Get the current clipboard text content",
                 inputSchema =
@@ -154,10 +155,11 @@ class SetClipboardTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Set the clipboard content to the specified text",
                 inputSchema =
@@ -288,10 +290,11 @@ class WaitForNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Wait until a node matching criteria appears (with timeout). " +
@@ -634,10 +637,11 @@ class WaitForIdleTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Wait for the UI to become idle (similarity-based change detection). " +
@@ -756,10 +760,11 @@ class GetNodeDetailsTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Retrieve full untruncated text and description for nodes by node_id. " +
@@ -792,7 +797,7 @@ class GetNodeDetailsTool
  */
 @Suppress("LongParameterList")
 fun registerUtilityTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     elementFinder: ElementFinder,
     accessibilityServiceProvider: AccessibilityServiceProvider,
@@ -801,21 +806,21 @@ fun registerUtilityTools(
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(GetClipboardTool.TOOL_NAME)) {
-        GetClipboardTool(accessibilityServiceProvider).register(server, toolNamePrefix)
+        GetClipboardTool(accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(SetClipboardTool.TOOL_NAME)) {
-        SetClipboardTool(accessibilityServiceProvider).register(server, toolNamePrefix)
+        SetClipboardTool(accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(WaitForNodeTool.TOOL_NAME)) {
         WaitForNodeTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(WaitForIdleTool.TOOL_NAME)) {
         WaitForIdleTool(accessibilityServiceProvider)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(GetNodeDetailsTool.TOOL_NAME)) {
         GetNodeDetailsTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
 }

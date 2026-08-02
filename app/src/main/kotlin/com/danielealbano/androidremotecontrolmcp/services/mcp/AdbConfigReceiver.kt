@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import dagger.hilt.android.AndroidEntryPoint
@@ -80,6 +81,9 @@ class AdbConfigReceiver : BroadcastReceiver() {
     @Inject
     lateinit var storageLocationProvider: StorageLocationProvider
 
+    @Inject
+    lateinit var serverLogRepository: ServerLogRepository
+
     // No in-code sender UID check is needed: the manifest gates this exported receiver behind
     // android:permission="android.permission.DUMP", which ActivityManager enforces against the
     // real binder calling UID. DUMP is held by the adb shell UID (com.android.shell) but is not
@@ -94,7 +98,7 @@ class AdbConfigReceiver : BroadcastReceiver() {
     ) {
         Log.i(TAG, "onReceive called with action: ${intent.action}")
 
-        val handler = AdbConfigHandler(settingsRepository, storageLocationProvider)
+        val handler = AdbConfigHandler(settingsRepository, storageLocationProvider, serverLogRepository)
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {

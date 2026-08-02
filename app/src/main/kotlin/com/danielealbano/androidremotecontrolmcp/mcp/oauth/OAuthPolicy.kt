@@ -35,6 +35,9 @@ object OAuthPolicy {
     /** Maximum concurrently-pending approvals (caps notification flooding). */
     const val MAX_PENDING_APPROVALS = 10
 
+    /** Idle gap after which a client's next authenticated request is logged as a new session (30 min). */
+    const val IDLE_SESSION_LOG_THRESHOLD_MS = 1_800_000L
+
     private const val SCHEME_SEPARATOR = "://"
     private val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1", "::1")
 

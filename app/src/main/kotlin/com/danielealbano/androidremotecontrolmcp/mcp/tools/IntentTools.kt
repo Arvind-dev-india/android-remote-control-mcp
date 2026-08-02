@@ -5,7 +5,6 @@ import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.intents.SendIntentRequest
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
-import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonArray
@@ -159,10 +158,11 @@ class SendIntentHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "send_intent",
                 name = "${toolNamePrefix}send_intent",
                 description = TOOL_DESCRIPTION,
                 inputSchema = buildInputSchema(),
@@ -269,10 +269,11 @@ class OpenUriHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = "open_uri",
                 name = "${toolNamePrefix}open_uri",
                 description =
                     "Open a URI using Android's ACTION_VIEW. Handles https://, http://, " +
@@ -311,15 +312,15 @@ class OpenUriHandler
 // ─────────────────────────────────────────────────────────────────────────────
 
 fun registerIntentTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     intentDispatcher: IntentDispatcher,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(SendIntentHandler.TOOL_NAME)) {
-        SendIntentHandler(intentDispatcher).register(server, toolNamePrefix)
+        SendIntentHandler(intentDispatcher).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(OpenUriHandler.TOOL_NAME)) {
-        OpenUriHandler(intentDispatcher).register(server, toolNamePrefix)
+        OpenUriHandler(intentDispatcher).register(registrar, toolNamePrefix)
     }
 }

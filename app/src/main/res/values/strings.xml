@@ -134,6 +134,19 @@
     <!-- Server Logs -->
     <string name="server_logs_title">Server Logs</string>
     <string name="server_logs_empty">No log entries yet</string>
+    <string name="server_logs_show_more">Show more</string>
+    <string name="server_logs_clear">Clear logs</string>
+    <string name="server_logs_clear_dialog_title">Clear logs?</string>
+    <string name="server_logs_clear_dialog_body">All server log entries will be permanently deleted.</string>
+    <string name="server_logs_clear_dialog_confirm">Clear</string>
+    <string name="server_logs_clear_dialog_cancel">Cancel</string>
+    <string name="server_logs_type_tool_call">Tool calls</string>
+    <string name="server_logs_type_tunnel">Tunnel</string>
+    <string name="server_logs_type_server">Server</string>
+    <string name="server_logs_type_oauth">OAuth</string>
+    <string name="server_logs_type_auth">Auth</string>
+    <string name="server_logs_type_channel">Channel</string>
+    <string name="server_logs_type_settings">Settings</string>
 
     <!-- Remote Access / Tunnel -->
     <string name="remote_access_title">Remote Access</string>

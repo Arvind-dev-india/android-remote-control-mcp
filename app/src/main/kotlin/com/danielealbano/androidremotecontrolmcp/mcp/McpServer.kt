@@ -3,6 +3,8 @@ package com.danielealbano.androidremotecontrolmcp.mcp
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.BuildConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthAccessValidator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
@@ -25,6 +27,12 @@ import kotlinx.coroutines.withTimeout
 import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
 
+/** TLS material for the HTTPS listener; null when HTTPS is disabled or no certificate is loaded. */
+class HttpsMaterial(
+    val keyStore: KeyStore,
+    val keyStorePassword: CharArray,
+)
+
 /**
  * Ktor-based MCP server (HTTP by default, optional HTTPS).
  *
@@ -35,25 +43,25 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - MCP Streamable HTTP transport at `/mcp` (JSON-only mode, no SSE)
  *
  * @param config The server configuration (port, binding address, bearer token).
- * @param keyStore The SSL KeyStore for HTTPS (null when HTTPS is disabled).
- * @param keyStorePassword The KeyStore password (null when HTTPS is disabled).
+ * @param httpsMaterial TLS material for the HTTPS listener; null when HTTPS is disabled or no certificate is loaded.
  * @param mcpSdkServer The MCP SDK Server instance with registered tools.
  * @param ephemeralFileLinkService Backs the unauthenticated `/s/{token}` capability-link route.
  * @param oauth The OAuth authorization-server collaborators (used only when `config.oauthEnabled`).
+ * @param serverLog Disk-backed server log sink (auth-failure and, via collaborators, OAuth events).
  */
 class McpServer(
     private val config: ServerConfig,
-    private val keyStore: KeyStore?,
-    private val keyStorePassword: CharArray?,
+    private val httpsMaterial: HttpsMaterial?,
     private val mcpSdkServer: io.modelcontextprotocol.kotlin.sdk.server.Server,
     private val ephemeralFileLinkService: EphemeralFileLinkService,
     private val oauth: OAuthServerDeps,
+    private val serverLog: ServerLogRepository,
 ) {
     @Volatile
     private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private val running = AtomicBoolean(false)
 
-    private val accessValidator = OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository)
+    private val accessValidator = OAuthAccessValidator(oauth.jwtTokenService, oauth.oauthClientRepository, serverLog)
 
     /**
      * Starts the server. Non-blocking — the server runs on its own threads.
@@ -69,7 +77,7 @@ class McpServer(
 
         try {
             server =
-                if (config.httpsEnabled && keyStore != null && keyStorePassword != null) {
+                if (config.httpsEnabled && httpsMaterial != null) {
                     createHttpsServer()
                 } else {
                     createHttpServer()
@@ -124,16 +132,15 @@ class McpServer(
         )
 
     private fun createHttpsServer(): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
-        val ks = requireNotNull(keyStore) { "KeyStore must not be null when HTTPS is enabled" }
-        val ksPassword = requireNotNull(keyStorePassword) { "KeyStore password must not be null when HTTPS is enabled" }
+        val material = requireNotNull(httpsMaterial) { "HttpsMaterial must not be null when HTTPS is enabled" }
         return embeddedServer(
             factory = Netty,
             configure = {
                 sslConnector(
-                    keyStore = ks,
+                    keyStore = material.keyStore,
                     keyAlias = CertificateManager.KEY_ALIAS,
-                    keyStorePassword = { ksPassword },
-                    privateKeyPassword = { ksPassword },
+                    keyStorePassword = { material.keyStorePassword },
+                    privateKeyPassword = { material.keyStorePassword },
                 ) {
                     host = config.bindingAddress.address
                     port = config.port
@@ -161,6 +168,7 @@ class McpServer(
             validateOAuthToken = { token, resource -> accessValidator.validate(token, resource) }
             excludedPaths = setOf("/health", "/register", "/token", "/authorize", "/authorize/status")
             excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX, "/.well-known/")
+            onAuthFailure = { serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
         }
 
         // Health check endpoint — unauthenticated, installed before MCP routes.
@@ -192,12 +200,9 @@ class McpServer(
             if (config.oauthEnabled) {
                 installOAuthRoutes(
                     OAuthRouteDeps(
-                        clientRepository = oauth.oauthClientRepository,
-                        tokenService = oauth.jwtTokenService,
-                        authorizationCodeStore = oauth.authorizationCodeStore,
-                        approvalCoordinator = oauth.approvalCoordinator,
+                        oauth = oauth,
                         publicUrlOverride = config.publicUrlOverride,
-                        geoIpResolver = oauth.geoIpResolver,
+                        serverLog = serverLog,
                     ),
                 )
             }

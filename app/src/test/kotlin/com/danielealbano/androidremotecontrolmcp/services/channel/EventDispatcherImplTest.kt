@@ -2,6 +2,8 @@ package com.danielealbano.androidremotecontrolmcp.services.channel
 
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelConnectionStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelEvent
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.engine.embeddedServer
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 @DisplayName("EventDispatcherImpl")
@@ -41,7 +44,7 @@ class EventDispatcherImplTest {
     inner class InitialState {
         @Test
         fun `status starts as Idle`() {
-            val dispatcher = EventDispatcherImpl()
+            val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
             assertEquals(ChannelConnectionStatus.Idle, dispatcher.connectionStatus.value)
         }
     }
@@ -52,7 +55,7 @@ class EventDispatcherImplTest {
         @Test
         fun `dispatch before start returns failure`() =
             runTest {
-                val dispatcher = EventDispatcherImpl()
+                val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                 val result = dispatcher.dispatch(testEvent)
                 assertTrue(result.isFailure)
                 assertTrue(result.exceptionOrNull() is IllegalStateException)
@@ -61,7 +64,7 @@ class EventDispatcherImplTest {
         @Test
         fun `dispatch after stop returns failure`() =
             runTest {
-                val dispatcher = EventDispatcherImpl()
+                val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                 dispatcher.start("http://localhost:9090", "test-token")
                 dispatcher.stop()
                 val result = dispatcher.dispatch(testEvent)
@@ -71,7 +74,7 @@ class EventDispatcherImplTest {
 
         @Test
         fun `stop resets status to Idle`() {
-            val dispatcher = EventDispatcherImpl()
+            val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
             dispatcher.start("http://localhost:9090", "test-token")
             dispatcher.stop()
             assertEquals(ChannelConnectionStatus.Idle, dispatcher.connectionStatus.value)
@@ -107,7 +110,7 @@ class EventDispatcherImplTest {
                         .port
 
                 try {
-                    val dispatcher = EventDispatcherImpl()
+                    val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                     dispatcher.start("http://localhost:$port", "my-secret-token")
                     val result = dispatcher.dispatch(testEvent)
 
@@ -150,7 +153,7 @@ class EventDispatcherImplTest {
                         .port
 
                 try {
-                    val dispatcher = EventDispatcherImpl()
+                    val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                     dispatcher.start("http://localhost:$port", "")
                     val result = dispatcher.dispatch(testEvent)
 
@@ -182,7 +185,7 @@ class EventDispatcherImplTest {
                         .port
 
                 try {
-                    val dispatcher = EventDispatcherImpl()
+                    val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                     dispatcher.start("http://localhost:$port", "token")
                     dispatcher.dispatch(testEvent)
 
@@ -212,7 +215,7 @@ class EventDispatcherImplTest {
                         .port
 
                 try {
-                    val dispatcher = EventDispatcherImpl()
+                    val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                     dispatcher.start("http://localhost:$port", "token")
                     val result = dispatcher.dispatch(testEvent)
 
@@ -227,7 +230,7 @@ class EventDispatcherImplTest {
         @Test
         fun `dispatch updates status to Error on network failure`() =
             runTest {
-                val dispatcher = EventDispatcherImpl()
+                val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                 dispatcher.start("http://localhost:1", "test-token")
                 val result = dispatcher.dispatch(testEvent)
                 assertTrue(result.isFailure)
@@ -241,7 +244,7 @@ class EventDispatcherImplTest {
         @Test
         fun `healthCheck before start returns failure`() =
             runTest {
-                val dispatcher = EventDispatcherImpl()
+                val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                 val result = dispatcher.healthCheck()
                 assertTrue(result.isFailure)
                 assertTrue(result.exceptionOrNull() is IllegalStateException)
@@ -266,7 +269,7 @@ class EventDispatcherImplTest {
                         .port
 
                 try {
-                    val dispatcher = EventDispatcherImpl()
+                    val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                     dispatcher.start("http://localhost:$port", "token")
                     val result = dispatcher.healthCheck()
 
@@ -281,12 +284,133 @@ class EventDispatcherImplTest {
         @Test
         fun `healthCheck updates status to Error on failure`() =
             runTest {
-                val dispatcher = EventDispatcherImpl()
+                val dispatcher = EventDispatcherImpl(RecordingServerLogRepository())
                 dispatcher.start("http://localhost:1", "token")
                 val result = dispatcher.healthCheck()
 
                 assertTrue(result.isFailure)
                 assertTrue(dispatcher.connectionStatus.value is ChannelConnectionStatus.Error)
+            }
+    }
+
+    @Nested
+    @DisplayName("channel logging")
+    inner class ChannelLogging {
+        @Test
+        fun `dispatch failure logs channel error once`() =
+            runTest {
+                val serverLog = RecordingServerLogRepository()
+                val server =
+                    embeddedServer(Netty, port = 0) {
+                        routing {
+                            post("/event") { call.respond(HttpStatusCode.InternalServerError, "err") }
+                        }
+                    }
+                server.start(wait = false)
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
+                try {
+                    val dispatcher = EventDispatcherImpl(serverLog)
+                    dispatcher.start("http://localhost:$port", "token")
+                    dispatcher.dispatch(testEvent)
+                    dispatcher.dispatch(testEvent)
+
+                    val errors = serverLog.ofType(ServerLogEntry.Type.CHANNEL)
+                    assertEquals(1, errors.size)
+                    assertTrue(errors.first().message.contains("Event channel error"))
+                    dispatcher.stop()
+                } finally {
+                    server.stop(0, 0)
+                }
+            }
+
+        @Test
+        fun `different error message logs again`() =
+            runTest {
+                val serverLog = RecordingServerLogRepository()
+                val calls = AtomicInteger(0)
+                val server =
+                    embeddedServer(Netty, port = 0) {
+                        routing {
+                            post("/event") {
+                                val status =
+                                    if (calls.getAndIncrement() == 0) {
+                                        HttpStatusCode.InternalServerError
+                                    } else {
+                                        HttpStatusCode.ServiceUnavailable
+                                    }
+                                call.respond(status, "err")
+                            }
+                        }
+                    }
+                server.start(wait = false)
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
+                try {
+                    val dispatcher = EventDispatcherImpl(serverLog)
+                    dispatcher.start("http://localhost:$port", "token")
+                    dispatcher.dispatch(testEvent)
+                    dispatcher.dispatch(testEvent)
+
+                    assertEquals(2, serverLog.ofType(ServerLogEntry.Type.CHANNEL).size)
+                    dispatcher.stop()
+                } finally {
+                    server.stop(0, 0)
+                }
+            }
+
+        @Test
+        fun `recovery after error logs recovered`() =
+            runTest {
+                val serverLog = RecordingServerLogRepository()
+                val calls = AtomicInteger(0)
+                val server =
+                    embeddedServer(Netty, port = 0) {
+                        routing {
+                            post("/event") {
+                                if (calls.getAndIncrement() == 0) {
+                                    call.respond(HttpStatusCode.InternalServerError, "err")
+                                } else {
+                                    call.respond(HttpStatusCode.OK, """{"status":"ok"}""")
+                                }
+                            }
+                        }
+                    }
+                server.start(wait = false)
+                val port =
+                    server.engine
+                        .resolvedConnectors()
+                        .first()
+                        .port
+                try {
+                    val dispatcher = EventDispatcherImpl(serverLog)
+                    dispatcher.start("http://localhost:$port", "token")
+                    dispatcher.dispatch(testEvent)
+                    dispatcher.dispatch(testEvent)
+
+                    val entries = serverLog.ofType(ServerLogEntry.Type.CHANNEL)
+                    assertTrue(entries.any { it.message == "Event channel recovered" })
+                    dispatcher.stop()
+                } finally {
+                    server.stop(0, 0)
+                }
+            }
+
+        @Test
+        fun `idle transitions log nothing`() =
+            runTest {
+                val serverLog = RecordingServerLogRepository()
+                val dispatcher = EventDispatcherImpl(serverLog)
+                dispatcher.start("http://localhost:9090", "token")
+                dispatcher.stop()
+
+                assertTrue(serverLog.ofType(ServerLogEntry.Type.CHANNEL).isEmpty())
             }
     }
 }

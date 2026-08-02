@@ -6,10 +6,12 @@ import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -19,6 +21,7 @@ import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -38,6 +41,7 @@ class AdbConfigHandlerTest {
     private lateinit var storageLocationProvider: StorageLocationProvider
     private lateinit var handler: AdbConfigHandler
     private lateinit var context: Context
+    private val serverLog = RecordingServerLogRepository()
 
     @BeforeEach
     fun setUp() {
@@ -98,7 +102,7 @@ class AdbConfigHandlerTest {
         coEvery { storageLocationProvider.isLocationAuthorized(any()) } returns false
 
         context = mockk(relaxed = true)
-        handler = AdbConfigHandler(settingsRepository, storageLocationProvider)
+        handler = AdbConfigHandler(settingsRepository, storageLocationProvider, serverLog)
     }
 
     @AfterEach
@@ -159,6 +163,18 @@ class AdbConfigHandlerTest {
                     }
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateBearerToken("my-test-token") }
+            }
+
+        @Test
+        @DisplayName("configure broadcast records ADB marker")
+        fun configureRecordsMarker() =
+            runTest {
+                val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
+                handler.handle(context, intent)
+
+                val entries = serverLog.ofType(ServerLogEntry.Type.SETTINGS)
+                assertEquals(1, entries.size)
+                assertEquals("Configuration update received via ADB", entries.first().message)
             }
 
         @Test

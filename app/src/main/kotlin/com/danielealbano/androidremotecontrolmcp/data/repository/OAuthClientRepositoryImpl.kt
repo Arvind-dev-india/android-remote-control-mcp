@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.di.OAuthClientsDataStore
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthClient
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthPolicy
@@ -30,6 +31,7 @@ class OAuthClientRepositoryImpl
     @Inject
     constructor(
         @OAuthClientsDataStore private val dataStore: DataStore<Preferences>,
+        private val serverLog: ServerLogRepository,
     ) : OAuthClientRepository {
         private val json = Json { ignoreUnknownKeys = true }
         private val snapshot = MutableStateFlow<List<OAuthClient>>(emptyList())
@@ -115,8 +117,15 @@ class OAuthClientRepositoryImpl
         override suspend fun revoke(clientId: String) {
             mutex.withLock {
                 seedLocked()
+                val removed = snapshot.value.firstOrNull { it.clientId == clientId }
                 val updated = snapshot.value.filterNot { it.clientId == clientId }
-                if (updated.size != snapshot.value.size) persist(updated)
+                if (updated.size != snapshot.value.size) {
+                    persist(updated)
+                    serverLog.log(
+                        ServerLogEntry.Type.OAUTH,
+                        "OAuth client revoked: ${removed?.clientName ?: clientId}",
+                    )
+                }
             }
         }
 

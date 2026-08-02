@@ -57,10 +57,11 @@ class ListCamerasHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists all available cameras on the device with their capabilities " +
@@ -113,10 +114,11 @@ class ListCameraPhotoResolutionsHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists supported photo resolutions for a specific camera. " +
@@ -179,10 +181,11 @@ class ListCameraVideoResolutionsHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists supported video resolutions for a specific camera. " +
@@ -270,10 +273,11 @@ class TakeCameraPhotoHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Captures a photo from the specified camera and returns it as a " +
@@ -384,10 +388,11 @@ class SaveCameraPhotoHandler
 
         @Suppress("LongMethod")
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Captures a photo from the specified camera and saves it to a storage " +
@@ -517,12 +522,13 @@ class SaveCameraVideoHandler
 
         @Suppress("LongMethod")
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
             audioParamEnabled: Boolean = true,
         ) {
             this.audioParamEnabled = audioParamEnabled
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Records a video from the specified camera and saves it to a storage " +
@@ -684,30 +690,30 @@ private const val MAX_QUALITY = 100
  * Registers all camera tools with the given [Server].
  */
 fun registerCameraTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     cameraProvider: CameraProvider,
     fileOperationProvider: FileOperationProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(ListCamerasHandler.TOOL_NAME)) {
-        ListCamerasHandler(cameraProvider).register(server, toolNamePrefix)
+        ListCamerasHandler(cameraProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ListCameraPhotoResolutionsHandler.TOOL_NAME)) {
-        ListCameraPhotoResolutionsHandler(cameraProvider).register(server, toolNamePrefix)
+        ListCameraPhotoResolutionsHandler(cameraProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ListCameraVideoResolutionsHandler.TOOL_NAME)) {
-        ListCameraVideoResolutionsHandler(cameraProvider).register(server, toolNamePrefix)
+        ListCameraVideoResolutionsHandler(cameraProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TakeCameraPhotoHandler.TOOL_NAME)) {
-        TakeCameraPhotoHandler(cameraProvider).register(server, toolNamePrefix)
+        TakeCameraPhotoHandler(cameraProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(SaveCameraPhotoHandler.TOOL_NAME)) {
-        SaveCameraPhotoHandler(cameraProvider, fileOperationProvider).register(server, toolNamePrefix)
+        SaveCameraPhotoHandler(cameraProvider, fileOperationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(SaveCameraVideoHandler.TOOL_NAME)) {
         SaveCameraVideoHandler(cameraProvider, fileOperationProvider).register(
-            server,
+            registrar,
             toolNamePrefix,
             audioParamEnabled = perms.isParamEnabled(SaveCameraVideoHandler.TOOL_NAME, "audio"),
         )

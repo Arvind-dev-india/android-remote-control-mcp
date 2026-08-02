@@ -446,10 +446,11 @@ class TypeAppendTextTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Type text character by character at the end of a text field. " +
@@ -586,10 +587,11 @@ class TypeInsertTextTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Type text character by character at a specific position in a text field. " +
@@ -791,10 +793,11 @@ class TypeReplaceTextTool
 
         @Suppress("LongMethod")
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Find and replace text in a field by typing the replacement naturally. " +
@@ -949,10 +952,11 @@ class TypeClearTextTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Clear all text from a field naturally using select-all + delete. " +
@@ -1122,10 +1126,11 @@ class PressKeyTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Press a specific key (ENTER, BACK, DEL, HOME, TAB, SPACE)",
                 inputSchema =
@@ -1165,7 +1170,7 @@ class PressKeyTool
  */
 @Suppress("LongParameterList")
 fun registerTextInputTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     actionExecutor: ActionExecutor,
     accessibilityServiceProvider: AccessibilityServiceProvider,
@@ -1176,22 +1181,22 @@ fun registerTextInputTools(
 ) {
     if (perms.isToolEnabled(TypeAppendTextTool.TOOL_NAME)) {
         TypeAppendTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeInsertTextTool.TOOL_NAME)) {
         TypeInsertTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeReplaceTextTool.TOOL_NAME)) {
         TypeReplaceTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeClearTextTool.TOOL_NAME)) {
         TypeClearTextTool(treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressKeyTool.TOOL_NAME)) {
-        PressKeyTool(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressKeyTool(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
 }
 

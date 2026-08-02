@@ -15,6 +15,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -65,7 +66,18 @@ class SettingsRepositoryImplTest {
                 scope = testScope.backgroundScope,
                 produceFile = { File(tempDir, "test_settings_$testFileCounter.preferences_pb") },
             )
-        repository = SettingsRepositoryImpl(dataStore)
+        val changeLogger =
+            SettingsChangeLogger(
+                RecordingServerLogRepository(),
+                testDispatcher,
+                SettingsChangeLogger.COALESCE_WINDOW_MS,
+            )
+        repository =
+            SettingsRepositoryImpl(
+                dataStore,
+                changeLogger,
+                EventChannelSettingsImpl(dataStore, changeLogger),
+            )
     }
 
     @AfterEach

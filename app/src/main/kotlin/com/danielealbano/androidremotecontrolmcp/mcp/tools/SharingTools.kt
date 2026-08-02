@@ -10,7 +10,6 @@ import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentC
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedItem
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
-import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ContentBlock
 import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
@@ -134,10 +133,11 @@ class GetSharedContentHandler(
     }
 
     fun register(
-        server: Server,
+        registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
     ) {
-        server.addTool(
+        registrar.addTool(
+            toolName = TOOL_NAME,
             name = "$toolNamePrefix$TOOL_NAME",
             description =
                 "Returns and clears items shared to this app via Android Share (text, images, files); " +
@@ -205,10 +205,11 @@ class ShareFileViaWebHandler(
     }
 
     fun register(
-        server: Server,
+        registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
     ) {
-        server.addTool(
+        registrar.addTool(
+            toolName = TOOL_NAME,
             name = "$toolNamePrefix$TOOL_NAME",
             description =
                 "Exposes a device file (location_id + path) as a temporary fetch URL (expires 1h, " +
@@ -248,7 +249,7 @@ class ShareFileViaWebHandler(
  */
 @Suppress("LongParameterList")
 fun registerSharingTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     inbox: SharedContentInbox,
     linkService: EphemeralFileLinkService,
     fileOperationProvider: FileOperationProvider,
@@ -259,7 +260,7 @@ fun registerSharingTools(
 ) {
     if (perms.isToolEnabled(GetSharedContentHandler.TOOL_NAME)) {
         GetSharedContentHandler(inbox, linkService, baseUrlProvider)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ShareFileViaWebHandler.TOOL_NAME)) {
         ShareFileViaWebHandler(
@@ -267,6 +268,6 @@ fun registerSharingTools(
             linkService,
             fileSizeLimitMb,
             baseUrlProvider,
-        ).register(server, toolNamePrefix)
+        ).register(registrar, toolNamePrefix)
     }
 }

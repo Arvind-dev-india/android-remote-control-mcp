@@ -51,10 +51,11 @@ class OpenAppHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Opens (launches) an application by its package ID. " +
@@ -140,10 +141,11 @@ class ListAppsHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists installed applications on the device. " +
@@ -218,10 +220,11 @@ class CloseAppHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Kills a background application process. This only works for apps " +
@@ -257,12 +260,12 @@ class CloseAppHandler
  * Registers all app management tools with the given [Server].
  */
 fun registerAppManagementTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     appManager: AppManager,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
-    if (perms.isToolEnabled(OpenAppHandler.TOOL_NAME)) OpenAppHandler(appManager).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(ListAppsHandler.TOOL_NAME)) ListAppsHandler(appManager).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(CloseAppHandler.TOOL_NAME)) CloseAppHandler(appManager).register(server, toolNamePrefix)
+    if (perms.isToolEnabled(OpenAppHandler.TOOL_NAME)) OpenAppHandler(appManager).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(ListAppsHandler.TOOL_NAME)) ListAppsHandler(appManager).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(CloseAppHandler.TOOL_NAME)) CloseAppHandler(appManager).register(registrar, toolNamePrefix)
 }

@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.integration
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
@@ -17,7 +18,9 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthAccessValidator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
@@ -55,6 +58,7 @@ import com.danielealbano.androidremotecontrolmcp.services.screencapture.Screensh
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -158,6 +162,7 @@ object McpIntegrationTestHelper {
             intentDispatcher = mockk(relaxed = true),
             notificationProvider = mockk(relaxed = true),
             locationProvider = mockk(relaxed = true),
+            serverLog = RecordingServerLogRepository(),
         )
 
     /**
@@ -170,8 +175,9 @@ object McpIntegrationTestHelper {
         perms: ToolPermissionsConfig = ToolPermissionsConfig(),
     ) {
         val toolNamePrefix = McpToolUtils.buildToolNamePrefix(deviceSlug)
+        val registrar = LoggedToolRegistrar(server, deps.serverLog)
         registerScreenIntrospectionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.accessibilityServiceProvider,
             deps.screenCaptureProvider,
@@ -184,11 +190,17 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
-        registerSystemActionTools(server, deps.actionExecutor, deps.accessibilityServiceProvider, toolNamePrefix, perms)
-        registerTouchActionTools(server, deps.actionExecutor, toolNamePrefix, perms)
-        registerGestureTools(server, deps.actionExecutor, toolNamePrefix, perms)
+        registerSystemActionTools(
+            registrar,
+            deps.actionExecutor,
+            deps.accessibilityServiceProvider,
+            toolNamePrefix,
+            perms,
+        )
+        registerTouchActionTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
+        registerGestureTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
         registerNodeActionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.actionExecutor,
@@ -198,7 +210,7 @@ object McpIntegrationTestHelper {
             perms,
         )
         registerTextInputTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.actionExecutor,
             deps.accessibilityServiceProvider,
@@ -208,7 +220,7 @@ object McpIntegrationTestHelper {
             perms,
         )
         registerUtilityTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.accessibilityServiceProvider,
@@ -216,12 +228,21 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
-        registerFileTools(server, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(server, deps.appManager, toolNamePrefix, perms)
-        registerCameraTools(server, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(server, deps.intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(server, deps.notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(server, deps.locationProvider, toolNamePrefix, perms)
+        registerNonAccessibilityTools(registrar, deps, toolNamePrefix, perms)
+    }
+
+    private fun registerNonAccessibilityTools(
+        registrar: LoggedToolRegistrar,
+        deps: MockDependencies,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
+        registerFileTools(registrar, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, deps.appManager, toolNamePrefix, perms)
+        registerCameraTools(registrar, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, deps.intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(registrar, deps.notificationProvider, toolNamePrefix, perms)
+        registerLocationTools(registrar, deps.locationProvider, toolNamePrefix, perms)
     }
 
     /**
@@ -295,7 +316,10 @@ object McpIntegrationTestHelper {
         testApplication {
             application {
                 // Uses the production base-plugin wiring (ContentNegotiation → CORS → auth).
-                installMcpBasePlugins { expectedToken = TEST_BEARER_TOKEN }
+                installMcpBasePlugins {
+                    expectedToken = TEST_BEARER_TOKEN
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
+                }
                 mcpStreamableHttp { sdkServer }
             }
 
@@ -352,6 +376,7 @@ object McpIntegrationTestHelper {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = if (bearerTokenEnabled) TEST_BEARER_TOKEN else ""
                     this.oauthEnabled = oauthEnabled
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
                 mcpStreamableHttp { sdkServer }
             }
@@ -398,10 +423,10 @@ object McpIntegrationTestHelper {
                 produceFile = { java.io.File(tempDir, "oauth_clients.preferences_pb") },
             )
         // spyk wraps the real impl transparently so tests can coVerify last-used touches.
-        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore))
+        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore, deps.serverLog))
         val codeStore = AuthorizationCodeStoreImpl()
-        val approvalCoordinator = OAuthApprovalCoordinatorImpl()
-        val accessValidator = OAuthAccessValidator(tokenService, clientRepository)
+        val approvalCoordinator = OAuthApprovalCoordinatorImpl(deps.serverLog)
+        val accessValidator = OAuthAccessValidator(tokenService, clientRepository, deps.serverLog)
 
         testApplication {
             application {
@@ -415,16 +440,21 @@ object McpIntegrationTestHelper {
                     validateOAuthToken = { token, resource -> accessValidator.validate(token, resource) }
                     excludedPaths = setOf("/health", "/register", "/token", "/authorize", "/authorize/status")
                     excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX, "/.well-known/")
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
                 routing {
                     installOAuthRoutes(
                         OAuthRouteDeps(
-                            clientRepository = clientRepository,
-                            tokenService = tokenService,
-                            authorizationCodeStore = codeStore,
-                            approvalCoordinator = approvalCoordinator,
+                            oauth =
+                                OAuthServerDeps(
+                                    jwtTokenService = tokenService,
+                                    oauthClientRepository = clientRepository,
+                                    authorizationCodeStore = codeStore,
+                                    approvalCoordinator = approvalCoordinator,
+                                    geoIpResolver = { null },
+                                ),
                             publicUrlOverride = publicUrlOverride,
-                            geoIpResolver = { null },
+                            serverLog = deps.serverLog,
                         ),
                     )
                 }
@@ -465,4 +495,5 @@ data class MockDependencies(
     val intentDispatcher: IntentDispatcher,
     val notificationProvider: NotificationProvider,
     val locationProvider: LocationProvider,
+    val serverLog: RecordingServerLogRepository = RecordingServerLogRepository(),
 )

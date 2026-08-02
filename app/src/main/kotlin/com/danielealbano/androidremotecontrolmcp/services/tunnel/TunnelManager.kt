@@ -1,7 +1,9 @@
 package com.danielealbano.androidremotecontrolmcp.services.tunnel
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,7 @@ class TunnelManager
         private val settingsRepository: SettingsRepository,
         private val cloudflareTunnelProviderFactory: Provider<CloudflareTunnelProvider>,
         private val ngrokTunnelProviderFactory: Provider<NgrokTunnelProvider>,
+        private val serverLogRepository: ServerLogRepository,
     ) {
         private val _tunnelStatus = MutableStateFlow<TunnelStatus>(TunnelStatus.Disconnected)
         val tunnelStatus: StateFlow<TunnelStatus> = _tunnelStatus.asStateFlow()
@@ -77,6 +80,10 @@ class TunnelManager
 
         suspend fun stop() {
             mutex.withLock {
+                if (_tunnelStatus.value !is TunnelStatus.Disconnected) {
+                    serverLogRepository.log(ServerLogEntry.Type.TUNNEL, "Tunnel stopped")
+                }
+
                 statusRelayJob?.cancel()
                 statusRelayJob = null
 

@@ -11,7 +11,6 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -74,9 +73,6 @@ class MainViewModel
 
         private val _isAccessibilityEnabled = MutableStateFlow(false)
         val isAccessibilityEnabled: StateFlow<Boolean> = _isAccessibilityEnabled.asStateFlow()
-
-        private val _serverLogs = MutableStateFlow<List<ServerLogEntry>>(emptyList())
-        val serverLogs: StateFlow<List<ServerLogEntry>> = _serverLogs.asStateFlow()
 
         private val _isNotificationPermissionGranted = MutableStateFlow(false)
         val isNotificationPermissionGranted: StateFlow<Boolean> = _isNotificationPermissionGranted.asStateFlow()
@@ -172,13 +168,6 @@ class MainViewModel
             viewModelScope.launch {
                 tunnelManager.tunnelStatus.collect { status ->
                     _tunnelStatus.value = status
-                }
-            }
-
-            // Collect server log events emitted by McpServerService
-            viewModelScope.launch {
-                McpServerService.serverLogEvents.collect { entry ->
-                    addServerLogEntry(entry)
                 }
             }
         }
@@ -530,17 +519,6 @@ class MainViewModel
             context.startActivity(shareIntent)
         }
 
-        fun addServerLogEntry(entry: ServerLogEntry) {
-            _serverLogs.update { currentLogs ->
-                val updated = currentLogs + entry
-                if (updated.size > MAX_LOG_ENTRIES) {
-                    updated.drop(updated.size - MAX_LOG_ENTRIES)
-                } else {
-                    updated
-                }
-            }
-        }
-
         val toolPermissionsConfig: StateFlow<ToolPermissionsConfig> =
             settingsRepository.serverConfig
                 .map { it.toolPermissionsConfig }
@@ -573,7 +551,6 @@ class MainViewModel
 
         companion object {
             private const val TAG = "MCP:MainViewModel"
-            private const val MAX_LOG_ENTRIES = 100
             private const val FLOW_TIMEOUT_MS = 5_000L
         }
     }

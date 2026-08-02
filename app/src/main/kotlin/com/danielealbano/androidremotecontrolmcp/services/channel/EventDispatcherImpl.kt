@@ -2,6 +2,8 @@ package com.danielealbano.androidremotecontrolmcp.services.channel
 
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelConnectionStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelEvent
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -28,11 +30,35 @@ import javax.inject.Singleton
 @Singleton
 class EventDispatcherImpl
     @Inject
-    constructor() : EventDispatcher {
+    constructor(
+        private val serverLog: ServerLogRepository,
+    ) : EventDispatcher {
         private val _connectionStatus =
             MutableStateFlow<ChannelConnectionStatus>(ChannelConnectionStatus.Idle)
         override val connectionStatus: StateFlow<ChannelConnectionStatus> =
             _connectionStatus.asStateFlow()
+
+        // Serializes the read-decide-write in setStatus: dispatch() and the periodic healthCheck() both
+        // update status from Dispatchers.IO concurrently, so the previous-value read, the assignment, and
+        // the dedup decision must be atomic or a single outage could log two identical error entries.
+        private val statusLock = Any()
+
+        private fun setStatus(status: ChannelConnectionStatus) {
+            synchronized(statusLock) {
+                val previous = _connectionStatus.value
+                _connectionStatus.value = status
+                when {
+                    status is ChannelConnectionStatus.Error &&
+                        (previous as? ChannelConnectionStatus.Error)?.message != status.message -> {
+                        serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel error: ${status.message}")
+                    }
+
+                    status is ChannelConnectionStatus.Active && previous is ChannelConnectionStatus.Error -> {
+                        serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel recovered")
+                    }
+                }
+            }
+        }
 
         @Volatile
         private var client: HttpClient? = null
@@ -60,14 +86,14 @@ class EventDispatcherImpl
                         connectTimeoutMillis = CONNECT_TIMEOUT_MS
                     }
                 }
-            _connectionStatus.value = ChannelConnectionStatus.Idle
+            setStatus(ChannelConnectionStatus.Idle)
             Logger.i(TAG, "Event dispatcher started, endpoint=$endpointUrl")
         }
 
         override fun stop() {
             client?.close()
             client = null
-            _connectionStatus.value = ChannelConnectionStatus.Idle
+            setStatus(ChannelConnectionStatus.Idle)
             Logger.i(TAG, "Event dispatcher stopped")
         }
 
@@ -88,11 +114,11 @@ class EventDispatcherImpl
                             setBody(event)
                         }
                     if (response.status.isSuccess()) {
-                        _connectionStatus.value = ChannelConnectionStatus.Active
+                        setStatus(ChannelConnectionStatus.Active)
                         Result.success(Unit)
                     } else {
                         val msg = "HTTP ${response.status.value}"
-                        _connectionStatus.value = ChannelConnectionStatus.Error(msg)
+                        setStatus(ChannelConnectionStatus.Error(msg))
                         Logger.w(TAG, "Dispatch failed: $msg")
                         Result.failure(IOException(msg))
                     }
@@ -100,7 +126,7 @@ class EventDispatcherImpl
                     @Suppress("TooGenericExceptionCaught") e: Exception,
                 ) {
                     val msg = e.message ?: "Unknown error"
-                    _connectionStatus.value = ChannelConnectionStatus.Error(msg)
+                    setStatus(ChannelConnectionStatus.Error(msg))
                     Logger.w(TAG, "Dispatch error: $msg")
                     Result.failure(e)
                 }
@@ -116,18 +142,18 @@ class EventDispatcherImpl
                 try {
                     val response: HttpResponse = httpClient.get("$endpointUrl/health")
                     if (response.status.isSuccess()) {
-                        _connectionStatus.value = ChannelConnectionStatus.Active
+                        setStatus(ChannelConnectionStatus.Active)
                         Result.success(Unit)
                     } else {
                         val msg = "Health check failed: HTTP ${response.status.value}"
-                        _connectionStatus.value = ChannelConnectionStatus.Error(msg)
+                        setStatus(ChannelConnectionStatus.Error(msg))
                         Result.failure(IOException(msg))
                     }
                 } catch (
                     @Suppress("TooGenericExceptionCaught") e: Exception,
                 ) {
                     val msg = e.message ?: "Unreachable"
-                    _connectionStatus.value = ChannelConnectionStatus.Error(msg)
+                    setStatus(ChannelConnectionStatus.Error(msg))
                     Result.failure(e)
                 }
             }

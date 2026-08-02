@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -44,7 +45,18 @@ class SettingsRepositoryServerRunningTest {
                 scope = testScope.backgroundScope,
                 produceFile = { File(tempDir, "server_running.preferences_pb") },
             )
-        repository = SettingsRepositoryImpl(dataStore)
+        val changeLogger =
+            SettingsChangeLogger(
+                RecordingServerLogRepository(),
+                testDispatcher,
+                SettingsChangeLogger.COALESCE_WINDOW_MS,
+            )
+        repository =
+            SettingsRepositoryImpl(
+                dataStore,
+                changeLogger,
+                EventChannelSettingsImpl(dataStore, changeLogger),
+            )
     }
 
     @AfterEach

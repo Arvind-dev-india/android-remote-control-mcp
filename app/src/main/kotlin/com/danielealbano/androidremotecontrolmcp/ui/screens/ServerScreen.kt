@@ -48,6 +48,7 @@ import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCar
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerStatusCard
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.LogsViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
 
@@ -55,16 +56,18 @@ import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
 @Composable
 fun ServerScreen(
     onNavigateToPermissions: () -> Unit,
+    onShowAllLogs: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
     channelViewModel: ChannelViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val logsViewModel: LogsViewModel = hiltViewModel()
 
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
     val serverStatus by viewModel.serverStatus.collectAsStateWithLifecycle()
-    val serverLogs by viewModel.serverLogs.collectAsStateWithLifecycle()
+    val recentServerLogs by logsViewModel.recentServerLogs.collectAsStateWithLifecycle()
     val tunnelStatus by viewModel.tunnelStatus.collectAsStateWithLifecycle()
 
     val isAccessibilityEnabled by viewModel.isAccessibilityEnabled.collectAsStateWithLifecycle()
@@ -160,7 +163,8 @@ fun ServerScreen(
             Spacer(Modifier.height(16.dp))
 
             ServerLogsSection(
-                logs = serverLogs,
+                logs = recentServerLogs,
+                onShowMore = onShowAllLogs,
             )
         }
     }

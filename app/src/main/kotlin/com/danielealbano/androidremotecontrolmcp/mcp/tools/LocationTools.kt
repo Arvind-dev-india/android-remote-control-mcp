@@ -6,7 +6,6 @@ import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
-import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonObject
@@ -58,11 +57,12 @@ class GetLocationHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
             freshFixParamEnabled: Boolean,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Retrieves the device's current location including coordinates, accuracy, " +
@@ -99,14 +99,14 @@ class GetLocationHandler
     }
 
 fun registerLocationTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     locationProvider: LocationProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(GetLocationHandler.TOOL_NAME)) {
         GetLocationHandler(locationProvider).register(
-            server,
+            registrar,
             toolNamePrefix,
             freshFixParamEnabled =
                 perms.isParamEnabled(

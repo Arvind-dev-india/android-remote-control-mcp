@@ -37,3 +37,11 @@ sealed class SettingsRoute(
 
     data object WifiMonitor : SettingsRoute("settings/channel/wifi_monitor")
 }
+
+sealed class ServerRoute(
+    val route: String,
+) {
+    data object Index : ServerRoute("server/index")
+
+    data object Logs : ServerRoute("server/logs")
+}

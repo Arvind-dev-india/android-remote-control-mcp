@@ -16,14 +16,17 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.geo.GeoIpResolver
 import com.danielealbano.androidremotecontrolmcp.mcp.CertificateManager
+import com.danielealbano.androidremotecontrolmcp.mcp.HttpsMaterial
 import com.danielealbano.androidremotecontrolmcp.mcp.McpServer
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStore
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
@@ -75,15 +78,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -157,6 +158,8 @@ class McpServerService : Service() {
     @Inject lateinit var approvalCoordinator: OAuthApprovalCoordinator
 
     @Inject lateinit var geoIpResolver: GeoIpResolver
+
+    @Inject lateinit var serverLogRepository: ServerLogRepository
 
     /** Config of the currently running server; used to build capability-link base URLs. */
     @Volatile
@@ -288,8 +291,7 @@ class McpServerService : Service() {
             mcpServer =
                 McpServer(
                     config = config,
-                    keyStore = keyStore,
-                    keyStorePassword = keyStorePassword,
+                    httpsMaterial = buildHttpsMaterial(keyStore, keyStorePassword),
                     mcpSdkServer = sdkServer,
                     ephemeralFileLinkService = ephemeralFileLinkService,
                     oauth =
@@ -300,6 +302,7 @@ class McpServerService : Service() {
                             approvalCoordinator = approvalCoordinator,
                             geoIpResolver = geoIpResolver,
                         ),
+                    serverLog = serverLogRepository,
                 )
             mcpServer?.start()
 
@@ -332,6 +335,9 @@ class McpServerService : Service() {
             tunnelObserverJob =
                 coroutineScope.launch {
                     tunnelManager.tunnelStatus.collect { status ->
+                        tunnelStatusLogMessage(status)?.let {
+                            serverLogRepository.log(ServerLogEntry.Type.TUNNEL, it)
+                        }
                         when (status) {
                             is TunnelStatus.Connected -> {
                                 Log.i(
@@ -339,24 +345,10 @@ class McpServerService : Service() {
                                     "Tunnel connected: ${status.endpoints.joinToString { it.url }} " +
                                         "(provider: ${status.providerType})",
                                 )
-                                _serverLogEvents.tryEmit(
-                                    ServerLogEntry(
-                                        timestamp = System.currentTimeMillis(),
-                                        type = ServerLogEntry.Type.TUNNEL,
-                                        message = "Tunnel connected: ${status.endpoints.joinToString { it.url }}",
-                                    ),
-                                )
                             }
 
                             is TunnelStatus.Error -> {
                                 Log.w(TAG, "Tunnel error: ${status.message}")
-                                _serverLogEvents.tryEmit(
-                                    ServerLogEntry(
-                                        timestamp = System.currentTimeMillis(),
-                                        type = ServerLogEntry.Type.TUNNEL,
-                                        message = "Tunnel error: ${status.message}",
-                                    ),
-                                )
                             }
 
                             is TunnelStatus.Connecting -> {
@@ -416,8 +408,9 @@ class McpServerService : Service() {
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
     ) {
+        val registrar = LoggedToolRegistrar(server, serverLogRepository)
         registerScreenIntrospectionTools(
-            server,
+            registrar,
             treeParser,
             accessibilityServiceProvider,
             screenCaptureProvider,
@@ -430,11 +423,11 @@ class McpServerService : Service() {
             toolNamePrefix,
             perms,
         )
-        registerSystemActionTools(server, actionExecutor, accessibilityServiceProvider, toolNamePrefix, perms)
-        registerTouchActionTools(server, actionExecutor, toolNamePrefix, perms)
-        registerGestureTools(server, actionExecutor, toolNamePrefix, perms)
+        registerSystemActionTools(registrar, actionExecutor, accessibilityServiceProvider, toolNamePrefix, perms)
+        registerTouchActionTools(registrar, actionExecutor, toolNamePrefix, perms)
+        registerGestureTools(registrar, actionExecutor, toolNamePrefix, perms)
         registerNodeActionTools(
-            server,
+            registrar,
             treeParser,
             elementFinder,
             actionExecutor,
@@ -444,7 +437,7 @@ class McpServerService : Service() {
             perms,
         )
         registerTextInputTools(
-            server,
+            registrar,
             treeParser,
             actionExecutor,
             accessibilityServiceProvider,
@@ -454,7 +447,7 @@ class McpServerService : Service() {
             perms,
         )
         registerUtilityTools(
-            server,
+            registrar,
             treeParser,
             elementFinder,
             accessibilityServiceProvider,
@@ -462,23 +455,23 @@ class McpServerService : Service() {
             toolNamePrefix,
             perms,
         )
-        registerFileTools(server, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(server, appManager, toolNamePrefix, perms)
-        registerCameraTools(server, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(server, intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(server, notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(server, locationProvider, toolNamePrefix, perms)
-        registerSharingBundle(server, toolNamePrefix, perms, fileSizeLimitMb)
+        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, appManager, toolNamePrefix, perms)
+        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(registrar, notificationProvider, toolNamePrefix, perms)
+        registerLocationTools(registrar, locationProvider, toolNamePrefix, perms)
+        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
     }
 
     private fun registerSharingBundle(
-        server: Server,
+        registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
     ) {
         registerSharingTools(
-            server,
+            registrar,
             sharedContentInbox,
             ephemeralFileLinkService,
             fileOperationProvider,
@@ -556,6 +549,7 @@ class McpServerService : Service() {
 
     private fun updateStatus(status: ServerStatus) {
         _serverStatus.value = status
+        serverLogRepository.log(ServerLogEntry.Type.SERVER, serverStatusLogMessage(status))
     }
 
     private fun createNotification(): Notification {
@@ -593,19 +587,38 @@ class McpServerService : Service() {
         private val _serverStatus = MutableStateFlow<ServerStatus>(ServerStatus.Stopped)
         val serverStatus: StateFlow<ServerStatus> = _serverStatus.asStateFlow()
 
-        /**
-         * Shared server log events flow. Collected by MainViewModel to display
-         * log entries in the UI. Uses a SharedFlow (not StateFlow) because each
-         * event is a discrete emission, not a current-state snapshot.
-         *
-         * extraBufferCapacity = 64 prevents dropped events during brief UI
-         * collection pauses (e.g., during configuration changes).
-         */
-        private val _serverLogEvents = MutableSharedFlow<ServerLogEntry>(extraBufferCapacity = 64)
-        val serverLogEvents: SharedFlow<ServerLogEntry> = _serverLogEvents.asSharedFlow()
-
         @Volatile
         var instance: McpServerService? = null
             private set
     }
 }
+
+/** Builds the HTTPS [HttpsMaterial] when both the keystore and its password are present, else null. */
+private fun buildHttpsMaterial(
+    keyStore: KeyStore?,
+    keyStorePassword: CharArray?,
+): HttpsMaterial? =
+    if (keyStore != null && keyStorePassword != null) {
+        HttpsMaterial(keyStore, keyStorePassword)
+    } else {
+        null
+    }
+
+/** Human-readable server-log message for a [ServerStatus] transition. */
+internal fun serverStatusLogMessage(status: ServerStatus): String =
+    when (status) {
+        ServerStatus.Starting -> "Server starting"
+        is ServerStatus.Running -> "Server started on ${status.bindingAddress}:${status.port}"
+        ServerStatus.Stopping -> "Server stopping"
+        ServerStatus.Stopped -> "Server stopped"
+        is ServerStatus.Error -> "Server error: ${status.message}"
+    }
+
+/** Server-log message for a tunnel status transition; null when not logged by the observer. */
+internal fun tunnelStatusLogMessage(status: TunnelStatus): String? =
+    when (status) {
+        TunnelStatus.Connecting -> "Tunnel connecting…"
+        is TunnelStatus.Connected -> "Tunnel connected: ${status.endpoints.joinToString { it.url }}"
+        is TunnelStatus.Error -> "Tunnel error: ${status.message}"
+        TunnelStatus.Disconnected -> null // Logged by TunnelManager.stop()
+    }

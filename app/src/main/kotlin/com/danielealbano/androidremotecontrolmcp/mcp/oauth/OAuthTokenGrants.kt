@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.mcp.canonicalResource
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
 import io.ktor.http.ContentType
@@ -71,6 +72,8 @@ private suspend fun ApplicationCall.handleAuthorizationCodeGrant(
     val jti = UUID.randomUUID().toString()
     deps.clientRepository.setRefreshJti(code.clientId, jti)
     deps.clientRepository.touchLastUsed(code.clientId, deps.nowMs())
+    val clientName = deps.clientRepository.getClient(code.clientId)?.clientName ?: code.clientId
+    deps.serverLog.log(ServerLogEntry.Type.OAUTH, "OAuth tokens issued to $clientName")
     respondTokens(
         access = deps.tokenService.issueAccessToken(code.clientId, code.resource),
         refresh = deps.tokenService.issueRefreshToken(code.clientId, jti, code.resource),
@@ -98,6 +101,10 @@ private suspend fun ApplicationCall.handleRefreshTokenGrant(
     val newJti = UUID.randomUUID().toString()
     deps.clientRepository.setRefreshJti(claims.clientId, newJti)
     deps.clientRepository.touchLastUsed(claims.clientId, deps.nowMs())
+    deps.serverLog.log(
+        ServerLogEntry.Type.OAUTH,
+        "OAuth token refreshed for ${client?.clientName ?: claims.clientId}",
+    )
     respondTokens(
         access = deps.tokenService.issueAccessToken(claims.clientId, resource),
         refresh = deps.tokenService.issueRefreshToken(claims.clientId, newJti, resource),
