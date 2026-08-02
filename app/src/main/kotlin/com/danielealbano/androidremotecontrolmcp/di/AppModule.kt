@@ -78,6 +78,11 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class IoDispatcher
 
+/** Qualifier for the CPU-bound default [CoroutineDispatcher] (e.g. on-device ML inference). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DefaultDispatcher
+
 /** Qualifier for the dedicated OAuth-clients Preferences DataStore. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -121,6 +126,13 @@ object AppModule {
     @Provides
     @IoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Provides [Dispatchers.Default] for CPU-bound work (on-device NER inference).
+     */
+    @Provides
+    @DefaultDispatcher
+    fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 }
 
 @Module

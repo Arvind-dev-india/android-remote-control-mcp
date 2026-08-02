@@ -40,12 +40,15 @@ class PrivacyPipelineImpl
                     "Privacy mode is enabled but the on-device detection model is not available",
                 )
             }
-            val deterministic = items.map { deterministicEngine.detect(it.text, it.context) }
+            val deterministic = items.map { deterministicEngine.detectAll(it.text, it.context) }
             val modelByIndex = if (modelNeeded) runModel(items) else emptyMap()
             return items.mapIndexed { index, item ->
-                val merged = DeterministicEngine.mergeOverlaps(deterministic[index] + modelByIndex[index].orEmpty())
-                val filtered = merged.filter { config.isCategoryEnabled(it.category) }
-                redactor.apply(item.text, filtered, config)
+                // Filter by enabled category BEFORE merging so a disabled category can never suppress an
+                // overlapping still-enabled detection (which would then leave that span redacted by nobody).
+                val enabled =
+                    (deterministic[index] + modelByIndex[index].orEmpty())
+                        .filter { config.isCategoryEnabled(it.category) }
+                redactor.apply(item.text, DeterministicEngine.mergeOverlaps(enabled), config)
             }
         }
 

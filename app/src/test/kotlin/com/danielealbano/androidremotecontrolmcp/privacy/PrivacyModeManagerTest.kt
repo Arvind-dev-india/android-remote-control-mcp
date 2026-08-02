@@ -73,7 +73,7 @@ class PrivacyModeManagerTest {
         runTest {
             withConfig(PrivacyModeConfig(enabled = true))
             every { store.isReady() } returns true
-            every { runner.warmUp() } returns Result.failure(IllegalStateException("bad model"))
+            coEvery { runner.warmUp() } returns Result.failure(IllegalStateException("bad model"))
 
             assertTrue(manager.selfCheck() is PrivacyModeStatus.Unavailable)
         }
@@ -83,7 +83,7 @@ class PrivacyModeManagerTest {
         runTest {
             withConfig(PrivacyModeConfig(enabled = true))
             every { store.isReady() } returns true
-            every { runner.warmUp() } returns Result.success(Unit)
+            coEvery { runner.warmUp() } returns Result.success(Unit)
 
             assertEquals(PrivacyModeStatus.Ready, manager.selfCheck())
         }
@@ -132,7 +132,7 @@ class PrivacyModeManagerTest {
         runTest {
             withConfig(PrivacyModeConfig(enabled = true))
             every { store.isReady() } returns true
-            every { runner.warmUp() } returns Result.success(Unit)
+            coEvery { runner.warmUp() } returns Result.success(Unit)
             coEvery { runner.infer(any()) } returns emptyList()
             every { settingsRepository.privacyBenchmarkEstimateSeconds } returns flowOf(null)
 

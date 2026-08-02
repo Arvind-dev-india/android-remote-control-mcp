@@ -3,24 +3,34 @@ package com.danielealbano.androidremotecontrolmcp.privacy.ner
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import com.danielealbano.androidremotecontrolmcp.di.DefaultDispatcher
 import com.danielealbano.androidremotecontrolmcp.privacy.PiiDetection
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelStore
 import com.danielealbano.androidremotecontrolmcp.privacy.tokenizer.ModernBertTokenizer
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * ONNX Runtime-backed [PiiModelInference] for the ai4privacy ModernBERT token classifier. Model and
- * tokenizer are loaded lazily from the [PrivacyModelStore]; inference is serialized (one at a time) to
- * bound peak memory. All failures surface as [PrivacyModelException] so the pipeline can fail closed.
+ * tokenizer are loaded lazily from the [PrivacyModelStore]. The heavy work (151 MB session load + ONNX
+ * `run`) is dispatched to [dispatcher] (CPU-bound default) and serialized by a coroutine [Mutex] — it
+ * suspends rather than blocking the calling thread, and NEVER runs on the caller's (possibly main)
+ * thread. All failures surface as [PrivacyModelException] so the pipeline can fail closed.
  */
 @Singleton
 class OrtPiiModelRunner
     @Inject
     constructor(
         private val store: PrivacyModelStore,
+        @DefaultDispatcher private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     ) : PiiModelInference {
-        private val lock = Any()
+        private val mutex = Mutex()
         private val decoder = BioDecoder()
 
         @Volatile private var environment: OrtEnvironment? = null
@@ -31,47 +41,54 @@ class OrtPiiModelRunner
 
         @Volatile private var packer: WindowPacker? = null
 
-        override suspend fun infer(segments: List<NerSegment>): List<NerResult> = runInference(segments)
+        override suspend fun infer(segments: List<NerSegment>): List<NerResult> =
+            withContext(dispatcher) { mutex.withLock { runInference(segments) } }
 
-        fun warmUp(): Result<Unit> =
-            runCatching {
-                runInference(listOf(NerSegment("self-check", "", "self check")))
-                Unit
-            }.recoverCatching { throw asModelException(it) }
+        suspend fun warmUp(): Result<Unit> =
+            withContext(dispatcher) {
+                mutex.withLock {
+                    runCatching {
+                        runInference(listOf(NerSegment("self-check", "", "self check")))
+                        Unit
+                    }.recoverCatching { throw asModelException(it) }
+                }
+            }
 
         fun close() {
-            synchronized(lock) {
-                session?.close()
-                session = null
-                tokenizer = null
-                packer = null
-                environment = null
+            // Cleanup runs from the non-suspend service onDestroy; block briefly so an in-flight
+            // inference finishes before the session is freed (inference is serialized, so bounded).
+            runBlocking {
+                mutex.withLock {
+                    session?.close()
+                    session = null
+                    tokenizer = null
+                    packer = null
+                    environment = null
+                }
             }
         }
 
         private fun runInference(segments: List<NerSegment>): List<NerResult> =
-            synchronized(lock) {
-                try {
-                    ensureLoaded()
-                    val windows = packer!!.pack(segments)
-                    if (windows.any { window -> window.segmentRanges.any { it.truncated } }) {
-                        // A value too long to fit the model's token cap cannot be fully analyzed -> fail closed.
-                        throw PrivacyModelException("A field is too long to analyze under Privacy Mode")
-                    }
-                    val byKey = HashMap<String, MutableList<PiiDetection>>()
-                    for (window in windows) {
-                        decodeWindow(window).forEach { (key, detections) ->
-                            byKey.getOrPut(key) { mutableListOf() }.addAll(detections)
-                        }
-                    }
-                    segments.map { NerResult(it.key, byKey[it.key].orEmpty()) }
-                } catch (e: PrivacyModelException) {
-                    throw e
-                } catch (
-                    @Suppress("TooGenericExceptionCaught") e: Throwable,
-                ) {
-                    throw asModelException(e)
+            try {
+                ensureLoaded()
+                val windows = packer!!.pack(segments)
+                if (windows.any { window -> window.segmentRanges.any { it.truncated } }) {
+                    // A value too long to fit the model's token cap cannot be fully analyzed -> fail closed.
+                    throw PrivacyModelException("A field is too long to analyze under Privacy Mode")
                 }
+                val byKey = HashMap<String, MutableList<PiiDetection>>()
+                for (window in windows) {
+                    decodeWindow(window).forEach { (key, detections) ->
+                        byKey.getOrPut(key) { mutableListOf() }.addAll(detections)
+                    }
+                }
+                segments.map { NerResult(it.key, byKey[it.key].orEmpty()) }
+            } catch (e: PrivacyModelException) {
+                throw e
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Throwable,
+            ) {
+                throw asModelException(e)
             }
 
         private fun decodeWindow(window: PackedWindow): Map<String, List<PiiDetection>> {

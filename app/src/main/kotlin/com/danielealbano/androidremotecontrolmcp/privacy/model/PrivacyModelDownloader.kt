@@ -66,7 +66,11 @@ class PrivacyModelDownloader
                 try {
                     for (asset in assets) {
                         val target = store.fileFor(asset)
-                        if (target.exists() && target.length() == asset.sizeBytes) continue
+                        // Skip only if the existing file's CONTENT verifies — matching size alone must not
+                        // let a corrupted/foreign file be blessed by the "verified" marker written below.
+                        val alreadyValid =
+                            target.exists() && target.length() == asset.sizeBytes && sha256Hex(target) == asset.sha256
+                        if (alreadyValid) continue
                         val result = downloadAsset(client, asset, target)
                         if (result.isFailure) {
                             val reason = result.exceptionOrNull()?.message ?: "download failed"
@@ -147,6 +151,20 @@ class PrivacyModelDownloader
                     Result.success(Unit)
                 }
             }
+        }
+
+        /** Streams [file] through SHA-256 and returns the lowercase hex digest. */
+        private fun sha256Hex(file: File): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { input ->
+                val buffer = ByteArray(BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it.toInt() and BYTE_MASK) }
         }
 
         companion object {

@@ -134,6 +134,33 @@ class PrivacyPipelineImplTest {
         }
 
     @Test
+    fun `disabled category does not suppress overlapping enabled category`() =
+        runTest {
+            // Password field whose value is an email; CREDENTIALS is disabled but EMAILS stays on. The
+            // whole-text structural credential span MUST NOT suppress the email span in the merge, or the
+            // email would end up redacted by nobody and leak in the clear.
+            configure(
+                PrivacyModeConfig(
+                    enabled = true,
+                    disabledCategories =
+                        setOf(
+                            PiiCategory.CREDENTIALS,
+                            PiiCategory.NAMES,
+                            PiiCategory.ADDRESSES,
+                            PiiCategory.NATIONAL_IDS,
+                        ),
+                    placeholderFormat = PlaceholderFormat.NUMBERED,
+                ),
+                PrivacyModeStatus.ReadyDeterministicOnly,
+            )
+
+            val result = pipeline.processText("secret@example.com", DetectionContext(isPassword = true))
+
+            assertEquals("[EMAIL_1]", result)
+            coVerify(exactly = 0) { nerEngine.detect(any()) }
+        }
+
+    @Test
     fun `fail closed when model required and unavailable`() =
         runTest {
             configure(PrivacyModeConfig(enabled = true), PrivacyModeStatus.Unavailable("no model"))

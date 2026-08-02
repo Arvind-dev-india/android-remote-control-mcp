@@ -1254,3 +1254,16 @@ Why: decision — the last item of the plan MUST be a complete double-check of e
 
 Definition of Done:
 - [x] All gates green, compliance review clean, PR URL reported.
+
+---
+
+## Review Findings — adversarial code review (2026-08-02)
+
+A second, adversarial ground-up review raised the following. All fixable findings were fixed; the one exception is scoped out with rationale.
+
+- **[FIXED — CRITICAL] Main-thread ANR when enabling Privacy Mode.** `OrtPiiModelRunner.warmUp()`/`infer()` did the 151 MB session load + ONNX `run` synchronously under a blocking `synchronized` on the caller's thread; the UI enable path (`PrivacyViewModel` → `enableWithDownload` → `selfCheck`/`benchmark`) resumed on `Dispatchers.Main`. Fixed: the runner now offloads to a new `@DefaultDispatcher` and serializes with a coroutine `Mutex` (`warmUp` is now `suspend`); `close()` acquires the mutex via `runBlocking` on the destroy path.
+- **[FIXED — WARNING] Disabled category could suppress an overlapping enabled category → PII leak.** Detections were `mergeOverlaps`-ed before the enabled-category filter, so a disabled higher-priority span (e.g. a whole-field `CREDENTIALS` structural span over a password holding a name/email) suppressed the enabled overlapping span, which the filter then removed — leaving that region redacted by nobody. Fixed: `DeterministicEngine.detectAll` exposes raw detections and `PrivacyPipelineImpl` filters by enabled category BEFORE `mergeOverlaps`. Regression test added.
+- **[FIXED — INFO] `PrivacyViewModel.privacyModelReady` did file I/O on the main thread** (Switch handler). Fixed: replaced with an off-main readiness check (`withContext(IoDispatcher)`) that drives a `consentRequired` StateFlow; the screen observes it.
+- **[FIXED — INFO] Downloader trusted a size-only skip** then wrote the "verified" marker. Fixed: the skip path now re-verifies the file's SHA-256; a same-size/wrong-content file is re-downloaded. Regression test added.
+- **[RECONCILED — INFO] The Task 11.2 "no `@Suppress` additions" item is superseded here.** The diff adds five `@Suppress`, each matching an EXISTING codebase convention and being necessary: `LongParameterList` on `registerNotificationTools` (detekt's function cap is 5, per `LoggedToolRegistration.kt`; every sibling `registerXxxTools` carries it, and the fn takes 6 params); three `TooGenericExceptionCaught` on fail-closed catch-alls in `PrivacyModelDownloader`/`OrtPiiModelRunner` (fail-closed MUST convert ANY throwable, and `EventDispatcherImpl` on `main` uses the same pattern); and one `UNCHECKED_CAST` on a test-only reflective `MutableSharedFlow` read. None are removable without breaking detekt, weakening fail-closed, or breaking the test.
+- **[SCOPED OUT — INFO] `EventDispatcherImplTest` is intermittently flaky under full-suite parallel load** (`dispatch failure logs channel error once`). Root cause: `EventDispatcherImpl.start()` hard-codes `HttpClient(OkHttp)`, so the test must hit a real embedded Netty server; under parallel load a dispatch can connect-timeout instead of receiving the HTTP 500, yielding a second distinct error message that breaks the "logs once" dedup assertion. It is pre-existing and NOT touched by this change; a proper fix requires injecting the HTTP engine into `EventDispatcherImpl` and belongs in its own change.

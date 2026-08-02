@@ -48,14 +48,15 @@ class OrtPiiModelRunnerRealModelTest {
         }
 
     @Test
-    fun `real model warmUp succeeds`() {
-        val runner = runnerOrSkip()
+    fun `real model warmUp succeeds`() =
+        runBlocking {
+            val runner = runnerOrSkip()
 
-        val result = runner.warmUp()
-        runner.close()
+            val result = runner.warmUp()
+            runner.close()
 
-        assertTrue(result.isSuccess)
-    }
+            assertTrue(result.isSuccess)
+        }
 
     @Test
     fun `real model measures window latency`() =

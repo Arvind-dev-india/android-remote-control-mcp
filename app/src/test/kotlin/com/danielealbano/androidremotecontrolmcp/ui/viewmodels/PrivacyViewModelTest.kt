@@ -56,7 +56,7 @@ class PrivacyViewModelTest {
         every { privacyModeManager.status } returns statusFlow
         every { privacyModeManager.downloadState } returns downloadStateFlow
 
-        viewModel = PrivacyViewModel(settingsRepository, privacyModeManager)
+        viewModel = PrivacyViewModel(settingsRepository, privacyModeManager, testDispatcher)
     }
 
     @AfterEach
@@ -76,11 +76,50 @@ class PrivacyViewModelTest {
         }
 
     @Test
-    fun `enablePrivacyMode calls manager enableWithDownload`() =
+    fun `requestEnablePrivacyMode enables directly when model ready`() =
         runTest {
-            viewModel.enablePrivacyMode()
+            every { privacyModeManager.isModelReady() } returns true
+            viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
             coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+            assertEquals(false, viewModel.consentRequired.value)
+        }
+
+    @Test
+    fun `requestEnablePrivacyMode requires consent when model missing`() =
+        runTest {
+            every { privacyModeManager.isModelReady() } returns false
+            viewModel.requestEnablePrivacyMode()
+            advanceUntilIdle()
+            assertEquals(true, viewModel.consentRequired.value)
+            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
+        }
+
+    @Test
+    fun `confirmDownloadAndEnable enables and clears consent`() =
+        runTest {
+            every { privacyModeManager.isModelReady() } returns false
+            viewModel.requestEnablePrivacyMode()
+            advanceUntilIdle()
+
+            viewModel.confirmDownloadAndEnable()
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.consentRequired.value)
+            coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+        }
+
+    @Test
+    fun `cancelConsent clears consent without enabling`() =
+        runTest {
+            every { privacyModeManager.isModelReady() } returns false
+            viewModel.requestEnablePrivacyMode()
+            advanceUntilIdle()
+
+            viewModel.cancelConsent()
+
+            assertEquals(false, viewModel.consentRequired.value)
+            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
         }
 
     @Test

@@ -35,7 +35,17 @@ class DeterministicEngine
         fun detect(
             text: String,
             context: DetectionContext,
-        ): List<PiiDetection> = mergeOverlaps(detectors.flatMap { it.detect(text, context) })
+        ): List<PiiDetection> = mergeOverlaps(detectAll(text, context))
+
+        /**
+         * RAW (un-merged) detections from every detector. The caller MUST filter by enabled category
+         * BEFORE [mergeOverlaps], otherwise a disabled category's span could suppress an overlapping
+         * still-enabled span and leave that region redacted by nobody.
+         */
+        fun detectAll(
+            text: String,
+            context: DetectionContext,
+        ): List<PiiDetection> = detectors.flatMap { it.detect(text, context) }
 
         companion object {
             /**

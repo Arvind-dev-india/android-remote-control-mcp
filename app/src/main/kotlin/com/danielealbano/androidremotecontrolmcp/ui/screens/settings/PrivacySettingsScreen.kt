@@ -30,9 +30,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -59,25 +56,22 @@ fun PrivacySettingsScreen(
     val status by viewModel.privacyStatus.collectAsStateWithLifecycle()
     val downloadState by viewModel.privacyDownloadState.collectAsStateWithLifecycle()
     val benchmarkEstimate by viewModel.privacyBenchmarkEstimate.collectAsStateWithLifecycle()
+    val consentRequired by viewModel.consentRequired.collectAsStateWithLifecycle()
 
-    var showConsentDialog by remember { mutableStateOf(false) }
     val downloadInProgress = downloadState is DownloadState.Downloading || downloadState is DownloadState.Verifying
 
-    if (showConsentDialog) {
+    if (consentRequired) {
         AlertDialog(
-            onDismissRequest = { showConsentDialog = false },
+            onDismissRequest = { viewModel.cancelConsent() },
             title = { Text(stringResource(R.string.privacy_consent_title)) },
             text = { Text(stringResource(R.string.privacy_consent_message)) },
             confirmButton = {
-                TextButton(onClick = {
-                    showConsentDialog = false
-                    viewModel.enablePrivacyMode()
-                }) {
+                TextButton(onClick = { viewModel.confirmDownloadAndEnable() }) {
                     Text(stringResource(R.string.privacy_consent_confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConsentDialog = false }) {
+                TextButton(onClick = { viewModel.cancelConsent() }) {
                     Text(stringResource(R.string.privacy_consent_cancel))
                 }
             },
@@ -115,11 +109,7 @@ fun PrivacySettingsScreen(
                     checked = config.enabled,
                     onCheckedChange = { requested ->
                         if (requested) {
-                            if (viewModel.privacyModelReady) {
-                                viewModel.enablePrivacyMode()
-                            } else {
-                                showConsentDialog = true
-                            }
+                            viewModel.requestEnablePrivacyMode()
                         } else {
                             viewModel.disablePrivacyMode()
                         }

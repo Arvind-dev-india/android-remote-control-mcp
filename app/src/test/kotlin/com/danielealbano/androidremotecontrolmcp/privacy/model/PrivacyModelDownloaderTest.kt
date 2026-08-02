@@ -146,4 +146,21 @@ class PrivacyModelDownloaderTest {
             assertFalse(modelRequested, "already-present model must not be re-requested")
             assertArrayEquals(tokData, store.fileFor(downloader.assets[1]).readBytes())
         }
+
+    @Test
+    fun `re-downloads size-matching file with wrong content`() =
+        runTest {
+            // Same byte length as the real asset but different content: the size-only skip must NOT
+            // trust it (otherwise the ".verified" marker would bless an unverified file).
+            val wrongBytes = ByteArray(modelData.size) { 'X'.code.toByte() }
+            store.fileFor(downloader.assets[0]).writeBytes(wrongBytes)
+            var modelRequested = false
+            downloader.clientProvider = okHandlerClient(onModel = { modelRequested = true })
+
+            val result = downloader.download()
+
+            assertTrue(result.isSuccess)
+            assertTrue(modelRequested, "wrong-content file must be re-downloaded")
+            assertArrayEquals(modelData, store.fileFor(downloader.assets[0]).readBytes())
+        }
 }
