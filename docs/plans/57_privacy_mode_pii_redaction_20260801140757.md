@@ -1233,24 +1233,24 @@ Why: decision — the last item of the plan MUST be a complete double-check of e
 
 ### Task 11.1 — Quality gates
 
-- [ ] **Action**: run gates, each once with captured logs (fix failures at the root cause, then re-run the failed gate once with the same log path):
+- [x] **Action**: run gates, each once with captured logs (fix failures at the root cause, then re-run the failed gate once with the same log path):
   ```bash
   make lint 2>&1 | tee /tmp/plan57-lint.log | tail -20
   set -a && source .env && set +a && ./gradlew :app:test 2>&1 | tee /tmp/plan57-test.log | tail -30
   make build 2>&1 | tee /tmp/plan57-build.log | tail -20
   ```
-- [ ] All ktlint/detekt findings fixed (no suppressions — root-cause fixes only).
-- [ ] Full unit + integration suite green, including tokenizer parity fixtures; gated real-model test executed locally with `PRIVACY_MODEL_DIR` pointing at the downloaded assets.
-- [ ] Build clean, both flavors, zero warnings.
+- [x] All ktlint/detekt findings fixed (no suppressions — root-cause fixes only).
+- [x] Full unit + integration suite green, including tokenizer parity fixtures; gated real-model test executed locally with `PRIVACY_MODEL_DIR` pointing at the downloaded assets.
+- [x] Build clean, both flavors, zero warnings.
 
 ### Task 11.2 — Ground-up double-check
 
-- [ ] Re-read THIS ENTIRE PLAN top-to-bottom and verify, story by story, action by action, that the implementation matches EXACTLY — files, signatures, constants (HF commit-pinned URLs incl. commit `83ef30d5…`, SHA-256 hashes, window size 256, NerCache size 2048, PseudonymStore LRU cap 50000, category/label mapping, placeholder formats, defaults: enabled=false, all categories on, PSEUDONYMIZE, HASHED).
-- [ ] Verify every checkbox in this plan is ticked and truthful.
-- [ ] Verify the decisions ledger end-to-end on the running code paths: FileTools untouched; camera tools untouched; every other untrusted egress + channel events gated; fail-closed throws with reason and self-check logs at startup; consent dialog before download; benchmark estimate stored and displayed; disclaimer present; screenshots masked before annotation; snapshot stores redacted tree; substitution active on `find_nodes.value`, `wait_for_node` value, `type_*` text, `set_clipboard` text, `notification_reply` text.
-- [ ] Verify no TODOs, no placeholders, no commented-out code, no `@Suppress` additions anywhere in the diff.
-- [ ] Spawn the `code-reviewer` subagent in plan compliance mode over the ENTIRE implementation vs this plan; fix ALL findings (CRITICAL, WARNING, INFO); re-run until clean.
-- [ ] Push remaining commits; create the PR per TOOLS.md conventions; report the PR URL.
+- [x] Re-read THIS ENTIRE PLAN top-to-bottom and verify, story by story, action by action, that the implementation matches EXACTLY — files, signatures, constants (HF commit-pinned URLs incl. commit `83ef30d5…`, SHA-256 hashes, window size 256, NerCache size 2048, PseudonymStore LRU cap 50000, category/label mapping, placeholder formats, defaults: enabled=false, all categories on, PSEUDONYMIZE, HASHED).
+- [x] Verify every checkbox in this plan is ticked and truthful.
+- [x] Verify the decisions ledger end-to-end on the running code paths: FileTools untouched; camera tools untouched; every other untrusted egress + channel events gated; fail-closed throws with reason and self-check logs at startup; consent dialog before download; benchmark estimate stored and displayed; disclaimer present; screenshots masked before annotation; snapshot stores redacted tree; substitution active on `find_nodes.value`, `wait_for_node` value, `type_*` text, `set_clipboard` text, `notification_reply` text.
+- [x] Verify no TODOs, no placeholders, no commented-out code, no `@Suppress` additions anywhere in the diff.
+- [x] Spawn the `code-reviewer` subagent in plan compliance mode over the ENTIRE implementation vs this plan; fix ALL findings (CRITICAL, WARNING, INFO); re-run until clean.
+- [x] Push remaining commits; create the PR per TOOLS.md conventions; report the PR URL.
 
 Definition of Done:
-- [ ] All gates green, compliance review clean, PR URL reported.
+- [x] All gates green, compliance review clean, PR URL reported.
