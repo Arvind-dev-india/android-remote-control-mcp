@@ -10,6 +10,7 @@ import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
 import com.danielealbano.androidremotecontrolmcp.privacy.model.DownloadState
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -56,7 +57,7 @@ class PrivacyViewModelTest {
         every { privacyModeManager.status } returns statusFlow
         every { privacyModeManager.downloadState } returns downloadStateFlow
 
-        viewModel = PrivacyViewModel(settingsRepository, privacyModeManager, testDispatcher)
+        viewModel = PrivacyViewModel(settingsRepository, privacyModeManager)
     }
 
     @AfterEach
@@ -78,7 +79,7 @@ class PrivacyViewModelTest {
     @Test
     fun `requestEnablePrivacyMode enables directly when model ready`() =
         runTest {
-            every { privacyModeManager.isModelReady() } returns true
+            coEvery { privacyModeManager.isModelReady() } returns true
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
             coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
@@ -88,7 +89,7 @@ class PrivacyViewModelTest {
     @Test
     fun `requestEnablePrivacyMode requires consent when model missing`() =
         runTest {
-            every { privacyModeManager.isModelReady() } returns false
+            coEvery { privacyModeManager.isModelReady() } returns false
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
             assertEquals(true, viewModel.consentRequired.value)
@@ -98,7 +99,7 @@ class PrivacyViewModelTest {
     @Test
     fun `confirmDownloadAndEnable enables and clears consent`() =
         runTest {
-            every { privacyModeManager.isModelReady() } returns false
+            coEvery { privacyModeManager.isModelReady() } returns false
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
 
@@ -112,7 +113,7 @@ class PrivacyViewModelTest {
     @Test
     fun `cancelConsent clears consent without enabling`() =
         runTest {
-            every { privacyModeManager.isModelReady() } returns false
+            coEvery { privacyModeManager.isModelReady() } returns false
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
 

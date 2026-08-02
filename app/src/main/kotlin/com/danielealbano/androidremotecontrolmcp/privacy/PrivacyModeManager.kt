@@ -2,21 +2,26 @@ package com.danielealbano.androidremotecontrolmcp.privacy
 
 import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
 import com.danielealbano.androidremotecontrolmcp.privacy.model.DownloadState
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelDownloader
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelStore
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerSegment
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Coordinates Privacy Mode readiness: computes the [PrivacyModeStatus], drives the consent-gated model
- * download + warm-up, runs the first-time benchmark estimate, and owns model shutdown.
+ * download + warm-up, runs the first-time benchmark estimate, and owns model shutdown. The readiness
+ * methods touch the filesystem ([PrivacyModelStore.isReady]) and are dispatched to [ioDispatcher] so
+ * they never run disk I/O on a UI-thread caller.
  */
 @Singleton
 class PrivacyModeManager
@@ -26,6 +31,7 @@ class PrivacyModeManager
         private val store: PrivacyModelStore,
         private val downloader: PrivacyModelDownloader,
         private val runner: OrtPiiModelRunner,
+        @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) {
         private val mutableStatus = MutableStateFlow<PrivacyModeStatus>(PrivacyModeStatus.Disabled)
         val status: StateFlow<PrivacyModeStatus> = mutableStatus.asStateFlow()
@@ -34,41 +40,45 @@ class PrivacyModeManager
 
         suspend fun currentConfig(): PrivacyModeConfig = settingsRepository.getServerConfig().privacyModeConfig
 
-        fun isModelReady(): Boolean = store.isReady()
+        suspend fun isModelReady(): Boolean = withContext(ioDispatcher) { store.isReady() }
 
-        suspend fun selfCheck(): PrivacyModeStatus {
-            val config = currentConfig()
-            val status =
-                when {
-                    !config.enabled -> PrivacyModeStatus.Disabled
-                    !config.modelRequired() -> PrivacyModeStatus.ReadyDeterministicOnly
-                    !store.isReady() -> PrivacyModeStatus.Unavailable("detection model not downloaded")
-                    runner.warmUp().isSuccess -> PrivacyModeStatus.Ready
-                    else -> PrivacyModeStatus.Unavailable("detection model failed to load")
-                }
-            mutableStatus.value = status
-            return status
-        }
+        suspend fun selfCheck(): PrivacyModeStatus =
+            withContext(ioDispatcher) {
+                val config = currentConfig()
+                val status =
+                    when {
+                        !config.enabled -> PrivacyModeStatus.Disabled
+                        !config.modelRequired() -> PrivacyModeStatus.ReadyDeterministicOnly
+                        !store.isReady() -> PrivacyModeStatus.Unavailable("detection model not downloaded")
+                        runner.warmUp().isSuccess -> PrivacyModeStatus.Ready
+                        else -> PrivacyModeStatus.Unavailable("detection model failed to load")
+                    }
+                mutableStatus.value = status
+                status
+            }
 
-        suspend fun enableWithDownload(): Result<PrivacyModeStatus> {
-            settingsRepository.updatePrivacyModeEnabled(true)
-            val config = currentConfig()
-            if (config.modelRequired() && !store.isReady()) {
-                val download = downloader.download()
-                if (download.isFailure) {
-                    val status =
-                        PrivacyModeStatus.Unavailable(download.exceptionOrNull()?.message ?: "model download failed")
-                    mutableStatus.value = status
-                    return Result.success(status)
+        suspend fun enableWithDownload(): Result<PrivacyModeStatus> =
+            withContext(ioDispatcher) {
+                settingsRepository.updatePrivacyModeEnabled(true)
+                val config = currentConfig()
+                if (config.modelRequired() && !store.isReady()) {
+                    val download = downloader.download()
+                    if (download.isFailure) {
+                        val status =
+                            PrivacyModeStatus.Unavailable(
+                                download.exceptionOrNull()?.message ?: "model download failed",
+                            )
+                        mutableStatus.value = status
+                        return@withContext Result.success(status)
+                    }
                 }
+                val status = selfCheck()
+                if (status is PrivacyModeStatus.Ready) {
+                    val neverBenchmarked = settingsRepository.privacyBenchmarkEstimateSeconds.first() == null
+                    if (neverBenchmarked) benchmark()
+                }
+                Result.success(status)
             }
-            val status = selfCheck()
-            if (status is PrivacyModeStatus.Ready) {
-                val neverBenchmarked = settingsRepository.privacyBenchmarkEstimateSeconds.first() == null
-                if (neverBenchmarked) benchmark()
-            }
-            return Result.success(status)
-        }
 
         suspend fun benchmark(): Double {
             val segments =

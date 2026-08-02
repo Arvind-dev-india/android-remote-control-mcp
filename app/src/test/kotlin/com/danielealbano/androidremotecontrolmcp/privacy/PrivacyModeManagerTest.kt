@@ -10,7 +10,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.io.IOException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @DisplayName("PrivacyModeManager")
 class PrivacyModeManagerTest {
     private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
@@ -29,7 +32,7 @@ class PrivacyModeManagerTest {
 
     @BeforeEach
     fun setUp() {
-        manager = PrivacyModeManager(settingsRepository, store, downloader, runner)
+        manager = PrivacyModeManager(settingsRepository, store, downloader, runner, UnconfinedTestDispatcher())
     }
 
     private fun withConfig(config: PrivacyModeConfig) {

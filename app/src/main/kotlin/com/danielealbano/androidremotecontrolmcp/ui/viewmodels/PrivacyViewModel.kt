@@ -6,13 +6,11 @@ import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
 import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
-import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
 import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
 import com.danielealbano.androidremotecontrolmcp.privacy.model.DownloadState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -33,7 +30,6 @@ class PrivacyViewModel
     constructor(
         private val settingsRepository: SettingsRepository,
         private val privacyModeManager: PrivacyModeManager,
-        @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     ) : ViewModel() {
         val privacyConfig: StateFlow<PrivacyModeConfig> =
             settingsRepository.serverConfig
@@ -54,13 +50,13 @@ class PrivacyViewModel
         val consentRequired: StateFlow<Boolean> = mutableConsentRequired.asStateFlow()
 
         /**
-         * Master-toggle ON entry point. Checks model readiness OFF the main thread; if ready, enables
-         * immediately, otherwise raises [consentRequired] so the screen can show the download dialog.
+         * Master-toggle ON entry point. [PrivacyModeManager.isModelReady] does its filesystem check off
+         * the main thread; if ready, enable immediately, otherwise raise [consentRequired] so the screen
+         * can show the download dialog.
          */
         fun requestEnablePrivacyMode() {
             viewModelScope.launch {
-                val modelReady = withContext(ioDispatcher) { privacyModeManager.isModelReady() }
-                if (modelReady) {
+                if (privacyModeManager.isModelReady()) {
                     privacyModeManager.enableWithDownload()
                 } else {
                     mutableConsentRequired.value = true
