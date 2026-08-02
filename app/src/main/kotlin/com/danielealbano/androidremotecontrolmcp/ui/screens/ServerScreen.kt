@@ -49,11 +49,13 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
 import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
+import com.danielealbano.androidremotecontrolmcp.ui.components.PrivacyModeCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerStatusCard
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.LogsViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.PrivacyViewModel
 import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,14 +65,17 @@ fun ServerScreen(
     onShowAllLogs: () -> Unit,
     onNavigateToNetworkSettings: () -> Unit,
     onNavigateToTunnelSettings: () -> Unit,
+    onOpenPrivacySettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
     channelViewModel: ChannelViewModel = hiltViewModel(),
+    privacyViewModel: PrivacyViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val logsViewModel: LogsViewModel = hiltViewModel()
 
+    val privacyConfig by privacyViewModel.privacyConfig.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
     val serverStatus by viewModel.serverStatus.collectAsStateWithLifecycle()
     val recentServerLogs by logsViewModel.recentServerLogs.collectAsStateWithLifecycle()
@@ -135,6 +140,11 @@ fun ServerScreen(
                         onNavigateToTunnelSettings()
                     },
                 )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (!privacyConfig.enabled) {
+                PrivacyModeCard(onSetupClick = onOpenPrivacySettings)
                 Spacer(Modifier.height(16.dp))
             }
 

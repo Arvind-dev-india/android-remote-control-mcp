@@ -69,6 +69,10 @@ fun MainScreen(
                         pendingSettingsRoute = SettingsRoute.Tunnel.route
                         selectedTabRoute = TopLevelRoute.Settings.route
                     },
+                    onOpenPrivacySettings = {
+                        pendingSettingsRoute = SettingsRoute.Privacy.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
                     modifier = Modifier.padding(paddingValues),
                     viewModel = viewModel,
                 )
@@ -103,6 +107,10 @@ fun MainScreen(
                     },
                     onNavigateToTunnelSettings = {
                         pendingSettingsRoute = SettingsRoute.Tunnel.route
+                        selectedTabRoute = TopLevelRoute.Settings.route
+                    },
+                    onOpenPrivacySettings = {
+                        pendingSettingsRoute = SettingsRoute.Privacy.route
                         selectedTabRoute = TopLevelRoute.Settings.route
                     },
                     modifier = Modifier.padding(paddingValues),

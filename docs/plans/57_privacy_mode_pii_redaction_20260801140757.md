@@ -1146,21 +1146,21 @@ Definition of Done:
 Why: decisions — main-screen callout card advertising Privacy Mode; dedicated settings section with category toggles, mode + format flags, consent-gated download, status, benchmark estimate, best-effort disclaimer.
 
 Acceptance criteria:
-- [ ] `settings/privacy` route with all controls bound through a dedicated `PrivacyViewModel` → `SettingsRepository`/`PrivacyModeManager`.
-- [ ] Enabling with model absent shows consent dialog (~154 MB, Hugging Face); confirm → enable + download + self-check + first-time benchmark; decline → stays off.
-- [ ] Callout card on Server screen when Privacy Mode is off; navigates to the privacy settings screen.
-- [ ] Disclaimer and benchmark estimate ("MCP tools will take approximately +X.X s…") displayed.
+- [x] `settings/privacy` route with all controls bound through a dedicated `PrivacyViewModel` → `SettingsRepository`/`PrivacyModeManager`.
+- [x] Enabling with model absent shows consent dialog (~154 MB, Hugging Face); confirm → enable + download + self-check + first-time benchmark; decline → stays off.
+- [x] Callout card on Server screen when Privacy Mode is off; navigates to the privacy settings screen.
+- [x] Disclaimer and benchmark estimate ("MCP tools will take approximately +X.X s…") displayed.
 
 ### Task 10.1 — Strings
 
-- [ ] **Action**: modify `app/src/main/res/values/strings.xml` — add (exact ids; English values, concise):
+- [x] **Action**: modify `app/src/main/res/values/strings.xml` — add (exact ids; English values, concise):
   `settings_privacy_title` "Privacy Mode", `settings_privacy_subtitle` "Hide personal data from AI providers", `privacy_enable_label` "Enable Privacy Mode", `privacy_consent_title` "Download detection model?", `privacy_consent_message` "Privacy Mode needs a ~154 MB detection model, downloaded once from Hugging Face (the open-source ai4privacy model) and verified by checksum. Continue?", `privacy_consent_confirm` "Download and enable", `privacy_consent_cancel` "Cancel", `privacy_download_progress` "Downloading model… %1$d%%", `privacy_download_verifying` "Verifying download…", `privacy_download_failed` "Model download failed: %1$s", `privacy_status_ready` "Active — model loaded", `privacy_status_deterministic` "Active — pattern detection only (model categories disabled)", `privacy_status_unavailable` "UNAVAILABLE: %1$s", `privacy_status_disabled` "Disabled", `privacy_benchmark_estimate` "MCP tools will take approximately +%1$s s on average (estimated for 100 on-screen elements)", `privacy_categories_header` "Protected categories", `privacy_category_credentials` "Passwords &amp; credentials", `privacy_category_cards_iban` "Payment cards &amp; IBANs", `privacy_category_emails` "Email addresses", `privacy_category_phones` "Phone numbers", `privacy_category_names` "Names", `privacy_category_addresses` "Addresses", `privacy_category_national_ids` "National IDs &amp; documents", `privacy_mode_header` "Redaction style", `privacy_mode_pseudonymize` "Pseudonymize (stable placeholders, tools keep working)", `privacy_mode_redact` "Fully redact", `privacy_format_header` "Placeholder format", `privacy_format_hashed` "Hashed (EMAIL#a1b2c)", `privacy_format_numbered` "Numbered ([EMAIL_1])", `privacy_disclaimer` "Detection is best-effort mitigation, not a guarantee. No detector catches all personal data; screenshots are masked only where flagged screen elements have bounds.", `privacy_card_title` "Worried about personal data?", `privacy_card_message` "Screen content is sent to the AI provider. Enable Privacy Mode to detect and hide passwords, cards, emails, phone numbers, names and more.", `privacy_card_action` "Set up Privacy Mode".
 
 ### Task 10.2 — ViewModel
 
 (Ordered BEFORE the settings screen so the screen's `viewModel.*` members already exist. A DEDICATED `PrivacyViewModel` is used — NOT `MainViewModel` — because `MainViewModel` is already at the project's 6-parameter constructor ceiling (`settingsRepository, tunnelManager, storageLocationProvider, batteryOptimizationManager, ioDispatcher, approvalCoordinator`) and detekt `LongParameterList` forbids a 7th with no `@Suppress` allowed. A separate `@HiltViewModel` obtained via `hiltViewModel()` mirrors the existing `LogsViewModel`/`ChannelViewModel` pattern that screens already use.)
 
-- [ ] **Action**: create `.../ui/viewmodels/PrivacyViewModel.kt` — `@HiltViewModel class PrivacyViewModel @Inject constructor(private val settingsRepository: SettingsRepository, private val privacyModeManager: PrivacyModeManager) : ViewModel()` (2 constructor params — well under the ceiling):
+- [x] **Action**: create `.../ui/viewmodels/PrivacyViewModel.kt` — `@HiltViewModel class PrivacyViewModel @Inject constructor(private val settingsRepository: SettingsRepository, private val privacyModeManager: PrivacyModeManager) : ViewModel()` (2 constructor params — well under the ceiling):
   ```kotlin
   val privacyConfig: StateFlow<PrivacyModeConfig>          // settingsRepository.serverConfig.map { it.privacyModeConfig }.stateIn(...)
   val privacyStatus: StateFlow<PrivacyModeStatus>          // privacyModeManager.status
@@ -1177,9 +1177,9 @@ Acceptance criteria:
 
 ### Task 10.3 — Navigation + settings screen
 
-- [ ] **Action**: modify `.../ui/navigation/Routes.kt` — add `data object Privacy : SettingsRoute("settings/privacy")`.
-- [ ] **Action**: modify `.../ui/screens/settings/SettingsIndexScreen.kt` — add a `SettingsEntry` after the Security entry (icon `Icons.Default.Shield`, title `R.string.settings_privacy_title`, subtitle `R.string.settings_privacy_subtitle`, `onClick = { onNavigate(SettingsRoute.Privacy.route) }`).
-- [ ] **Action**: create `.../ui/screens/settings/PrivacySettingsScreen.kt` — `PrivacySettingsScreen(onBack: () -> Unit, viewModel: PrivacyViewModel = hiltViewModel())` (its OWN `PrivacyViewModel`, not `MainViewModel`), follows the `SecuritySettingsScreen` scaffold pattern (TopAppBar + back + scrollable Column, 16.dp padding); state via `collectAsStateWithLifecycle()`. Content top-to-bottom:
+- [x] **Action**: modify `.../ui/navigation/Routes.kt` — add `data object Privacy : SettingsRoute("settings/privacy")`.
+- [x] **Action**: modify `.../ui/screens/settings/SettingsIndexScreen.kt` — add a `SettingsEntry` after the Security entry (icon `Icons.Default.Shield`, title `R.string.settings_privacy_title`, subtitle `R.string.settings_privacy_subtitle`, `onClick = { onNavigate(SettingsRoute.Privacy.route) }`).
+- [x] **Action**: create `.../ui/screens/settings/PrivacySettingsScreen.kt` — `PrivacySettingsScreen(onBack: () -> Unit, viewModel: PrivacyViewModel = hiltViewModel())` (its OWN `PrivacyViewModel`, not `MainViewModel`), follows the `SecuritySettingsScreen` scaffold pattern (TopAppBar + back + scrollable Column, 16.dp padding); state via `collectAsStateWithLifecycle()`. Content top-to-bottom:
   1. Master `Switch` (privacy_enable_label): ON request → if `!viewModel.privacyModelReady` → consent `AlertDialog` (strings above); confirm → `viewModel.enablePrivacyMode()`; decline → nothing. OFF → `viewModel.disablePrivacyMode()`.
   2. Status row from `viewModel.privacyStatus` (strings `privacy_status_*`); download progress (`LinearProgressIndicator` + `privacy_download_progress`) while `privacyDownloadState is Downloading/Verifying`; failure text on `Failed`.
   3. Benchmark estimate text when `viewModel.privacyBenchmarkEstimate` non-null.
@@ -1187,20 +1187,20 @@ Acceptance criteria:
   5. Redaction style radios (PSEUDONYMIZE/REDACT), placeholder format radios (HASHED/NUMBERED) shown only when PSEUDONYMIZE.
   6. Disclaimer body text (`privacy_disclaimer`, `bodySmall`).
   All controls enabled regardless of server state EXCEPT master toggle disabled while a download is in progress.
-- [ ] **Action**: modify `.../ui/screens/SettingsScreen.kt` — add ONE `composable` to the existing NavHost (now that `PrivacySettingsScreen` exists): `composable(SettingsRoute.Privacy.route) { PrivacySettingsScreen(onBack = { navController.popBackStack() }) }` (PrivacySettingsScreen defaults its OWN `PrivacyViewModel` via `hiltViewModel()`, so — unlike the other settings composables — do NOT pass `viewModel = viewModel`). NO other change — `SettingsScreen` ALREADY has `pendingRoute`/`onPendingRouteConsumed` params and the `LaunchedEffect(pendingRoute)` navigation (SettingsScreen.kt lines 35–50); do NOT add `initialRoute`/`onInitialRouteConsumed`.
+- [x] **Action**: modify `.../ui/screens/SettingsScreen.kt` — add ONE `composable` to the existing NavHost (now that `PrivacySettingsScreen` exists): `composable(SettingsRoute.Privacy.route) { PrivacySettingsScreen(onBack = { navController.popBackStack() }) }` (PrivacySettingsScreen defaults its OWN `PrivacyViewModel` via `hiltViewModel()`, so — unlike the other settings composables — do NOT pass `viewModel = viewModel`). NO other change — `SettingsScreen` ALREADY has `pendingRoute`/`onPendingRouteConsumed` params and the `LaunchedEffect(pendingRoute)` navigation (SettingsScreen.kt lines 35–50); do NOT add `initialRoute`/`onInitialRouteConsumed`.
 
 ### Task 10.4 — Callout card
 
-- [ ] **Action**: create `.../ui/components/PrivacyModeCard.kt` — `PrivacyModeCard(onSetupClick: () -> Unit)`: `Card` with `Icons.Default.Lightbulb` tinted `MaterialTheme.colorScheme.tertiary` (the agreed "yellow lightbulb" look within Material3), `privacy_card_title` (titleMedium), `privacy_card_message` (bodyMedium), `TextButton(privacy_card_action, onClick = onSetupClick)`.
-- [ ] **Action**: modify `.../ui/screens/ServerScreen.kt` — `ServerScreen` gains `onOpenPrivacySettings: () -> Unit` param (current signature: `onNavigateToPermissions, onShowAllLogs, onNavigateToNetworkSettings, onNavigateToTunnelSettings, modifier, viewModel, channelViewModel`) and a `privacyViewModel: PrivacyViewModel = hiltViewModel()` param (mirroring the existing `channelViewModel`/`logsViewModel` pattern — do NOT add privacy state to `MainViewModel`); collect `val privacyConfig by privacyViewModel.privacyConfig.collectAsStateWithLifecycle()`; render immediately BEFORE `ServerStatusCard`, i.e. AFTER the `NetworkAccessSuggestionCard` conditional block (added by #136, ~line 139) and before `ServerStatusCard` (~line 141), conditional on `!privacyConfig.enabled`:
+- [x] **Action**: create `.../ui/components/PrivacyModeCard.kt` — `PrivacyModeCard(onSetupClick: () -> Unit)`: `Card` with `Icons.Default.Lightbulb` tinted `MaterialTheme.colorScheme.tertiary` (the agreed "yellow lightbulb" look within Material3), `privacy_card_title` (titleMedium), `privacy_card_message` (bodyMedium), `TextButton(privacy_card_action, onClick = onSetupClick)`.
+- [x] **Action**: modify `.../ui/screens/ServerScreen.kt` — `ServerScreen` gains `onOpenPrivacySettings: () -> Unit` param (current signature: `onNavigateToPermissions, onShowAllLogs, onNavigateToNetworkSettings, onNavigateToTunnelSettings, modifier, viewModel, channelViewModel`) and a `privacyViewModel: PrivacyViewModel = hiltViewModel()` param (mirroring the existing `channelViewModel`/`logsViewModel` pattern — do NOT add privacy state to `MainViewModel`); collect `val privacyConfig by privacyViewModel.privacyConfig.collectAsStateWithLifecycle()`; render immediately BEFORE `ServerStatusCard`, i.e. AFTER the `NetworkAccessSuggestionCard` conditional block (added by #136, ~line 139) and before `ServerStatusCard` (~line 141), conditional on `!privacyConfig.enabled`:
   ```kotlin
   if (!privacyConfig.enabled) {
       PrivacyModeCard(onSetupClick = onOpenPrivacySettings)
       Spacer(Modifier.height(16.dp))
   }
   ```
-- [ ] **Action**: modify `.../ui/screens/ServerTabScreen.kt` — `MainScreen` renders the Server tab via `ServerTabScreen` (its own nested NavHost), which calls `ServerScreen` (ServerTabScreen.kt ~line 29). Add `onOpenPrivacySettings: () -> Unit` to `ServerTabScreen(...)` and forward it into the `ServerScreen(...)` call (`onOpenPrivacySettings = onOpenPrivacySettings`).
-- [ ] **Action**: modify `.../ui/screens/MainScreen.kt` — `MainScreen` ALREADY has `selectedTabRoute` + `pendingSettingsRoute` state and forwards `pendingRoute`/`onPendingRouteConsumed` to `SettingsScreen`. Add `onOpenPrivacySettings` to BOTH `ServerTabScreen(...)` call sites (the `TopLevelRoute.Server.route` branch AND the `else` fallback branch), mirroring the existing `onNavigateToNetworkSettings` pattern:
+- [x] **Action**: modify `.../ui/screens/ServerTabScreen.kt` — `MainScreen` renders the Server tab via `ServerTabScreen` (its own nested NavHost), which calls `ServerScreen` (ServerTabScreen.kt ~line 29). Add `onOpenPrivacySettings: () -> Unit` to `ServerTabScreen(...)` and forward it into the `ServerScreen(...)` call (`onOpenPrivacySettings = onOpenPrivacySettings`).
+- [x] **Action**: modify `.../ui/screens/MainScreen.kt` — `MainScreen` ALREADY has `selectedTabRoute` + `pendingSettingsRoute` state and forwards `pendingRoute`/`onPendingRouteConsumed` to `SettingsScreen`. Add `onOpenPrivacySettings` to BOTH `ServerTabScreen(...)` call sites (the `TopLevelRoute.Server.route` branch AND the `else` fallback branch), mirroring the existing `onNavigateToNetworkSettings` pattern:
   ```kotlin
   onOpenPrivacySettings = {
       pendingSettingsRoute = SettingsRoute.Privacy.route
@@ -1223,7 +1223,7 @@ Acceptance criteria:
 | `privacyBenchmarkEstimate exposes stored value` | null → value transition |
 
 Definition of Done:
-- [ ] Screens, card, navigation, ViewModel implemented with strings; no hardcoded literals in composables.
+- [x] Screens, card, navigation, ViewModel implemented with strings; no hardcoded literals in composables.
 
 ---
 
