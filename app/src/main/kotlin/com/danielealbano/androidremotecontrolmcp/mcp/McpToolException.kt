@@ -48,4 +48,14 @@ sealed class McpToolException(
         message: String,
         cause: Throwable? = null,
     ) : McpToolException(message, cause)
+
+    /**
+     * Thrown when Privacy Mode is enabled with model-backed categories but the detection model is
+     * missing, unloadable, or failed mid-call. The tool returns NO device data (fail-closed); the
+     * message tells the agent why Privacy Mode is unavailable.
+     */
+    class PrivacyModeUnavailable(
+        message: String,
+        cause: Throwable? = null,
+    ) : McpToolException(message, cause)
 }

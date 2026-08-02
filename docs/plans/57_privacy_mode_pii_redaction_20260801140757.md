@@ -769,17 +769,17 @@ Definition of Done:
 Why: orchestrates all layers into the single entry point tools use; owns mode/format rendering, mapping, and the fail-closed decision.
 
 Acceptance criteria:
-- [ ] `PrivacyPipeline.processText` / `processTree` apply structural → deterministic → model detection, category filtering, and mode rendering.
-- [ ] Pseudonym mappings stable per value per session, in-memory only, reverse-resolvable; redacted tree + mappings consistent for snapshot paging.
-- [ ] Fail-closed via `McpToolException.PrivacyModeUnavailable` exactly per Design constants.
+- [x] `PrivacyPipeline.processText` / `processTree` apply structural → deterministic → model detection, category filtering, and mode rendering.
+- [x] Pseudonym mappings stable per value per session, in-memory only, reverse-resolvable; redacted tree + mappings consistent for snapshot paging.
+- [x] Fail-closed via `McpToolException.PrivacyModeUnavailable` exactly per Design constants.
 
 ### Task 7.1 — Exception + status
 
-- [ ] **Action**: modify `.../mcp/McpToolException.kt` — add a nested subclass INSIDE the existing `sealed class McpToolException { ... }` body, alongside `InvalidParams`/`InternalError`/etc. (same nesting/indentation):
+- [x] **Action**: modify `.../mcp/McpToolException.kt` — add a nested subclass INSIDE the existing `sealed class McpToolException { ... }` body, alongside `InvalidParams`/`InternalError`/etc. (same nesting/indentation):
   ```kotlin
       class PrivacyModeUnavailable(message: String, cause: Throwable? = null) : McpToolException(message, cause)
   ```
-- [ ] **Action**: create `.../privacy/PrivacyModeStatus.kt`:
+- [x] **Action**: create `.../privacy/PrivacyModeStatus.kt`:
   ```kotlin
   sealed class PrivacyModeStatus {
       data object Disabled : PrivacyModeStatus()
@@ -793,7 +793,7 @@ Acceptance criteria:
 
 All under `.../privacy/`.
 
-- [ ] **Action**: create `PseudonymStore.kt` — `@Singleton`:
+- [x] **Action**: create `PseudonymStore.kt` — `@Singleton`:
   ```kotlin
   @Singleton
   class PseudonymStore @Inject constructor() {
@@ -821,7 +821,7 @@ All under `.../privacy/`.
       }
   }
   ```
-- [ ] **Action**: create `Redactor.kt` — pure class:
+- [x] **Action**: create `Redactor.kt` — pure class:
   ```kotlin
   class Redactor @Inject constructor(private val pseudonymStore: PseudonymStore) {
       /** Applies detections (already category-filtered, non-overlapping, sorted) to text right-to-left.
@@ -830,7 +830,7 @@ All under `.../privacy/`.
       fun apply(text: String, detections: List<PiiDetection>, config: PrivacyModeConfig): String
   }
   ```
-- [ ] **Action**: create `PlaceholderSubstitutor.kt`:
+- [x] **Action**: create `PlaceholderSubstitutor.kt`:
   ```kotlin
   @Singleton
   class PlaceholderSubstitutor @Inject constructor(private val pseudonymStore: PseudonymStore) {
@@ -842,7 +842,7 @@ All under `.../privacy/`.
 
 ### Task 7.3 — Manager + pipeline
 
-- [ ] **Action**: create `.../privacy/PrivacyModeManager.kt`:
+- [x] **Action**: create `.../privacy/PrivacyModeManager.kt`:
   ```kotlin
   @Singleton
   class PrivacyModeManager @Inject constructor(
@@ -874,7 +874,7 @@ All under `.../privacy/`.
       fun shutdown() // runner.close(), pseudonym clear is owned by the pipeline caller (service onDestroy)
   }
   ```
-- [ ] **Action**: create `.../privacy/PrivacyPipeline.kt` (interface) + `PrivacyPipelineImpl.kt`:
+- [x] **Action**: create `.../privacy/PrivacyPipeline.kt` (interface) + `PrivacyPipelineImpl.kt`:
   ```kotlin
   data class TextItem(val text: String, val context: DetectionContext)
 
@@ -929,7 +929,7 @@ All under `.../privacy/`.
 **File**: `PrivacyModeManagerTest.kt` — status transitions per config/store/warmUp combinations; enableWithDownload happy/failure paths; benchmark persists estimate (runner mock with fixed delay).
 
 Definition of Done:
-- [ ] Pipeline, manager, stores, renderer implemented; fail-closed behavior test-covered.
+- [x] Pipeline, manager, stores, renderer implemented; fail-closed behavior test-covered.
 
 ---
 

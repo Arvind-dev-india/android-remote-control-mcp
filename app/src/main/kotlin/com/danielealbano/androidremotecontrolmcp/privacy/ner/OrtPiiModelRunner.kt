@@ -54,6 +54,10 @@ class OrtPiiModelRunner
                 try {
                     ensureLoaded()
                     val windows = packer!!.pack(segments)
+                    if (windows.any { window -> window.segmentRanges.any { it.truncated } }) {
+                        // A value too long to fit the model's token cap cannot be fully analyzed -> fail closed.
+                        throw PrivacyModelException("A field is too long to analyze under Privacy Mode")
+                    }
                     val byKey = HashMap<String, MutableList<PiiDetection>>()
                     for (window in windows) {
                         decodeWindow(window).forEach { (key, detections) ->
