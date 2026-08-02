@@ -187,9 +187,11 @@ class EventChannelSettingsImpl
             }
         }
 
-        private fun serializeSet(values: Set<String>): String = values.sorted().joinToString("\n")
+        // The count is written as a leading digits-only header before the first '\n', so it is
+        // recovered exactly even when an element itself contains a newline (802.11 SSIDs may).
+        private fun serializeSet(values: Set<String>): String = "${values.size}\n" + values.sorted().joinToString("\n")
 
-        private fun serializedSetCount(value: String): Int = if (value.isEmpty()) 0 else value.split('\n').size
+        private fun serializedSetCount(value: String): Int = value.substringBefore('\n').toIntOrNull() ?: 0
 
         private companion object {
             private val EVENT_CHANNEL_CONFIG_KEY = stringPreferencesKey("event_channel_config")
