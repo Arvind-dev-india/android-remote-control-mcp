@@ -5,7 +5,9 @@ package com.danielealbano.androidremotecontrolmcp.ui.screens
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -42,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
 import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
@@ -57,6 +61,8 @@ import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
 fun ServerScreen(
     onNavigateToPermissions: () -> Unit,
     onShowAllLogs: () -> Unit,
+    onNavigateToNetworkSettings: () -> Unit,
+    onNavigateToTunnelSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
     channelViewModel: ChannelViewModel = hiltViewModel(),
@@ -114,6 +120,20 @@ fun ServerScreen(
                 PendingApprovalsCard(
                     count = pendingApprovalCount,
                     onClick = { context.startActivity(Intent(context, ApprovalActivity::class.java)) },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (serverConfig.bindingAddress == BindingAddress.LOCALHOST && !serverConfig.tunnelEnabled) {
+                NetworkAccessSuggestionCard(
+                    onEnableWifi = {
+                        viewModel.updateBindingAddress(BindingAddress.NETWORK)
+                        onNavigateToNetworkSettings()
+                    },
+                    onSetUpTunnel = {
+                        viewModel.updateTunnelEnabled(true)
+                        onNavigateToTunnelSettings()
+                    },
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -201,6 +221,48 @@ private fun NoAuthWarningCard() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+        }
+    }
+}
+
+@Composable
+private fun NetworkAccessSuggestionCard(
+    onEnableWifi: () -> Unit,
+    onSetUpTunnel: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.server_network_access_suggestion_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.server_network_access_suggestion_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            ) {
+                TextButton(onClick = onEnableWifi) {
+                    Text(stringResource(R.string.server_network_access_suggestion_wifi))
+                }
+                TextButton(onClick = onSetUpTunnel) {
+                    Text(stringResource(R.string.server_network_access_suggestion_tunnel))
+                }
+            }
         }
     }
 }

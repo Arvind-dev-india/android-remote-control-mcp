@@ -126,6 +126,12 @@
     <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
     <string name="server_pending_approvals_message">%1$d pending connection approval(s). Tap to review.</string>
 
+    <!-- Network Access Suggestion (main screen: localhost-only bind with no tunnel) -->
+    <string name="server_network_access_suggestion_title">Reachable from this device only</string>
+    <string name="server_network_access_suggestion_body">The server is bound to localhost with no tunnel, so only this device can reach it. Bind to the network (0.0.0.0) for access over Wi-Fi, or set up a tunnel for access over the internet.</string>
+    <string name="server_network_access_suggestion_wifi">Enable Wi-Fi access</string>
+    <string name="server_network_access_suggestion_tunnel">Set up tunnel</string>
+
     <!-- Battery Optimization -->
     <string name="battery_optimization_card_title">Keep the server running</string>
     <string name="battery_optimization_card_body">Android battery optimization can stop the MCP server in the background. Disable it for this app so the server stays reachable.</string>
