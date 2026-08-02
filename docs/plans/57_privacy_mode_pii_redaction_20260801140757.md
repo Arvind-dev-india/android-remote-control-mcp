@@ -263,13 +263,13 @@ Definition of Done:
 Why: highest-precision, zero-latency layer; owns typed categories (verified: the model mislabels cards/phones cross-locale, so typed categories cannot rely on it).
 
 Acceptance criteria:
-- [ ] Detectors for credentials, cards (Luhn 12–19 digits), IBAN (mod-97), emails, phones (libphonenumber), national IDs.
-- [ ] Context keywords boost/suppress using resource-id words, hint, label, content description.
-- [ ] Overlapping detections merged; deterministic detections win over model detections on overlap.
+- [x] Detectors for credentials, cards (Luhn 12–19 digits), IBAN (mod-97), emails, phones (libphonenumber), national IDs.
+- [x] Context keywords boost/suppress using resource-id words, hint, label, content description.
+- [x] Overlapping detections merged; deterministic detections win over model detections on overlap.
 
 ### Task 3.1 — Detection domain + context
 
-- [ ] **Action**: create `.../privacy/PiiDetection.kt`:
+- [x] **Action**: create `.../privacy/PiiDetection.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.privacy
 
@@ -304,7 +304,7 @@ Acceptance criteria:
       }
   }
   ```
-- [ ] **Action**: create `.../privacy/ContextExtractor.kt`:
+- [x] **Action**: create `.../privacy/ContextExtractor.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.privacy
 
@@ -373,13 +373,13 @@ Acceptance criteria:
       companion object { private const val NEAREST_LABEL_MAX_PX = 300.0 }
   }
   ```
-- [ ] **Action**: create `.../privacy/detectors/ContextKeywords.kt` — `object ContextKeywords` with keyword sets (lowercase substring matching against `DetectionContext.contextText()`):
+- [x] **Action**: create `.../privacy/detectors/ContextKeywords.kt` — `object ContextKeywords` with keyword sets (lowercase substring matching against `DetectionContext.contextText()`):
   - `CREDENTIAL`: password, passwd, pwd, passcode, pin, otp, 2fa, mfa, verification code, security code, secret, token, credential, cvv, cvc, contraseña, passwort, mot de passe, senha, wachtwoord.
   - `CARD_POSITIVE`: card, credit, debit, visa, mastercard, amex, pan, kaart, carte, tarjeta, carta, karte.
   - `CARD_NEGATIVE`: tracking, order, imei, serial, invoice, ticket, reference.
   - `NATIONAL_ID`: ssn, social security, national id, tax id, taxpayer, vat, passport, driver licen, driving licen, id card, identity, codice fiscale, steuernummer, nif, nie, dni, bsn, cpf, insurance number.
   - `fun matches(context: DetectionContext, keywords: Set<String>): Boolean`.
-- [ ] **Action**: create `.../privacy/detectors/DeterministicDetector.kt`:
+- [x] **Action**: create `.../privacy/detectors/DeterministicDetector.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.privacy.detectors
 
@@ -395,8 +395,8 @@ Acceptance criteria:
 
 All in `.../privacy/detectors/`, each `class X @Inject constructor() : DeterministicDetector`, `Source.DETERMINISTIC` unless stated.
 
-- [ ] **Action**: create `CredentialDetector.kt` — if `context.isPassword` → whole-text `CREDENTIALS` with `Source.STRUCTURAL`; else if `context.isEditable && ContextKeywords.matches(context, CREDENTIAL)` and text is non-blank → whole-text `CREDENTIALS` (`Source.STRUCTURAL`).
-- [ ] **Action**: create `CardDetector.kt` — scan digit runs allowing single space/dash separators, digit count 12..19, Luhn mod-10 valid; skip when `ContextKeywords.matches(context, CARD_NEGATIVE)` and NOT `matches(context, CARD_POSITIVE)`. `luhnValid` in full:
+- [x] **Action**: create `CredentialDetector.kt` — if `context.isPassword` → whole-text `CREDENTIALS` with `Source.STRUCTURAL`; else if `context.isEditable && ContextKeywords.matches(context, CREDENTIAL)` and text is non-blank → whole-text `CREDENTIALS` (`Source.STRUCTURAL`).
+- [x] **Action**: create `CardDetector.kt` — scan digit runs allowing single space/dash separators, digit count 12..19, Luhn mod-10 valid; skip when `ContextKeywords.matches(context, CARD_NEGATIVE)` and NOT `matches(context, CARD_POSITIVE)`. `luhnValid` in full:
   ```kotlin
   private fun luhnValid(digits: String): Boolean {
       if (digits.length !in 12..19) return false
@@ -411,7 +411,7 @@ All in `.../privacy/detectors/`, each `class X @Inject constructor() : Determini
       return sum % 10 == 0
   }
   ```
-- [ ] **Action**: create `IbanDetector.kt` — regex `\b[A-Z]{2}\d{2}[A-Za-z0-9]{11,30}\b` candidates validated with ISO 7064 mod-97-10. `mod97Valid` in full (BigInteger-free rolling mod):
+- [x] **Action**: create `IbanDetector.kt` — regex `\b[A-Z]{2}\d{2}[A-Za-z0-9]{11,30}\b` candidates validated with ISO 7064 mod-97-10. `mod97Valid` in full (BigInteger-free rolling mod):
   ```kotlin
   private fun mod97Valid(iban: String): Boolean {
       val s = iban.uppercase()
@@ -429,13 +429,13 @@ All in `.../privacy/detectors/`, each `class X @Inject constructor() : Determini
       return remainder == 1
   }
   ```
-- [ ] **Action**: create `EmailDetector.kt` — regex `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`.
-- [ ] **Action**: create `PhoneDetector.kt` — `PhoneNumberUtil.getInstance().findNumbers(text, defaultRegion, Leniency.VALID, Long.MAX_VALUE)` with `defaultRegion = Locale.getDefault().country.ifEmpty { "US" }`; map matches to spans.
-- [ ] **Action**: create `NationalIdDetector.kt` — ONLY when `ContextKeywords.matches(context, NATIONAL_ID)`: flag alphanumeric runs of 5..20 chars containing ≥3 digits (allowing space/dash/dot separators) that are not already inside an email match (checked by the engine's overlap merge, not here).
+- [x] **Action**: create `EmailDetector.kt` — regex `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`.
+- [x] **Action**: create `PhoneDetector.kt` — `PhoneNumberUtil.getInstance().findNumbers(text, defaultRegion, Leniency.VALID, Long.MAX_VALUE)` with `defaultRegion = Locale.getDefault().country.ifEmpty { "US" }`; map matches to spans.
+- [x] **Action**: create `NationalIdDetector.kt` — ONLY when `ContextKeywords.matches(context, NATIONAL_ID)`: flag alphanumeric runs of 5..20 chars containing ≥3 digits (allowing space/dash/dot separators) that are not already inside an email match (checked by the engine's overlap merge, not here).
 
 ### Task 3.3 — Engine
 
-- [ ] **Action**: create `.../privacy/DeterministicEngine.kt`:
+- [x] **Action**: create `.../privacy/DeterministicEngine.kt`:
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.privacy
 
@@ -498,7 +498,7 @@ All in `.../privacy/detectors/`, each `class X @Inject constructor() : Determini
 **File**: `IbanDetectorTest.kt` — valid IT/DE/GB IBANs detected; checksum-broken IBAN rejected; embedded in sentence. **File**: `EmailDetectorTest.kt` — plain, subdomain, `+` tag detected; `not@an` rejected. **File**: `PhoneDetectorTest.kt` — E.164 `+39...` detected regardless of region; local format detected with matching default region; short number not detected. **File**: `CredentialDetectorTest.kt` — isPassword whole-text; keyword+editable; non-editable keyword-only → empty. **File**: `NationalIdDetectorTest.kt` — SSN-shaped value with "ssn" context detected; same value without context → empty. **File**: `DeterministicEngineTest.kt` — multi-detector text yields merged non-overlapping spans; structural wins overlap. **File**: `ContextExtractorTest.kt` — resource-id splitting (snake, camel, package strip); labeledBy preferred over nearest label; `computeNearestLabels` picks label above within threshold, ignores editable candidates.
 
 Definition of Done:
-- [ ] All detectors + engine implemented with tests written; no `TODO`s.
+- [x] All detectors + engine implemented with tests written; no `TODO`s.
 
 ---
 
