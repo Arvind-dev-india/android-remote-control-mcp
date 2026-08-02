@@ -148,6 +148,7 @@ slf4j-android = { group = "org.slf4j", name = "slf4j-android", version.ref = "sl
 # Ktor Client
 ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-sse = { group = "io.ktor", name = "ktor-sse", version.ref = "ktor" }
 

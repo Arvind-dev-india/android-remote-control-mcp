@@ -603,19 +603,19 @@ Definition of Done:
 Why: model is never bundled (decision); fetched at runtime directly from Hugging Face pinned to an immutable commit, SHA-256 pinned; tokenizer downloaded together with the model.
 
 Acceptance criteria:
-- [ ] `PrivacyModelAssets` holds the two Hugging Face commit-pinned URLs + byte sizes + SHA-256 from Design constants.
-- [ ] Downloader streams to disk, verifies SHA-256, atomic-renames, exposes progress; store reports readiness without re-hashing 151 MB on every start.
+- [x] `PrivacyModelAssets` holds the two Hugging Face commit-pinned URLs + byte sizes + SHA-256 from Design constants.
+- [x] Downloader streams to disk, verifies SHA-256, atomic-renames, exposes progress; store reports readiness without re-hashing 151 MB on every start.
 
 ### Task 5.1 — Model source & asset constants
 
-- [ ] Source = Hugging Face, commit-pinned (Design constants). There is NO release/publish step and NO self-hosted mirror. The model is MIT-licensed (redistribution/runtime-download permitted); no attribution action is required in this task (the About screen is out of scope here).
-- [ ] **Action**: create `.../privacy/model/PrivacyModelAssets.kt` — `object` with the two `ModelAsset(fileName, url, sha256, sizeBytes)` constants (the Hugging Face commit-pinned URLs from Design constants — model_int8.onnx and tokenizer.json) and `const val MODELS_DIR = "privacy_model"`.
+- [x] Source = Hugging Face, commit-pinned (Design constants). There is NO release/publish step and NO self-hosted mirror. The model is MIT-licensed (redistribution/runtime-download permitted); no attribution action is required in this task (the About screen is out of scope here).
+- [x] **Action**: create `.../privacy/model/PrivacyModelAssets.kt` — `object` with the two `ModelAsset(fileName, url, sha256, sizeBytes)` constants (the Hugging Face commit-pinned URLs from Design constants — model_int8.onnx and tokenizer.json) and `const val MODELS_DIR = "privacy_model"`.
 
 ### Task 5.2 — Store + downloader
 
 All under `.../privacy/model/`.
 
-- [ ] **Action**: create `PrivacyModelStore.kt`:
+- [x] **Action**: create `PrivacyModelStore.kt`:
   ```kotlin
   @Singleton
   class PrivacyModelStore @Inject constructor(@ApplicationContext private val context: Context) {
@@ -627,7 +627,7 @@ All under `.../privacy/model/`.
       fun clearPartialFiles()   // delete *.part leftovers
   }
   ```
-- [ ] **Action**: create `PrivacyModelDownloader.kt` — `@Singleton`, uses the existing Ktor OkHttp client engine (new `HttpClient(OkHttp)` instance owned by this class, closed on completion):
+- [x] **Action**: create `PrivacyModelDownloader.kt` — `@Singleton`, uses the existing Ktor OkHttp client engine (new `HttpClient(OkHttp)` instance owned by this class, closed on completion):
   ```kotlin
   sealed class DownloadState {
       data object Idle : DownloadState()
@@ -674,7 +674,7 @@ All under `.../privacy/model/`.
 | `skips already verified assets` | pre-seeded valid file → no request for it |
 
 Definition of Done:
-- [ ] `PrivacyModelAssets` holds the HF commit-pinned URLs + exact checksums; downloader + store implemented and tested.
+- [x] `PrivacyModelAssets` holds the HF commit-pinned URLs + exact checksums; downloader + store implemented and tested.
 
 ---
 
