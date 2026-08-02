@@ -38,17 +38,24 @@ class EventDispatcherImpl
         override val connectionStatus: StateFlow<ChannelConnectionStatus> =
             _connectionStatus.asStateFlow()
 
-        private fun setStatus(status: ChannelConnectionStatus) {
-            val previous = _connectionStatus.value
-            _connectionStatus.value = status
-            when {
-                status is ChannelConnectionStatus.Error &&
-                    (previous as? ChannelConnectionStatus.Error)?.message != status.message -> {
-                    serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel error: ${status.message}")
-                }
+        // Serializes the read-decide-write in setStatus: dispatch() and the periodic healthCheck() both
+        // update status from Dispatchers.IO concurrently, so the previous-value read, the assignment, and
+        // the dedup decision must be atomic or a single outage could log two identical error entries.
+        private val statusLock = Any()
 
-                status is ChannelConnectionStatus.Active && previous is ChannelConnectionStatus.Error -> {
-                    serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel recovered")
+        private fun setStatus(status: ChannelConnectionStatus) {
+            synchronized(statusLock) {
+                val previous = _connectionStatus.value
+                _connectionStatus.value = status
+                when {
+                    status is ChannelConnectionStatus.Error &&
+                        (previous as? ChannelConnectionStatus.Error)?.message != status.message -> {
+                        serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel error: ${status.message}")
+                    }
+
+                    status is ChannelConnectionStatus.Active && previous is ChannelConnectionStatus.Error -> {
+                        serverLog.log(ServerLogEntry.Type.CHANNEL, "Event channel recovered")
+                    }
                 }
             }
         }
