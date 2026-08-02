@@ -12,9 +12,13 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
+import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.every
 import io.mockk.mockkStatic
@@ -1553,6 +1557,54 @@ class SettingsRepositoryImplTest {
                 assertTrue(repository.validatePublicUrlOverride("https://host.example").isSuccess)
                 assertTrue(repository.validatePublicUrlOverride("ftp://host.example").isFailure)
                 assertTrue(repository.validatePublicUrlOverride("not a url").isFailure)
+            }
+    }
+
+    @Nested
+    @DisplayName("Privacy Mode")
+    inner class PrivacyMode {
+        @Test
+        fun `privacy config defaults when unset`() =
+            testScope.runTest {
+                assertEquals(PrivacyModeConfig(), repository.getServerConfig().privacyModeConfig)
+            }
+
+        @Test
+        fun `updatePrivacyModeEnabled persists`() =
+            testScope.runTest {
+                repository.updatePrivacyModeEnabled(true)
+                assertTrue(repository.serverConfig.first().privacyModeConfig.enabled)
+                repository.updatePrivacyModeEnabled(false)
+                assertFalse(repository.serverConfig.first().privacyModeConfig.enabled)
+            }
+
+        @Test
+        fun `updatePrivacyCategoryEnabled adds and removes from disabled set`() =
+            testScope.runTest {
+                repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, false)
+                assertFalse(repository.serverConfig.first().privacyModeConfig.isCategoryEnabled(PiiCategory.NAMES))
+
+                repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, true)
+                assertTrue(repository.serverConfig.first().privacyModeConfig.isCategoryEnabled(PiiCategory.NAMES))
+            }
+
+        @Test
+        fun `updatePrivacyRedactionMode and placeholder format persist`() =
+            testScope.runTest {
+                repository.updatePrivacyRedactionMode(RedactionMode.REDACT)
+                repository.updatePrivacyPlaceholderFormat(PlaceholderFormat.NUMBERED)
+
+                val config = repository.serverConfig.first().privacyModeConfig
+                assertEquals(RedactionMode.REDACT, config.redactionMode)
+                assertEquals(PlaceholderFormat.NUMBERED, config.placeholderFormat)
+            }
+
+        @Test
+        fun `privacy benchmark estimate persists`() =
+            testScope.runTest {
+                assertEquals(null, repository.privacyBenchmarkEstimateSeconds.first())
+                repository.updatePrivacyBenchmarkEstimateSeconds(1.5)
+                assertEquals(1.5, repository.privacyBenchmarkEstimateSeconds.first())
             }
     }
 }

@@ -71,6 +71,10 @@ detekt = "2.0.0-alpha.5"
 gradle-versions = "0.58.0"
 version-catalog-update = "1.1.0"
 
+# Privacy Mode (on-device PII detection)
+onnxruntime = "1.28.0"
+libphonenumber = "9.0.36"
+
 [libraries]
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -182,6 +186,11 @@ test-runner = { group = "androidx.test", name = "runner", version.ref = "test-ru
 test-rules = { group = "androidx.test", name = "rules", version.ref = "test-rules" }
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+# Privacy Mode (on-device PII detection)
+onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
+onnxruntime-jvm = { group = "com.microsoft.onnxruntime", name = "onnxruntime", version.ref = "onnxruntime" }
+libphonenumber = { group = "com.googlecode.libphonenumber", name = "libphonenumber", version.ref = "libphonenumber" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

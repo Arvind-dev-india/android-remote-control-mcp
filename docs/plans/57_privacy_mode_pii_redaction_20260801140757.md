@@ -68,13 +68,13 @@ Four PRs merged after authoring; the plan is re-anchored to the CURRENT code:
 Why: every later layer reads configuration through `SettingsRepository`; nothing else can be built first.
 
 Acceptance criteria:
-- [ ] `PrivacyModeConfig` persisted via DataStore following the `ToolPermissionsConfig` single-JSON-key pattern, exposed in `ServerConfig`.
-- [ ] Category opt-out set, mode, and format round-trip through the repository with defaults per Design constants.
-- [ ] New dependencies resolve for both flavors.
+- [x] `PrivacyModeConfig` persisted via DataStore following the `ToolPermissionsConfig` single-JSON-key pattern, exposed in `ServerConfig`.
+- [x] Category opt-out set, mode, and format round-trip through the repository with defaults per Design constants.
+- [x] New dependencies resolve for both flavors.
 
 ### Task 1.1 — Dependencies
 
-- [ ] **Action**: modify `gradle/libs.versions.toml`. Versions verified as the latest published on Maven Central on 2026-08-01 (`onnxruntime-android` 1.28.0 → `repo1.maven.org/.../onnxruntime-android/maven-metadata.xml` `<release>1.28.0`; `libphonenumber` 9.0.36 → `.../libphonenumber/maven-metadata.xml` `<release>9.0.36`); `onnxruntime-android` targets Android and is API-34 compatible — the final quality gates (US11) confirm both resolve and build for both flavors.
+- [x] **Action**: modify `gradle/libs.versions.toml`. Versions verified as the latest published on Maven Central on 2026-08-01 (`onnxruntime-android` 1.28.0 → `repo1.maven.org/.../onnxruntime-android/maven-metadata.xml` `<release>1.28.0`; `libphonenumber` 9.0.36 → `.../libphonenumber/maven-metadata.xml` `<release>9.0.36`); `onnxruntime-android` targets Android and is API-34 compatible — the final quality gates (US11) confirm both resolve and build for both flavors.
   ```toml
   # [versions] — add
   onnxruntime = "1.28.0"
@@ -85,7 +85,7 @@ Acceptance criteria:
   onnxruntime-jvm = { group = "com.microsoft.onnxruntime", name = "onnxruntime", version.ref = "onnxruntime" }
   libphonenumber = { group = "com.googlecode.libphonenumber", name = "libphonenumber", version.ref = "libphonenumber" }
   ```
-- [ ] **Action**: modify `app/build.gradle.kts` first `dependencies {}` block — add:
+- [x] **Action**: modify `app/build.gradle.kts` first `dependencies {}` block — add:
   ```kotlin
   implementation(libs.onnxruntime.android)
   implementation(libs.libphonenumber)
@@ -93,11 +93,11 @@ Acceptance criteria:
   ```
 
 Definition of Done:
-- [ ] `./gradlew :app:dependencies` resolves the three artifacts (checked at final quality gates, not now).
+- [x] `./gradlew :app:dependencies` resolves the three artifacts (checked at final quality gates, not now).
 
 ### Task 1.2 — Privacy domain model
 
-- [ ] **Action**: create `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/privacy/PiiCategory.kt`.
+- [x] **Action**: create `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/privacy/PiiCategory.kt`.
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.privacy
 
@@ -111,7 +111,7 @@ Definition of Done:
       NATIONAL_IDS("ID", requiresModel = true),
   }
   ```
-- [ ] **Action**: create `.../data/model/PrivacyModeConfig.kt` (package `data.model`, mirrors `ToolPermissionsConfig` JSON persistence).
+- [x] **Action**: create `.../data/model/PrivacyModeConfig.kt` (package `data.model`, mirrors `ToolPermissionsConfig` JSON persistence).
   ```kotlin
   package com.danielealbano.androidremotecontrolmcp.data.model
 
@@ -150,11 +150,11 @@ Definition of Done:
 
 ### Task 1.3 — ServerConfig + SettingsRepository
 
-- [ ] **Action**: modify `.../data/model/ServerConfig.kt` — add field to the data class:
+- [x] **Action**: modify `.../data/model/ServerConfig.kt` — add field to the data class:
   ```kotlin
   val privacyModeConfig: PrivacyModeConfig = PrivacyModeConfig(),
   ```
-- [ ] **Action**: modify `.../data/repository/SettingsRepository.kt` — add to the interface:
+- [x] **Action**: modify `.../data/repository/SettingsRepository.kt` — add to the interface:
   ```kotlin
   suspend fun updatePrivacyModeConfig(config: PrivacyModeConfig)
 
@@ -170,7 +170,7 @@ Definition of Done:
 
   val privacyBenchmarkEstimateSeconds: Flow<Double?>
   ```
-- [ ] **Action**: modify `.../data/repository/SettingsRepositoryImpl.kt` (post-#135 patterns — see drift note):
+- [x] **Action**: modify `.../data/repository/SettingsRepositoryImpl.kt` (post-#135 patterns — see drift note):
   - Keys are TOP-LEVEL file-private vals (alongside the existing `PORT_KEY` etc., NOT a companion): `private val PRIVACY_MODE_CONFIG_KEY = stringPreferencesKey("privacy_mode_config")`, `private val PRIVACY_BENCHMARK_SECONDS_KEY = stringPreferencesKey("privacy_benchmark_estimate_seconds")`.
   - `mapPreferencesToServerConfig`: map `privacyModeConfig = PrivacyModeConfig.fromJsonOrDefault(prefs[PRIVACY_MODE_CONFIG_KEY])`.
   - Setters read-modify-write the single privacy-config JSON and MUST log via the injected `settingsChangeLogger` to match the codebase convention (every setter logs). Privacy settings are NOT secret, so render human-readable diffs, e.g.: `updatePrivacyModeEnabled`/`updatePrivacyCategoryEnabled`/`updatePrivacyRedactionMode`/`updatePrivacyPlaceholderFormat`/`updatePrivacyModeConfig` each `dataStore.edit { … }` the JSON then `settingsChangeLogger.submit("privacy_mode", oldConfig, newConfig) { o, n -> "<describe change>" }` (coalesce key `"privacy_mode"`). `settingsChangeLogger` is already a constructor property — no constructor change.
@@ -200,7 +200,7 @@ Definition of Done:
 | `privacy benchmark estimate persists` | null before set, value after |
 
 Definition of Done:
-- [ ] All US1 actions implemented; tests written (run at final gates only).
+- [x] All US1 actions implemented; tests written (run at final gates only).
 
 ---
 
@@ -209,18 +209,18 @@ Definition of Done:
 Why: `isPassword`, `hintText`, and label association are the structural detection signals; the parser does not read them today.
 
 Acceptance criteria:
-- [ ] `AccessibilityNodeData` carries `isPassword`, `hintText`, `labeledByText`.
-- [ ] Fields populated by the parser for every node; `labeledByText` resolved from `AccessibilityNodeInfo.getLabeledBy()`.
+- [x] `AccessibilityNodeData` carries `isPassword`, `hintText`, `labeledByText`.
+- [x] Fields populated by the parser for every node; `labeledByText` resolved from `AccessibilityNodeInfo.getLabeledBy()`.
 
 ### Task 2.1 — Parser fields
 
-- [ ] **Action**: modify `.../services/accessibility/AccessibilityTreeParser.kt` — `AccessibilityNodeData` (fields after `editable`):
+- [x] **Action**: modify `.../services/accessibility/AccessibilityTreeParser.kt` — `AccessibilityNodeData` (fields after `editable`):
   ```kotlin
   val isPassword: Boolean = false,
   val hintText: String? = null,
   val labeledByText: String? = null,
   ```
-- [ ] **Action**: same file, `parseNode` (after the `editable` read at line ~193):
+- [x] **Action**: same file, `parseNode` (after the `editable` read at line ~193):
   ```kotlin
   val isPassword = node.isPassword
   val hintText = node.hintText?.toString()?.takeIf { it.isNotEmpty() }
@@ -236,7 +236,7 @@ Acceptance criteria:
       }.getOrNull()
   ```
   Context: `labeledBy` can throw `IllegalStateException` on stale nodes — swallow to null. minSdk 33 ⇒ no `recycle()` handling needed (deprecated no-op).
-- [ ] **Action**: modify `.../services/accessibility/WebViewNodeMerger.kt` ONLY if it constructs `AccessibilityNodeData` copies field-by-field (verify during implementation); named-argument `copy(...)` usages need no change.
+- [x] **Action**: modify `.../services/accessibility/WebViewNodeMerger.kt` ONLY if it constructs `AccessibilityNodeData` copies field-by-field (verify during implementation); named-argument `copy(...)` usages need no change.
 
 `CompactTreeFormatter` output columns are intentionally NOT changed by this story.
 
@@ -254,7 +254,7 @@ Acceptance criteria:
 | `parseNode labeledBy failure yields null` | `labeledBy` throwing `IllegalStateException` → null, no crash |
 
 Definition of Done:
-- [ ] Fields populated end-to-end in `MultiWindowResult`; existing parser tests still pass (run at final gates).
+- [x] Fields populated end-to-end in `MultiWindowResult`; existing parser tests still pass (run at final gates).
 
 ---
 

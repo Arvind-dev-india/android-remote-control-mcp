@@ -4,10 +4,14 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
+import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -227,6 +231,30 @@ interface SettingsRepository : EventChannelSettings {
         paramName: String,
         enabled: Boolean,
     )
+
+    /** Replaces the full Privacy Mode configuration. */
+    suspend fun updatePrivacyModeConfig(config: PrivacyModeConfig)
+
+    /** Enables or disables Privacy Mode. */
+    suspend fun updatePrivacyModeEnabled(enabled: Boolean)
+
+    /** Enables or disables a specific PII category within Privacy Mode. */
+    suspend fun updatePrivacyCategoryEnabled(
+        category: PiiCategory,
+        enabled: Boolean,
+    )
+
+    /** Sets the redaction mode (pseudonymize vs full redaction). */
+    suspend fun updatePrivacyRedactionMode(mode: RedactionMode)
+
+    /** Sets the pseudonym placeholder format (hashed vs numbered). */
+    suspend fun updatePrivacyPlaceholderFormat(format: PlaceholderFormat)
+
+    /** Persists the measured per-100-node inference overhead estimate, in seconds. */
+    suspend fun updatePrivacyBenchmarkEstimateSeconds(seconds: Double)
+
+    /** Emits the stored Privacy Mode benchmark estimate (seconds), or null if never measured. */
+    val privacyBenchmarkEstimateSeconds: Flow<Double?>
 
     /**
      * Data class representing a stored storage location record.
