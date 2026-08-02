@@ -13,6 +13,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
 import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ScreenshotData
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.stripUntrustedWarning
 import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import com.danielealbano.androidremotecontrolmcp.privacy.PiiDetection
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
@@ -23,7 +24,6 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsDa
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ScreenInfo
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowData
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationData
-import com.danielealbano.androidremotecontrolmcp.mcp.tools.stripUntrustedWarning
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.every
@@ -33,6 +33,7 @@ import io.mockk.mockkConstructor
 import io.mockk.slot
 import io.mockk.unmockkConstructor
 import io.mockk.verify
+import io.modelcontextprotocol.kotlin.sdk.client.Client
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -164,8 +165,8 @@ class PrivacyModeIntegrationTest {
             deps.setupTree(treeWith("john@example.com"))
 
             McpIntegrationTestHelper.withTestApplication(deps) { client, _ ->
-                val first = (client.callTool(name = "android_get_screen_state", arguments = emptyMap()).content[0] as TextContent).text
-                val second = (client.callTool(name = "android_get_screen_state", arguments = emptyMap()).content[0] as TextContent).text
+                val first = screenStateText(client)
+                val second = screenStateText(client)
                 assertTrue(first.contains("[EMAIL_1]"))
                 assertTrue(second.contains("[EMAIL_1]"))
             }
@@ -415,6 +416,11 @@ class PrivacyModeIntegrationTest {
                 unmockkConstructor(Canvas::class)
             }
         }
+
+    private suspend fun screenStateText(client: Client): String {
+        val result = client.callTool(name = "android_get_screen_state", arguments = emptyMap())
+        return (result.content[0] as TextContent).text
+    }
 
     private fun mockSurroundingText(text: String): SurroundingText {
         val mock = mockk<SurroundingText>()

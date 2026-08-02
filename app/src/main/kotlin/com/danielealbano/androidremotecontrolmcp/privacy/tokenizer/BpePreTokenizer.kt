@@ -9,7 +9,11 @@ import java.util.regex.Pattern
  */
 class BpePreTokenizer {
     /** A pre-token piece with its char offsets within the input string. */
-    data class Piece(val text: String, val start: Int, val end: Int)
+    data class Piece(
+        val text: String,
+        val start: Int,
+        val end: Int,
+    )
 
     fun split(text: String): List<Piece> {
         val pieces = mutableListOf<Piece>()

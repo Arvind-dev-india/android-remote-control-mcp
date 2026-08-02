@@ -4,6 +4,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationActionData
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationData
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -61,7 +62,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns false
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 assertThrows<McpToolException.PermissionDenied> {
                     handler.execute(null)
@@ -83,7 +84,7 @@ class NotificationToolsTest {
                     )
                 coEvery { provider.getNotifications(null, null) } returns
                     listOf(sampleNotification(actions = listOf(action)))
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val result = handler.execute(null)
                 val text = (result.content[0] as TextContent).text
@@ -110,7 +111,7 @@ class NotificationToolsTest {
                 every { provider.isReady() } returns true
                 coEvery { provider.getNotifications("com.example.app", null) } returns
                     listOf(sampleNotification())
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val args = buildJsonObject { put("package_name", "com.example.app") }
                 handler.execute(args)
@@ -126,7 +127,7 @@ class NotificationToolsTest {
                 every { provider.isReady() } returns true
                 coEvery { provider.getNotifications(null, 5) } returns
                     listOf(sampleNotification())
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val args = buildJsonObject { put("limit", 5) }
                 handler.execute(args)
@@ -141,7 +142,7 @@ class NotificationToolsTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
                 coEvery { provider.getNotifications(null, null) } returns emptyList()
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val result = handler.execute(null)
                 val text = (result.content[0] as TextContent).text
@@ -158,7 +159,7 @@ class NotificationToolsTest {
                 every { provider.isReady() } returns true
                 coEvery { provider.getNotifications(null, null) } returns
                     listOf(sampleNotification())
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val args = buildJsonObject { put("limit", 0) }
                 handler.execute(args)
@@ -174,7 +175,7 @@ class NotificationToolsTest {
                 every { provider.isReady() } returns true
                 coEvery { provider.getNotifications(null, null) } returns
                     listOf(sampleNotification())
-                val handler = NotificationListHandler(provider)
+                val handler = NotificationListHandler(provider, PrivacyToolTestDoubles.passthroughGate())
 
                 val args = buildJsonObject { put("limit", -1) }
                 handler.execute(args)
@@ -645,7 +646,7 @@ class NotificationToolsTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
                 coEvery { provider.replyToAction("11223344", "Hello") } returns Result.success(Unit)
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 val args =
                     buildJsonObject {
@@ -663,7 +664,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(buildJsonObject { put("text", "Hello") })
@@ -676,7 +677,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(
@@ -694,7 +695,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(buildJsonObject { put("action_id", "11223344") })
@@ -707,7 +708,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(
@@ -727,7 +728,7 @@ class NotificationToolsTest {
                 every { provider.isReady() } returns true
                 coEvery { provider.replyToAction("11223344", "Hello") } returns
                     Result.failure(IllegalStateException("Action does not accept text input"))
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.ActionFailed> {
                     handler.execute(
@@ -745,7 +746,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns false
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.PermissionDenied> {
                     handler.execute(
@@ -763,7 +764,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(
@@ -781,7 +782,7 @@ class NotificationToolsTest {
             runTest {
                 val provider = createNotificationProvider()
                 every { provider.isReady() } returns true
-                val handler = NotificationReplyHandler(provider)
+                val handler = NotificationReplyHandler(provider, PrivacyToolTestDoubles.identitySubstitutor())
 
                 assertThrows<McpToolException.InvalidParams> {
                     handler.execute(

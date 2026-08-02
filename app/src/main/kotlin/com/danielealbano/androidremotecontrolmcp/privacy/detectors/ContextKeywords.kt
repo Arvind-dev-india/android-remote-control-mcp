@@ -9,15 +9,42 @@ import com.danielealbano.androidremotecontrolmcp.privacy.DetectionContext
 object ContextKeywords {
     val CREDENTIAL =
         setOf(
-            "password", "passwd", "pwd", "passcode", "pin", "otp", "2fa", "mfa",
-            "verification code", "security code", "secret", "token", "credential", "cvv", "cvc",
-            "contraseña", "passwort", "mot de passe", "senha", "wachtwoord",
+            "password",
+            "passwd",
+            "pwd",
+            "passcode",
+            "pin",
+            "otp",
+            "2fa",
+            "mfa",
+            "verification code",
+            "security code",
+            "secret",
+            "token",
+            "credential",
+            "cvv",
+            "cvc",
+            "contraseña",
+            "passwort",
+            "mot de passe",
+            "senha",
+            "wachtwoord",
         )
 
     val CARD_POSITIVE =
         setOf(
-            "card", "credit", "debit", "visa", "mastercard", "amex", "pan",
-            "kaart", "carte", "tarjeta", "carta", "karte",
+            "card",
+            "credit",
+            "debit",
+            "visa",
+            "mastercard",
+            "amex",
+            "pan",
+            "kaart",
+            "carte",
+            "tarjeta",
+            "carta",
+            "karte",
         )
 
     val CARD_NEGATIVE =
@@ -25,9 +52,25 @@ object ContextKeywords {
 
     val NATIONAL_ID =
         setOf(
-            "ssn", "social security", "national id", "tax id", "taxpayer", "vat", "passport",
-            "driver licen", "driving licen", "id card", "identity", "codice fiscale",
-            "steuernummer", "nif", "nie", "dni", "bsn", "cpf", "insurance number",
+            "ssn",
+            "social security",
+            "national id",
+            "tax id",
+            "taxpayer",
+            "vat",
+            "passport",
+            "driver licen",
+            "driving licen",
+            "id card",
+            "identity",
+            "codice fiscale",
+            "steuernummer",
+            "nif",
+            "nie",
+            "dni",
+            "bsn",
+            "cpf",
+            "insurance number",
         )
 
     fun matches(

@@ -165,7 +165,9 @@ fun PrivacySettingsScreen(
                     )
                 }
 
-                else -> Unit
+                else -> {
+                    Unit
+                }
             }
 
             // 3. Benchmark estimate

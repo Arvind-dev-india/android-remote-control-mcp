@@ -12,8 +12,8 @@ object ByteLevelMapping {
     init {
         val printable = HashSet<Int>()
         for (b in '!'.code..'~'.code) printable += b
-        for (b in 0xA1..0xAC) printable += b
-        for (b in 0xAE..0xFF) printable += b
+        for (b in LATIN1_LOW_START..LATIN1_LOW_END) printable += b
+        for (b in LATIN1_HIGH_START..LATIN1_HIGH_END) printable += b
         var extra = 0
         val reverse = HashMap<Char, Int>()
         for (b in 0 until BYTE_COUNT) {
@@ -27,4 +27,10 @@ object ByteLevelMapping {
     fun charToByte(ch: Char): Int? = charToByteMap[ch]
 
     private const val BYTE_COUNT = 256
+
+    // GPT-2 treats these Latin-1 ranges as printable (0xAD, the soft hyphen, is the sole gap).
+    private const val LATIN1_LOW_START = 0xA1
+    private const val LATIN1_LOW_END = 0xAC
+    private const val LATIN1_HIGH_START = 0xAE
+    private const val LATIN1_HIGH_END = 0xFF
 }

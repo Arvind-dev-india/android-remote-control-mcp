@@ -5,15 +5,24 @@ package com.danielealbano.androidremotecontrolmcp.privacy.tokenizer
  * BPE. Whitespace is folded into an added token per its [AddedToken.lstrip]/[AddedToken.rstrip]
  * flags. All indices are UTF-16 offsets into the input string.
  */
-class AddedTokenSplitter(addedTokens: List<AddedToken>) {
+class AddedTokenSplitter(
+    addedTokens: List<AddedToken>,
+) {
     private val sorted = addedTokens.sortedByDescending { it.content.length }
 
     sealed class Segment {
         /** A run of raw text to be pre-tokenized and BPE-encoded. */
-        data class Raw(val start: Int, val end: Int) : Segment()
+        data class Raw(
+            val start: Int,
+            val end: Int,
+        ) : Segment()
 
         /** A matched added token, spanning `[start, end)` (after lstrip/rstrip whitespace folding). */
-        data class Token(val id: Int, val start: Int, val end: Int) : Segment()
+        data class Token(
+            val id: Int,
+            val start: Int,
+            val end: Int,
+        ) : Segment()
     }
 
     fun split(text: String): List<Segment> {

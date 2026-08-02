@@ -48,6 +48,7 @@ class ContextExtractor
          */
         fun computeNearestLabels(root: AccessibilityNodeData): Map<String, String> {
             val all = mutableListOf<AccessibilityNodeData>()
+
             fun collect(node: AccessibilityNodeData) {
                 all += node
                 node.children.forEach(::collect)

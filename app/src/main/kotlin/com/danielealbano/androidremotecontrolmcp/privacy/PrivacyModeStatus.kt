@@ -12,5 +12,7 @@ sealed class PrivacyModeStatus {
     data object Ready : PrivacyModeStatus()
 
     /** Enabled with model-required categories on, but the model is missing/unloadable/failing. */
-    data class Unavailable(val reason: String) : PrivacyModeStatus()
+    data class Unavailable(
+        val reason: String,
+    ) : PrivacyModeStatus()
 }

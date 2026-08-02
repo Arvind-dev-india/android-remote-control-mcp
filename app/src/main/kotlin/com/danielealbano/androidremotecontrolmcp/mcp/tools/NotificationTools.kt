@@ -4,6 +4,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationData
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
@@ -68,6 +69,12 @@ class NotificationListHandler
             val notifications = notificationProvider.getNotifications(packageName, limit)
 
             // Batch-redact every device-derived text field in a single model pass.
+            val redacted = privacyToolGate.texts(collectRedactableFields(notifications))
+            return McpToolUtils.untrustedTextResult(buildNotificationsJson(notifications, redacted).toString())
+        }
+
+        /** Flattens every device-derived text field (in stable order) for a single batched redaction pass. */
+        private fun collectRedactableFields(notifications: List<NotificationData>): List<Pair<String?, String>> {
             val fields = mutableListOf<Pair<String?, String>>()
             for (n in notifications) {
                 fields += n.appName to "notification app"
@@ -77,51 +84,55 @@ class NotificationListHandler
                 fields += n.subText to "notification text"
                 for (a in n.actions) fields += a.title to "notification action"
             }
-            val redacted = privacyToolGate.texts(fields)
-            var cursor = 0
+            return fields
+        }
 
-            val json =
-                buildJsonObject {
-                    putJsonArray("notifications") {
-                        for (n in notifications) {
-                            val appName = redacted[cursor++]
-                            val title = redacted[cursor++]
-                            val text = redacted[cursor++]
-                            val bigText = redacted[cursor++]
-                            val subText = redacted[cursor++]
-                            add(
-                                buildJsonObject {
-                                    put("notification_id", n.notificationId)
-                                    put("package_name", n.packageName)
-                                    put("app_name", appName)
-                                    put("title", title)
-                                    put("text", text)
-                                    put("big_text", bigText)
-                                    put("sub_text", subText)
-                                    put("timestamp", n.timestamp)
-                                    put("is_ongoing", n.isOngoing)
-                                    put("is_clearable", n.isClearable)
-                                    put("category", n.category)
-                                    put("group_key", n.groupKey)
-                                    putJsonArray("actions") {
-                                        for (a in n.actions) {
-                                            val actionTitle = redacted[cursor++]
-                                            add(
-                                                buildJsonObject {
-                                                    put("action_id", a.actionId)
-                                                    put("title", actionTitle)
-                                                    put("accepts_text", a.acceptsText)
-                                                },
-                                            )
-                                        }
+        /** Rebuilds the JSON payload, consuming [redacted] in the same order [collectRedactableFields] produced it. */
+        private fun buildNotificationsJson(
+            notifications: List<NotificationData>,
+            redacted: List<String?>,
+        ): JsonObject {
+            var cursor = 0
+            return buildJsonObject {
+                putJsonArray("notifications") {
+                    for (n in notifications) {
+                        val appName = redacted[cursor++]
+                        val title = redacted[cursor++]
+                        val text = redacted[cursor++]
+                        val bigText = redacted[cursor++]
+                        val subText = redacted[cursor++]
+                        add(
+                            buildJsonObject {
+                                put("notification_id", n.notificationId)
+                                put("package_name", n.packageName)
+                                put("app_name", appName)
+                                put("title", title)
+                                put("text", text)
+                                put("big_text", bigText)
+                                put("sub_text", subText)
+                                put("timestamp", n.timestamp)
+                                put("is_ongoing", n.isOngoing)
+                                put("is_clearable", n.isClearable)
+                                put("category", n.category)
+                                put("group_key", n.groupKey)
+                                putJsonArray("actions") {
+                                    for (a in n.actions) {
+                                        val actionTitle = redacted[cursor++]
+                                        add(
+                                            buildJsonObject {
+                                                put("action_id", a.actionId)
+                                                put("title", actionTitle)
+                                                put("accepts_text", a.acceptsText)
+                                            },
+                                        )
                                     }
-                                },
-                            )
-                        }
+                                }
+                            },
+                        )
                     }
-                    put("count", notifications.size)
                 }
-            return McpToolUtils.untrustedTextResult(json.toString())
+                put("count", notifications.size)
+            }
         }
 
         fun register(

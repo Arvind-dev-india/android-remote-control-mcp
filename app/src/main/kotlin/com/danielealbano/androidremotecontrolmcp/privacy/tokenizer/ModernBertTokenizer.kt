@@ -12,9 +12,14 @@ import java.text.Normalizer
  * covers (null for `[CLS]`/`[SEP]`). When NFC changes the string, offsets are mapped back to the
  * original via a per-unit alignment built during normalization.
  */
-class ModernBertTokenizer(private val data: TokenizerData) {
+class ModernBertTokenizer(
+    private val data: TokenizerData,
+) {
     /** Encoded output: [ids] and matching [offsets] (null for the `[CLS]`/`[SEP]` special tokens). */
-    data class Encoding(val ids: IntArray, val offsets: List<IntRange?>) {
+    data class Encoding(
+        val ids: IntArray,
+        val offsets: List<IntRange?>,
+    ) {
         override fun equals(other: Any?): Boolean =
             this === other ||
                 (other is Encoding && ids.contentEquals(other.ids) && offsets == other.offsets)
@@ -33,7 +38,10 @@ class ModernBertTokenizer(private val data: TokenizerData) {
         offsets += null
         for (segment in splitter.split(norm.text)) {
             when (segment) {
-                is AddedTokenSplitter.Segment.Raw -> encodeRaw(norm, segment.start, segment.end, ids, offsets)
+                is AddedTokenSplitter.Segment.Raw -> {
+                    encodeRaw(norm, segment.start, segment.end, ids, offsets)
+                }
+
                 is AddedTokenSplitter.Segment.Token -> {
                     ids += segment.id
                     offsets += norm.aStart[segment.start] until norm.aEnd[segment.end - 1]
@@ -123,7 +131,11 @@ class ModernBertTokenizer(private val data: TokenizerData) {
     }
 
     /** NFC-normalized text plus a per-UTF16-unit alignment back to original char ranges. */
-    private class Norm(val text: String, val aStart: IntArray, val aEnd: IntArray)
+    private class Norm(
+        val text: String,
+        val aStart: IntArray,
+        val aEnd: IntArray,
+    )
 
     private fun normalize(original: String): Norm {
         val norm = StringBuilder()
@@ -164,13 +176,13 @@ class ModernBertTokenizer(private val data: TokenizerData) {
             Character.COMBINING_SPACING_MARK.toInt(),
             Character.ENCLOSING_MARK.toInt(),
             -> true
+
             else -> false
         }
 
     companion object {
         private const val BYTE_MASK = 0xFF
 
-        fun fromFile(file: File): ModernBertTokenizer =
-            file.inputStream().use { ModernBertTokenizer(TokenizerData.fromStream(it)) }
+        fun fromFile(file: File) = file.inputStream().use { ModernBertTokenizer(TokenizerData.fromStream(it)) }
     }
 }

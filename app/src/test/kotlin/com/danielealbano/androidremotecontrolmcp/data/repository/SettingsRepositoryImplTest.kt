@@ -1573,19 +1573,37 @@ class SettingsRepositoryImplTest {
         fun `updatePrivacyModeEnabled persists`() =
             testScope.runTest {
                 repository.updatePrivacyModeEnabled(true)
-                assertTrue(repository.serverConfig.first().privacyModeConfig.enabled)
+                assertTrue(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig.enabled,
+                )
                 repository.updatePrivacyModeEnabled(false)
-                assertFalse(repository.serverConfig.first().privacyModeConfig.enabled)
+                assertFalse(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig.enabled,
+                )
             }
 
         @Test
         fun `updatePrivacyCategoryEnabled adds and removes from disabled set`() =
             testScope.runTest {
                 repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, false)
-                assertFalse(repository.serverConfig.first().privacyModeConfig.isCategoryEnabled(PiiCategory.NAMES))
+                assertFalse(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig
+                        .isCategoryEnabled(PiiCategory.NAMES),
+                )
 
                 repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, true)
-                assertTrue(repository.serverConfig.first().privacyModeConfig.isCategoryEnabled(PiiCategory.NAMES))
+                assertTrue(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig
+                        .isCategoryEnabled(PiiCategory.NAMES),
+                )
             }
 
         @Test

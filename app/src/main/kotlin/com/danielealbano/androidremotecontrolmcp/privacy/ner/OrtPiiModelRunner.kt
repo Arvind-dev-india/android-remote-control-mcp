@@ -115,21 +115,55 @@ class OrtPiiModelRunner
         }
 
         private fun asModelException(cause: Throwable): PrivacyModelException =
-            if (cause is PrivacyModelException) cause else PrivacyModelException(cause.message ?: "model inference failed", cause)
+            if (cause is PrivacyModelException) {
+                cause
+            } else {
+                PrivacyModelException(cause.message ?: "model inference failed", cause)
+            }
 
         companion object {
             val ID2LABEL: Map<Int, String> =
                 mapOf(
-                    0 to "B-AGE", 1 to "B-BUILDINGNUM", 2 to "B-CITY", 3 to "B-CREDITCARDNUMBER",
-                    4 to "B-DATE", 5 to "B-DRIVERLICENSENUM", 6 to "B-EMAIL", 7 to "B-GENDER",
-                    8 to "B-GIVENNAME", 9 to "B-IDCARDNUM", 10 to "B-PASSPORTNUM", 11 to "B-SEX",
-                    12 to "B-SOCIALNUM", 13 to "B-STREET", 14 to "B-SURNAME", 15 to "B-TAXNUM",
-                    16 to "B-TELEPHONENUM", 17 to "B-TIME", 18 to "B-TITLE", 19 to "B-ZIPCODE",
-                    20 to "I-BUILDINGNUM", 21 to "I-CITY", 22 to "I-CREDITCARDNUMBER", 23 to "I-DATE",
-                    24 to "I-DRIVERLICENSENUM", 25 to "I-EMAIL", 26 to "I-GENDER", 27 to "I-GIVENNAME",
-                    28 to "I-IDCARDNUM", 29 to "I-PASSPORTNUM", 30 to "I-SEX", 31 to "I-SOCIALNUM",
-                    32 to "I-STREET", 33 to "I-SURNAME", 34 to "I-TAXNUM", 35 to "I-TELEPHONENUM",
-                    36 to "I-TIME", 37 to "I-TITLE", 38 to "I-ZIPCODE", 39 to "O",
+                    0 to "B-AGE",
+                    1 to "B-BUILDINGNUM",
+                    2 to "B-CITY",
+                    3 to "B-CREDITCARDNUMBER",
+                    4 to "B-DATE",
+                    5 to "B-DRIVERLICENSENUM",
+                    6 to "B-EMAIL",
+                    7 to "B-GENDER",
+                    8 to "B-GIVENNAME",
+                    9 to "B-IDCARDNUM",
+                    10 to "B-PASSPORTNUM",
+                    11 to "B-SEX",
+                    12 to "B-SOCIALNUM",
+                    13 to "B-STREET",
+                    14 to "B-SURNAME",
+                    15 to "B-TAXNUM",
+                    16 to "B-TELEPHONENUM",
+                    17 to "B-TIME",
+                    18 to "B-TITLE",
+                    19 to "B-ZIPCODE",
+                    20 to "I-BUILDINGNUM",
+                    21 to "I-CITY",
+                    22 to "I-CREDITCARDNUMBER",
+                    23 to "I-DATE",
+                    24 to "I-DRIVERLICENSENUM",
+                    25 to "I-EMAIL",
+                    26 to "I-GENDER",
+                    27 to "I-GIVENNAME",
+                    28 to "I-IDCARDNUM",
+                    29 to "I-PASSPORTNUM",
+                    30 to "I-SEX",
+                    31 to "I-SOCIALNUM",
+                    32 to "I-STREET",
+                    33 to "I-SURNAME",
+                    34 to "I-TAXNUM",
+                    35 to "I-TELEPHONENUM",
+                    36 to "I-TIME",
+                    37 to "I-TITLE",
+                    38 to "I-ZIPCODE",
+                    39 to "O",
                 )
         }
     }

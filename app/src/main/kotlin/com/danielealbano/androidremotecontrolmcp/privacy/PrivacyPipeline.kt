@@ -4,10 +4,16 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsDa
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.MultiWindowResult
 
 /** A single text plus its detection context for the pipeline. */
-data class TextItem(val text: String, val context: DetectionContext)
+data class TextItem(
+    val text: String,
+    val context: DetectionContext,
+)
 
 /** A redacted accessibility tree plus the bounds of every node that had at least one detection. */
-data class ProcessedTree(val result: MultiWindowResult, val flaggedBounds: List<BoundsData>)
+data class ProcessedTree(
+    val result: MultiWindowResult,
+    val flaggedBounds: List<BoundsData>,
+)
 
 /**
  * Single entry point tools use to redact device-derived text/trees. Fail-closed: throws

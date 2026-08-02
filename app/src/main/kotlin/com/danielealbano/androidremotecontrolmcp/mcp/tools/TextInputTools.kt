@@ -1198,25 +1198,45 @@ fun registerTextInputTools(
 ) {
     if (perms.isToolEnabled(TypeAppendTextTool.TOOL_NAME)) {
         TypeAppendTextTool(
-            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
-            privacyToolGate, substitutor,
+            treeParser,
+            actionExecutor,
+            accessibilityServiceProvider,
+            typeInputController,
+            nodeCache,
+            privacyToolGate,
+            substitutor,
         ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeInsertTextTool.TOOL_NAME)) {
         TypeInsertTextTool(
-            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
-            privacyToolGate, substitutor,
+            treeParser,
+            actionExecutor,
+            accessibilityServiceProvider,
+            typeInputController,
+            nodeCache,
+            privacyToolGate,
+            substitutor,
         ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeReplaceTextTool.TOOL_NAME)) {
         TypeReplaceTextTool(
-            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache,
-            privacyToolGate, substitutor,
+            treeParser,
+            actionExecutor,
+            accessibilityServiceProvider,
+            typeInputController,
+            nodeCache,
+            privacyToolGate,
+            substitutor,
         ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TypeClearTextTool.TOOL_NAME)) {
         TypeClearTextTool(
-            treeParser, actionExecutor, accessibilityServiceProvider, typeInputController, nodeCache, privacyToolGate,
+            treeParser,
+            actionExecutor,
+            accessibilityServiceProvider,
+            typeInputController,
+            nodeCache,
+            privacyToolGate,
         ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressKeyTool.TOOL_NAME)) {

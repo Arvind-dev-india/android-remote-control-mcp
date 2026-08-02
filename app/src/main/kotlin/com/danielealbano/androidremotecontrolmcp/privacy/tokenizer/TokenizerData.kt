@@ -47,8 +47,10 @@ class TokenizerData(
             model.getValue("merges").jsonArray.forEachIndexed { rank, element ->
                 val pair =
                     when {
-                        element is kotlinx.serialization.json.JsonArray ->
+                        element is kotlinx.serialization.json.JsonArray -> {
                             element[0].jsonPrimitive.content to element[1].jsonPrimitive.content
+                        }
+
                         else -> {
                             val parts = element.jsonPrimitive.content.split(' ', limit = 2)
                             parts[0] to parts[1]
@@ -62,11 +64,31 @@ class TokenizerData(
                     val obj = element.jsonObject
                     AddedToken(
                         content = obj.getValue("content").jsonPrimitive.content,
-                        id = obj.getValue("id").jsonPrimitive.content.toInt(),
-                        lstrip = obj.getValue("lstrip").jsonPrimitive.content.toBoolean(),
-                        rstrip = obj.getValue("rstrip").jsonPrimitive.content.toBoolean(),
-                        normalized = obj.getValue("normalized").jsonPrimitive.content.toBoolean(),
-                        special = obj.getValue("special").jsonPrimitive.content.toBoolean(),
+                        id =
+                            obj
+                                .getValue("id")
+                                .jsonPrimitive.content
+                                .toInt(),
+                        lstrip =
+                            obj
+                                .getValue("lstrip")
+                                .jsonPrimitive.content
+                                .toBoolean(),
+                        rstrip =
+                            obj
+                                .getValue("rstrip")
+                                .jsonPrimitive.content
+                                .toBoolean(),
+                        normalized =
+                            obj
+                                .getValue("normalized")
+                                .jsonPrimitive.content
+                                .toBoolean(),
+                        special =
+                            obj
+                                .getValue("special")
+                                .jsonPrimitive.content
+                                .toBoolean(),
                     )
                 }
 

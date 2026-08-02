@@ -26,9 +26,13 @@ class Redactor
                 val original = text.substring(detection.start, detection.end)
                 val replacement =
                     when (config.redactionMode) {
-                        RedactionMode.PSEUDONYMIZE ->
+                        RedactionMode.PSEUDONYMIZE -> {
                             pseudonymStore.placeholderFor(original, detection.category, config.placeholderFormat)
-                        RedactionMode.REDACT -> "[REDACTED:${detection.category.placeholderToken}]"
+                        }
+
+                        RedactionMode.REDACT -> {
+                            "[REDACTED:${detection.category.placeholderToken}]"
+                        }
                     }
                 result = result.substring(0, detection.start) + replacement + result.substring(detection.end)
             }

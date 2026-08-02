@@ -30,12 +30,24 @@ class ScreenshotRedactor
             val scaleX = copy.width.toFloat() / screenWidth
             val scaleY = copy.height.toFloat() / screenHeight
             val canvas = Canvas(copy)
-            val paint = Paint().apply { color = Color.BLACK; style = Paint.Style.FILL }
+            val paint =
+                Paint().apply {
+                    color = Color.BLACK
+                    style = Paint.Style.FILL
+                }
             for (rect in computeMaskRects(bounds, scaleX, scaleY, copy.width, copy.height)) {
-                canvas.drawRect(rect, paint)
+                canvas.drawRect(RectF(rect.left, rect.top, rect.right, rect.bottom), paint)
             }
             return copy
         }
+
+        /** A scaled, padded, clamped mask rectangle in bitmap coordinates. Pure data (no Android types). */
+        internal data class MaskRect(
+            val left: Float,
+            val top: Float,
+            val right: Float,
+            val bottom: Float,
+        )
 
         internal fun computeMaskRects(
             bounds: List<BoundsData>,
@@ -43,13 +55,13 @@ class ScreenshotRedactor
             scaleY: Float,
             bitmapWidth: Int,
             bitmapHeight: Int,
-        ): List<RectF> =
+        ): List<MaskRect> =
             bounds.mapNotNull { box ->
                 val left = (box.left * scaleX - MASK_PADDING_PX).coerceIn(0f, bitmapWidth.toFloat())
                 val top = (box.top * scaleY - MASK_PADDING_PX).coerceIn(0f, bitmapHeight.toFloat())
                 val right = (box.right * scaleX + MASK_PADDING_PX).coerceIn(0f, bitmapWidth.toFloat())
                 val bottom = (box.bottom * scaleY + MASK_PADDING_PX).coerceIn(0f, bitmapHeight.toFloat())
-                if (right > left && bottom > top) RectF(left, top, right, bottom) else null
+                if (right > left && bottom > top) MaskRect(left, top, right, bottom) else null
             }
 
         companion object {

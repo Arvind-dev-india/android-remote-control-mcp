@@ -42,6 +42,12 @@ import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSystemActionT
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTextInputTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTouchActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerUtilityTools
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
@@ -58,15 +64,9 @@ import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvi
 import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
-import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
-import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
-import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
-import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
-import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
-import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
-import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
@@ -333,14 +333,7 @@ class McpServerService : Service() {
             // first data-returning tool call. Off the request path; the result updates the manager status.
             if (config.privacyModeConfig.enabled) {
                 coroutineScope.launch {
-                    val message =
-                        when (val status = privacyModeManager.selfCheck()) {
-                            is PrivacyModeStatus.Ready -> "Privacy mode ready (model)"
-                            is PrivacyModeStatus.ReadyDeterministicOnly -> "Privacy mode ready (deterministic only)"
-                            is PrivacyModeStatus.Unavailable ->
-                                "Privacy mode UNAVAILABLE: ${status.reason} — data-returning tools are blocked"
-                            is PrivacyModeStatus.Disabled -> "Privacy mode disabled"
-                        }
+                    val message = privacyStatusLogMessage(privacyModeManager.selfCheck())
                     serverLogRepository.log(ServerLogEntry.Type.PRIVACY, message)
                 }
             }
@@ -444,6 +437,28 @@ class McpServerService : Service() {
         fileSizeLimitMb: Int,
     ) {
         val registrar = LoggedToolRegistrar(server, serverLogRepository)
+        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms)
+        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
+        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(
+            registrar,
+            notificationProvider,
+            privacyToolGate,
+            placeholderSubstitutor,
+            toolNamePrefix,
+            perms,
+        )
+        registerLocationTools(registrar, locationProvider, privacyToolGate, toolNamePrefix, perms)
+        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
+    }
+
+    private fun registerAccessibilityToolBundle(
+        registrar: LoggedToolRegistrar,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
         registerScreenIntrospectionTools(
             registrar,
             treeParser,
@@ -498,13 +513,6 @@ class McpServerService : Service() {
             toolNamePrefix,
             perms,
         )
-        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
-        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(registrar, notificationProvider, privacyToolGate, placeholderSubstitutor, toolNamePrefix, perms)
-        registerLocationTools(registrar, locationProvider, privacyToolGate, toolNamePrefix, perms)
-        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
     }
 
     private fun registerSharingBundle(
@@ -660,6 +668,26 @@ internal fun serverStatusLogMessage(status: ServerStatus): String =
         ServerStatus.Stopping -> "Server stopping"
         ServerStatus.Stopped -> "Server stopped"
         is ServerStatus.Error -> "Server error: ${status.message}"
+    }
+
+/** Server-log message for a Privacy Mode self-check result at server start. */
+internal fun privacyStatusLogMessage(status: PrivacyModeStatus): String =
+    when (status) {
+        is PrivacyModeStatus.Ready -> {
+            "Privacy mode ready (model)"
+        }
+
+        is PrivacyModeStatus.ReadyDeterministicOnly -> {
+            "Privacy mode ready (deterministic only)"
+        }
+
+        is PrivacyModeStatus.Unavailable -> {
+            "Privacy mode UNAVAILABLE: ${status.reason} — data-returning tools are blocked"
+        }
+
+        is PrivacyModeStatus.Disabled -> {
+            "Privacy mode disabled"
+        }
     }
 
 /** Server-log message for a tunnel status transition; null when not logged by the observer. */

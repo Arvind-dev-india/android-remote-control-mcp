@@ -14,11 +14,9 @@ import javax.inject.Singleton
 class NerCache
     @Inject
     constructor() {
-        private val map =
-            object : LinkedHashMap<String, List<PiiDetection>>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
-                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<PiiDetection>>): Boolean =
-                    size > MAX_ENTRIES
-            }
+        // accessOrder=true makes this an LRU: the least-recently-accessed key is the first in iteration
+        // order, so eviction in put() drops it once the bound is exceeded.
+        private val map = LinkedHashMap<String, List<PiiDetection>>(INITIAL_CAPACITY, LOAD_FACTOR, true)
 
         @Synchronized
         fun get(key: String): List<PiiDetection>? = map[key]
@@ -29,6 +27,9 @@ class NerCache
             value: List<PiiDetection>,
         ) {
             map[key] = value
+            if (map.size > MAX_ENTRIES) {
+                map.remove(map.keys.iterator().next())
+            }
         }
 
         @Synchronized

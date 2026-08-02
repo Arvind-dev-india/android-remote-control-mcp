@@ -36,8 +36,12 @@ class PrivacyPipelineImplTest {
         PrivacyPipelineImpl(
             manager,
             DeterministicEngine(
-                CredentialDetector(), CardDetector(), IbanDetector(),
-                EmailDetector(), PhoneDetector(), NationalIdDetector(),
+                CredentialDetector(),
+                CardDetector(),
+                IbanDetector(),
+                EmailDetector(),
+                PhoneDetector(),
+                NationalIdDetector(),
             ),
             nerEngine,
             ContextExtractor(),
@@ -116,7 +120,10 @@ class PrivacyPipelineImplTest {
     @Test
     fun `structural wins overlap`() =
         runTest {
-            configure(PrivacyModeConfig(enabled = true, placeholderFormat = PlaceholderFormat.NUMBERED), PrivacyModeStatus.Ready)
+            configure(
+                PrivacyModeConfig(enabled = true, placeholderFormat = PlaceholderFormat.NUMBERED),
+                PrivacyModeStatus.Ready,
+            )
             coEvery { nerEngine.detect(any()) } returns
                 mapOf("0" to listOf(PiiDetection(PiiCategory.NAMES, 0, 5, PiiDetection.Source.MODEL)))
 

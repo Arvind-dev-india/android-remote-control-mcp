@@ -23,7 +23,9 @@ data class PackedWindow(
  * records the VALUE char range so detections landing in the injected context prefix can be dropped.
  * A single segment whose constructed form exceeds the model's token cap is flagged [SegmentRange.truncated].
  */
-class WindowPacker(private val tokenizer: ModernBertTokenizer) {
+class WindowPacker(
+    private val tokenizer: ModernBertTokenizer,
+) {
     private data class Prepared(
         val key: String,
         val constructed: String,
@@ -61,7 +63,8 @@ class WindowPacker(private val tokenizer: ModernBertTokenizer) {
         for (segment in segments) {
             val prepared = prepare(segment)
             val separatorCost = if (current.isEmpty()) 0 else 1
-            if (current.isNotEmpty() && currentTokens + prepared.contentTokens + separatorCost > MAX_WINDOW_CONTENT_TOKENS) {
+            val projectedTokens = currentTokens + prepared.contentTokens + separatorCost
+            if (current.isNotEmpty() && projectedTokens > MAX_WINDOW_CONTENT_TOKENS) {
                 flush()
             }
             val cost = prepared.contentTokens + if (current.isEmpty()) 0 else 1

@@ -225,5 +225,6 @@ private fun typeLabel(type: ServerLogEntry.Type): String =
             ServerLogEntry.Type.AUTH -> R.string.server_logs_type_auth
             ServerLogEntry.Type.CHANNEL -> R.string.server_logs_type_channel
             ServerLogEntry.Type.SETTINGS -> R.string.server_logs_type_settings
+            ServerLogEntry.Type.PRIVACY -> R.string.server_logs_type_privacy
         },
     )

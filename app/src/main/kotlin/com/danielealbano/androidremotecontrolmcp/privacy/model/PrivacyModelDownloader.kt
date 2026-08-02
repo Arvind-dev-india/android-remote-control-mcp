@@ -22,13 +22,18 @@ import javax.inject.Singleton
 sealed class DownloadState {
     data object Idle : DownloadState()
 
-    data class Downloading(val progressPercent: Int, val assetName: String) : DownloadState()
+    data class Downloading(
+        val progressPercent: Int,
+        val assetName: String,
+    ) : DownloadState()
 
     data object Verifying : DownloadState()
 
     data object Completed : DownloadState()
 
-    data class Failed(val reason: String) : DownloadState()
+    data class Failed(
+        val reason: String,
+    ) : DownloadState()
 }
 
 /**
@@ -109,22 +114,38 @@ class PrivacyModelDownloader
                         }
                     }
                 }
-                mutableState.value = DownloadState.Verifying
-                val hex = digest.digest().joinToString("") { "%02x".format(it.toInt() and BYTE_MASK) }
-                if (hex != asset.sha256) {
-                    part.delete()
-                    return Result.failure(IllegalStateException("checksum mismatch for ${asset.fileName}"))
-                }
-                if (!part.renameTo(target)) {
-                    part.delete()
-                    return Result.failure(IllegalStateException("rename failed for ${asset.fileName}"))
-                }
-                Result.success(Unit)
+                finalizeDownload(part, target, digest, asset)
             } catch (
                 @Suppress("TooGenericExceptionCaught") e: Exception,
             ) {
                 part.delete()
                 Result.failure(e)
+            }
+        }
+
+        /** Verifies the downloaded [part]'s checksum and atomically promotes it to [target]. */
+        private fun finalizeDownload(
+            part: File,
+            target: File,
+            digest: MessageDigest,
+            asset: ModelAsset,
+        ): Result<Unit> {
+            mutableState.value = DownloadState.Verifying
+            val hex = digest.digest().joinToString("") { "%02x".format(it.toInt() and BYTE_MASK) }
+            return when {
+                hex != asset.sha256 -> {
+                    part.delete()
+                    Result.failure(IllegalStateException("checksum mismatch for ${asset.fileName}"))
+                }
+
+                !part.renameTo(target) -> {
+                    part.delete()
+                    Result.failure(IllegalStateException("rename failed for ${asset.fileName}"))
+                }
+
+                else -> {
+                    Result.success(Unit)
+                }
             }
         }
 

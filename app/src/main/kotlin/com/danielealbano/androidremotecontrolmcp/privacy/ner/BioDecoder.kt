@@ -11,7 +11,11 @@ import com.danielealbano.androidremotecontrolmcp.privacy.PiiDetection
  * segment-relative offsets, emitting [PiiDetection.Source.MODEL].
  */
 class BioDecoder {
-    private data class Span(val category: PiiCategory, val start: Int, val end: Int)
+    private data class Span(
+        val category: PiiCategory,
+        val start: Int,
+        val end: Int,
+    )
 
     fun decode(
         labelIds: IntArray,
@@ -56,28 +60,25 @@ class BioDecoder {
         }
 
         for (index in labelIds.indices) {
-            val offset = offsets.getOrNull(index) ?: continue // special token
+            val offset = offsets.getOrNull(index) ?: continue // special token: keep the current span open
             val label = id2label[labelIds[index]] ?: OUTSIDE
-            if (label == OUTSIDE) {
-                flush()
-                continue
-            }
-            val prefix = label.substringBefore('-')
             val entity = label.substringAfter('-')
-            val entityCategory = ENTITY_TO_CATEGORY[entity]
+            val entityCategory = if (label == OUTSIDE) null else ENTITY_TO_CATEGORY[entity]
             if (entityCategory == null) {
+                // OUTSIDE label or an ignored entity type closes any open span.
                 flush()
-                continue
-            }
-            val tokenStart = offset.first
-            val tokenEnd = offset.last + 1
-            if (prefix == BEGIN || category != entityCategory) {
-                flush()
-                category = entityCategory
-                start = tokenStart
-                end = tokenEnd
             } else {
-                end = tokenEnd
+                val prefix = label.substringBefore('-')
+                val tokenStart = offset.first
+                val tokenEnd = offset.last + 1
+                if (prefix == BEGIN || category != entityCategory) {
+                    flush()
+                    category = entityCategory
+                    start = tokenStart
+                    end = tokenEnd
+                } else {
+                    end = tokenEnd
+                }
             }
         }
         flush()
@@ -88,7 +89,10 @@ class BioDecoder {
         private const val OUTSIDE = "O"
         private const val BEGIN = "B"
 
-        /** Model entity name → protected [PiiCategory]. Unlisted entities (DATE/TIME/AGE/GENDER/SEX/TITLE) are ignored. */
+        /**
+         * Model entity name → protected [PiiCategory].
+         * Unlisted entities (DATE/TIME/AGE/GENDER/SEX/TITLE) are ignored.
+         */
         val ENTITY_TO_CATEGORY: Map<String, PiiCategory> =
             mapOf(
                 "GIVENNAME" to PiiCategory.NAMES,

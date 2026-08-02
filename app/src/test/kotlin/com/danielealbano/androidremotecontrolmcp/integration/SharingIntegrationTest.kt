@@ -18,6 +18,7 @@ import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentI
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedItem
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileBytesResult
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -455,6 +456,7 @@ class SharingIntegrationTest {
             config.fileOperationProvider,
             FILE_SIZE_LIMIT_MB,
             { BASE_URL },
+            PrivacyToolTestDoubles.passthroughGate(),
             "",
             ToolPermissionsConfig(),
         )

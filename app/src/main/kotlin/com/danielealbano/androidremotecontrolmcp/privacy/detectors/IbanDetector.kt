@@ -33,16 +33,12 @@ class IbanDetector
 
         private fun mod97Valid(iban: String): Boolean {
             val s = iban.uppercase()
-            if (s.length < MIN_IBAN_LEN || s.length > MAX_IBAN_LEN) return false
+            val validChars = s.all { it in '0'..'9' || it in 'A'..'Z' }
+            if (s.length < MIN_IBAN_LEN || s.length > MAX_IBAN_LEN || !validChars) return false
             val rearranged = s.substring(COUNTRY_CHECK_LEN) + s.substring(0, COUNTRY_CHECK_LEN)
             var remainder = 0
             for (ch in rearranged) {
-                val value =
-                    when (ch) {
-                        in '0'..'9' -> ch - '0'
-                        in 'A'..'Z' -> ch - 'A' + LETTER_OFFSET
-                        else -> return false
-                    }
+                val value = if (ch in '0'..'9') ch - '0' else ch - 'A' + LETTER_OFFSET
                 remainder =
                     if (value >= LETTER_OFFSET) {
                         (remainder * TWO_DIGIT_SHIFT + value) % MOD_97

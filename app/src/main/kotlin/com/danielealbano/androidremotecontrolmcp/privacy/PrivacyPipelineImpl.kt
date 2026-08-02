@@ -52,7 +52,11 @@ class PrivacyPipelineImpl
         private suspend fun runModel(items: List<TextItem>): Map<Int, List<PiiDetection>> {
             val segments =
                 items.mapIndexedNotNull { index, item ->
-                    if (item.text.isBlank()) null else NerSegment(index.toString(), item.context.contextText(), item.text)
+                    if (item.text.isBlank()) {
+                        null
+                    } else {
+                        NerSegment(index.toString(), item.context.contextText(), item.text)
+                    }
                 }
             if (segments.isEmpty()) return emptyMap()
             val results =
@@ -84,7 +88,8 @@ class PrivacyPipelineImpl
             }
 
             val flaggedBounds = mutableListOf<BoundsData>()
-            val newWindows = result.windows.map { it.copy(tree = rebuild(it.tree, textByNode, descByNode, flaggedBounds)) }
+            val newWindows =
+                result.windows.map { it.copy(tree = rebuild(it.tree, textByNode, descByNode, flaggedBounds)) }
             return ProcessedTree(result.copy(windows = newWindows), flaggedBounds)
         }
 
@@ -124,5 +129,8 @@ class PrivacyPipelineImpl
             )
         }
 
-        private data class FieldRef(val nodeId: String, val isText: Boolean)
+        private data class FieldRef(
+            val nodeId: String,
+            val isText: Boolean,
+        )
     }

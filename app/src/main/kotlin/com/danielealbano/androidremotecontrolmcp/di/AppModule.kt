@@ -20,6 +20,10 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenServiceImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCacheImpl
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -34,10 +38,6 @@ import com.danielealbano.androidremotecontrolmcp.services.apps.AppManager
 import com.danielealbano.androidremotecontrolmcp.services.apps.AppManagerImpl
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProviderImpl
-import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
-import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
-import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
-import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcherImpl
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher

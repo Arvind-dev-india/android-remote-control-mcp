@@ -13,14 +13,16 @@ class EmailDetector
             text: String,
             context: DetectionContext,
         ): List<PiiDetection> =
-            EMAIL.findAll(text).map { match ->
-                PiiDetection(
-                    PiiCategory.EMAILS,
-                    match.range.first,
-                    match.range.last + 1,
-                    PiiDetection.Source.DETERMINISTIC,
-                )
-            }.toList()
+            EMAIL
+                .findAll(text)
+                .map { match ->
+                    PiiDetection(
+                        PiiCategory.EMAILS,
+                        match.range.first,
+                        match.range.last + 1,
+                        PiiDetection.Source.DETERMINISTIC,
+                    )
+                }.toList()
 
         companion object {
             private val EMAIL = Regex("""[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}""")

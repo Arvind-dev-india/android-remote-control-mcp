@@ -37,7 +37,12 @@ class OrtPiiModelRunnerRealModelTest {
             val results = runner.infer(listOf(NerSegment("k", "", text)))
             runner.close()
 
-            val categories = results.single().detections.map { it.category }.toSet()
+            val categories =
+                results
+                    .single()
+                    .detections
+                    .map { it.category }
+                    .toSet()
             assertTrue(PiiCategory.NAMES in categories, "expected a NAMES detection")
             assertTrue(PiiCategory.EMAILS in categories, "expected an EMAILS detection")
         }

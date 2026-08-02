@@ -3,6 +3,7 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 import com.danielealbano.androidremotecontrolmcp.data.model.LocationData
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -50,7 +51,7 @@ class LocationToolsTest {
 
         @BeforeEach
         fun setUp() {
-            handler = GetLocationHandler(mockLocationProvider)
+            handler = GetLocationHandler(mockLocationProvider, PrivacyToolTestDoubles.passthroughGate())
         }
 
         @Test

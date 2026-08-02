@@ -270,6 +270,16 @@ object McpIntegrationTestHelper {
         )
         registerTouchActionTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
         registerGestureTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
+        registerInteractionToolBundle(registrar, deps, toolNamePrefix, perms)
+        registerNonAccessibilityTools(registrar, deps, toolNamePrefix, perms)
+    }
+
+    private fun registerInteractionToolBundle(
+        registrar: LoggedToolRegistrar,
+        deps: MockDependencies,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
         registerNodeActionTools(
             registrar,
             deps.treeParser,
@@ -305,7 +315,6 @@ object McpIntegrationTestHelper {
             toolNamePrefix,
             perms,
         )
-        registerNonAccessibilityTools(registrar, deps, toolNamePrefix, perms)
     }
 
     private fun registerNonAccessibilityTools(

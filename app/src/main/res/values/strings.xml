@@ -153,6 +153,7 @@
     <string name="server_logs_type_auth">Auth</string>
     <string name="server_logs_type_channel">Channel</string>
     <string name="server_logs_type_settings">Settings</string>
+    <string name="server_logs_type_privacy">Privacy</string>
 
     <!-- Remote Access / Tunnel -->
     <string name="remote_access_title">Remote Access</string>

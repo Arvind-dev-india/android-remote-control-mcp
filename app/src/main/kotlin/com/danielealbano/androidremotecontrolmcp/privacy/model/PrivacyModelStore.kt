@@ -29,8 +29,9 @@ class PrivacyModelStore
         private fun markerFile(): File = File(dir(), MARKER_NAME)
 
         fun isReady(): Boolean {
-            val recorded = markerFile().takeIf { it.exists() }?.let { runCatching { it.readText() }.getOrNull() }
-                ?: return false
+            val recorded =
+                markerFile().takeIf { it.exists() }?.let { runCatching { it.readText() }.getOrNull() }
+                    ?: return false
             return PrivacyModelAssets.ALL.all { asset ->
                 val file = fileFor(asset)
                 file.exists() && file.length() == asset.sizeBytes && recorded.contains(asset.sha256)

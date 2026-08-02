@@ -558,7 +558,9 @@ class SettingsRepositoryImpl
 
         override suspend fun updatePrivacyModeConfig(config: PrivacyModeConfig) = editPrivacyConfig { config }
 
-        override suspend fun updatePrivacyModeEnabled(enabled: Boolean) = editPrivacyConfig { it.copy(enabled = enabled) }
+        override suspend fun updatePrivacyModeEnabled(enabled: Boolean) {
+            editPrivacyConfig { it.copy(enabled = enabled) }
+        }
 
         override suspend fun updatePrivacyCategoryEnabled(
             category: PiiCategory,
@@ -570,8 +572,9 @@ class SettingsRepositoryImpl
             )
         }
 
-        override suspend fun updatePrivacyRedactionMode(mode: RedactionMode) =
+        override suspend fun updatePrivacyRedactionMode(mode: RedactionMode) {
             editPrivacyConfig { it.copy(redactionMode = mode) }
+        }
 
         override suspend fun updatePrivacyPlaceholderFormat(format: PlaceholderFormat) =
             editPrivacyConfig { it.copy(placeholderFormat = format) }

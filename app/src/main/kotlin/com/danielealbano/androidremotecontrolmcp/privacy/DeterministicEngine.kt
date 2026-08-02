@@ -61,9 +61,13 @@ class DeterministicEngine
 
             private fun priority(source: PiiDetection.Source): Int =
                 when (source) {
-                    PiiDetection.Source.STRUCTURAL -> 3
-                    PiiDetection.Source.DETERMINISTIC -> 2
-                    PiiDetection.Source.MODEL -> 1
+                    PiiDetection.Source.STRUCTURAL -> PRIORITY_STRUCTURAL
+                    PiiDetection.Source.DETERMINISTIC -> PRIORITY_DETERMINISTIC
+                    PiiDetection.Source.MODEL -> PRIORITY_MODEL
                 }
+
+            private const val PRIORITY_STRUCTURAL = 3
+            private const val PRIORITY_DETERMINISTIC = 2
+            private const val PRIORITY_MODEL = 1
         }
     }

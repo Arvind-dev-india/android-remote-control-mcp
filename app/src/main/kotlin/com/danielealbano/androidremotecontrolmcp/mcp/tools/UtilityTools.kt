@@ -123,7 +123,11 @@ class SetClipboardTool
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
             val text =
-                arguments?.get("text")?.jsonPrimitive?.contentOrNull?.let { substitutor.substitute(it) }
+                arguments
+                    ?.get("text")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    ?.let { substitutor.substitute(it) }
                     ?: throw McpToolException.InvalidParams("Missing required parameter 'text'")
 
             val context =
@@ -265,7 +269,8 @@ class WaitForNodeTool
                             val redactedElement =
                                 element.copy(
                                     text = privacyToolGate.text(element.text, "node text"),
-                                    contentDescription = privacyToolGate.text(element.contentDescription, "node description"),
+                                    contentDescription =
+                                        privacyToolGate.text(element.contentDescription, "node description"),
                                 )
                             val resultJson =
                                 buildJsonObject {
@@ -837,8 +842,14 @@ fun registerUtilityTools(
         SetClipboardTool(accessibilityServiceProvider, substitutor).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(WaitForNodeTool.TOOL_NAME)) {
-        WaitForNodeTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache, privacyToolGate, substitutor)
-            .register(registrar, toolNamePrefix)
+        WaitForNodeTool(
+            treeParser,
+            elementFinder,
+            accessibilityServiceProvider,
+            nodeCache,
+            privacyToolGate,
+            substitutor,
+        ).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(WaitForIdleTool.TOOL_NAME)) {
         WaitForIdleTool(accessibilityServiceProvider)

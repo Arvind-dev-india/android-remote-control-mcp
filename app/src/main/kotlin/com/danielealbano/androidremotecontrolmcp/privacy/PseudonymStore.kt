@@ -23,7 +23,10 @@ class PseudonymStore
             maxEntries = testMaxEntries
         }
 
-        private data class Entry(val value: String, val category: PiiCategory)
+        private data class Entry(
+            val value: String,
+            val category: PiiCategory,
+        )
 
         private val forward = HashMap<Pair<PiiCategory, String>, String>()
         private val counters = HashMap<PiiCategory, Int>()
@@ -79,7 +82,8 @@ class PseudonymStore
             value: String,
             category: PiiCategory,
         ): String {
-            val digest = MessageDigest.getInstance("SHA-256").digest("$value|${category.name}".toByteArray(Charsets.UTF_8))
+            val input = "$value|${category.name}".toByteArray(Charsets.UTF_8)
+            val digest = MessageDigest.getInstance("SHA-256").digest(input)
             return BigInteger(1, digest).toString(BASE36).take(HASH_LENGTH)
         }
 

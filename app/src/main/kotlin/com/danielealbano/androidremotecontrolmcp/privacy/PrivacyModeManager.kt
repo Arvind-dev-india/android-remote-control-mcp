@@ -1,12 +1,12 @@
 package com.danielealbano.androidremotecontrolmcp.privacy
 
 import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.privacy.model.DownloadState
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelDownloader
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelStore
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerSegment
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
-import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,8 +63,9 @@ class PrivacyModeManager
                 }
             }
             val status = selfCheck()
-            if (status is PrivacyModeStatus.Ready && settingsRepository.privacyBenchmarkEstimateSeconds.first() == null) {
-                benchmark()
+            if (status is PrivacyModeStatus.Ready) {
+                val neverBenchmarked = settingsRepository.privacyBenchmarkEstimateSeconds.first() == null
+                if (neverBenchmarked) benchmark()
             }
             return Result.success(status)
         }

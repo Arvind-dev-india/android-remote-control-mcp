@@ -11,6 +11,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.Accessib
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.CompactTreeFormatter
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.MultiWindowResult
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ScreenInfo
@@ -21,10 +22,9 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowDa
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.countKeptNodes
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.formatMultiWindowPage
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
-import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsData
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
-import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
@@ -101,7 +101,8 @@ class GetScreenStateHandler
             // The node cache (used by element/action tools) is populated by getFreshWindows from the
             // original tree; the merge only collapses the tree shown to the LLM. Merged anchors keep
             // their original ids, so taps still resolve.
-            val rawResult = webViewNodeMerger.merge(getFreshWindows(treeParser, accessibilityServiceProvider, nodeCache))
+            val rawResult =
+                webViewNodeMerger.merge(getFreshWindows(treeParser, accessibilityServiceProvider, nodeCache))
             // Redact the tree BEFORE anything downstream: the snapshot stores the REDACTED tree so paged
             // output and pseudonym mappings stay consistent. Fail-closed errors propagate as a tool error.
             val processed = privacyToolGate.tree(rawResult)
@@ -205,7 +206,8 @@ class GetScreenStateHandler
                 }
 
             // Paint opaque boxes over flagged node bounds BEFORE annotation so PII never reaches the pixels.
-            val maskedBitmap = screenshotRedactor.mask(resizedBitmap, flaggedBounds, screenInfo.width, screenInfo.height)
+            val maskedBitmap =
+                screenshotRedactor.mask(resizedBitmap, flaggedBounds, screenInfo.width, screenInfo.height)
             var annotatedBitmap: Bitmap? = null
             try {
                 // Collect on-screen elements from ALL windows' trees

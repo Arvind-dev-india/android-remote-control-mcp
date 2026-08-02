@@ -9,7 +9,9 @@ import org.junit.jupiter.api.TestInstance
 import kotlin.system.measureNanoTime
 
 @Serializable
-private data class PerfCase(val text: String)
+private data class PerfCase(
+    val text: String,
+)
 
 /**
  * Measure-and-report only (no threshold gate): prints the median and total encode time over the fuzz
@@ -23,10 +25,12 @@ class TokenizerPerformanceTest {
             ModernBertTokenizer(TokenizerData.fromStream(it))
         }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     @Test
     fun `encode throughput over fuzz corpus`() {
         val cases: List<PerfCase> =
-            Json.decodeFromString(
+            json.decodeFromString(
                 requireNotNull(javaClass.getResourceAsStream("/privacy/tokenizer_fixtures/fuzz.json"))
                     .reader(Charsets.UTF_8)
                     .readText(),

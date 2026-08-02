@@ -62,12 +62,13 @@ class PrivacyModelDownloaderTest {
                                 )
                             }
 
-                            else ->
+                            else -> {
                                 respond(
                                     ByteReadChannel(tokData),
                                     HttpStatusCode.OK,
                                     headersOf(HttpHeaders.ContentLength, tokData.size.toString()),
                                 )
+                            }
                         }
                     }
                 }
