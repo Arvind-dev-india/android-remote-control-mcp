@@ -683,15 +683,15 @@ Definition of Done:
 Why: model-backed recall for NAMES / ADDRESSES / NATIONAL_IDS and recall-net for typed categories; must be packed, cached, and abstracted behind an interface (future MNN experiment — decision).
 
 Acceptance criteria:
-- [ ] `PiiModelInference` interface; ORT-backed implementation; results decoded to `PiiDetection`s with original-string offsets per segment.
-- [ ] Packing into ≤256-token windows; special-token predictions masked; unmapped labels ignored.
-- [ ] LRU cache keyed by SHA-256(context + `\u0000` + text) storing raw detections (category toggles applied later, cache stays valid across toggle changes).
+- [x] `PiiModelInference` interface; ORT-backed implementation; results decoded to `PiiDetection`s with original-string offsets per segment.
+- [x] Packing into ≤256-token windows; special-token predictions masked; unmapped labels ignored.
+- [x] LRU cache keyed by SHA-256(context + `\u0000` + text) storing raw detections (category toggles applied later, cache stays valid across toggle changes).
 
 ### Task 6.1 — Interface + packing
 
 All under `.../privacy/ner/`.
 
-- [ ] **Action**: create `PiiModelInference.kt`:
+- [x] **Action**: create `PiiModelInference.kt`:
   ```kotlin
   /** One text to analyze: [context] is the constructed prefix (may be empty), [text] the value. */
   data class NerSegment(val key: String, val context: String, val text: String)
@@ -705,15 +705,15 @@ All under `.../privacy/ner/`.
 
   class PrivacyModelException(message: String, cause: Throwable? = null) : Exception(message, cause)
   ```
-- [ ] **Action**: create `WindowPacker.kt` — builds packed windows from segments:
+- [x] **Action**: create `WindowPacker.kt` — builds packed windows from segments:
   - Per segment, constructed string = `if (context.isBlank()) text else "${context.trim()}: $text"`; segments joined with `"\n"`.
   - Uses the tokenizer to count tokens; greedy fill up to `MAX_WINDOW_CONTENT_TOKENS = 254` (+CLS/SEP = 256); a single segment longer than the budget gets its own window (truncated by the tokenizer at encode time — value tail beyond 1536 tokens is not analyzable, and the pipeline treats any segment whose value region was truncated as a failed segment → fail-closed, see US7).
   - Output `PackedWindow(text, segmentRanges: List<SegmentRange>)` where `SegmentRange(key, valueStartChar, valueEndChar)` marks each segment's VALUE region (context prefix chars are excluded so detections inside the injected context are dropped).
-- [ ] **Action**: create `BioDecoder.kt` — from per-token `(labelId, offset)` (special tokens skipped): merge consecutive `B-X`/`I-X` of the same entity into char spans (`I-` following `O` or different type starts a new span — standard BIO repair); map entity name → `PiiCategory` per the Design-constants table (unmapped → dropped); intersect spans with each `SegmentRange`, convert to segment-relative offsets, clamp to the value region; emit `PiiDetection(category, start, end, Source.MODEL)`.
+- [x] **Action**: create `BioDecoder.kt` — from per-token `(labelId, offset)` (special tokens skipped): merge consecutive `B-X`/`I-X` of the same entity into char spans (`I-` following `O` or different type starts a new span — standard BIO repair); map entity name → `PiiCategory` per the Design-constants table (unmapped → dropped); intersect spans with each `SegmentRange`, convert to segment-relative offsets, clamp to the value region; emit `PiiDetection(category, start, end, Source.MODEL)`.
 
 ### Task 6.2 — ORT runner + cache
 
-- [ ] **Action**: create `OrtPiiModelRunner.kt`:
+- [x] **Action**: create `OrtPiiModelRunner.kt`:
   ```kotlin
   @Singleton
   class OrtPiiModelRunner @Inject constructor(
@@ -733,8 +733,8 @@ All under `.../privacy/ner/`.
   }
   ```
   Context: `ai.onnxruntime.*` Java API is identical between the Android AAR and the JVM test artifact — the class is JVM-unit-testable with the real desktop runtime.
-- [ ] **Action**: create `NerCache.kt` — `@Singleton`, `LinkedHashMap`-based LRU (max 2048, access-order, synchronized) keyed by `sha256Hex(context + "\u0000" + text)`, value `List<PiiDetection>`; `getOrPut`-style suspend API used by the engine; `fun clear()`.
-- [ ] **Action**: create `NerEngine.kt` — `@Singleton`, deps `PiiModelInference`, `NerCache`: `suspend fun detect(segments: List<NerSegment>): Map<String, List<PiiDetection>>` — partition into cached/uncached, infer uncached, populate cache, return merged map.
+- [x] **Action**: create `NerCache.kt` — `@Singleton`, `LinkedHashMap`-based LRU (max 2048, access-order, synchronized) keyed by `sha256Hex(context + "\u0000" + text)`, value `List<PiiDetection>`; `getOrPut`-style suspend API used by the engine; `fun clear()`.
+- [x] **Action**: create `NerEngine.kt` — `@Singleton`, deps `PiiModelInference`, `NerCache`: `suspend fun detect(segments: List<NerSegment>): Map<String, List<PiiDetection>>` — partition into cached/uncached, infer uncached, populate cache, return merged map.
 
 ### Task 6.3 — Tests
 
@@ -757,10 +757,10 @@ All under `.../privacy/ner/`.
 | `real model warmUp succeeds` | logits shape/labels consistent, no exception |
 | `real model measures window latency` | prints median ms per 256-token window (measure-and-report) |
 
-- [ ] **Action**: modify `.env.example` — add `PRIVACY_MODEL_DIR=` with a comment ("absolute dir containing model_int8.onnx + tokenizer.json; leave empty to skip real-model tests").
+- [x] **Action**: modify `.env.example` — add `PRIVACY_MODEL_DIR=` with a comment ("absolute dir containing model_int8.onnx + tokenizer.json; leave empty to skip real-model tests").
 
 Definition of Done:
-- [ ] Engine + runner + cache implemented; gated real-model test passes locally with the downloaded assets.
+- [x] Engine + runner + cache implemented; gated real-model test passes locally with the downloaded assets.
 
 ---
 
