@@ -303,6 +303,8 @@
     <string name="privacy_benchmark_estimate">MCP tools will take approximately +%1$s s on average (estimated for 100 on-screen elements)</string>
     <string name="privacy_benchmark_running">Measuring on-device performance… you can keep using the app or turn Privacy Mode off; the measurement finishes on its own</string>
     <string name="privacy_enable_preparing">Preparing Privacy Mode…</string>
+    <string name="privacy_detection_rates_header">Measured detection rates</string>
+    <string name="privacy_detection_rates_caption">Share of personal data items detected per category, measured with the project\'s effectiveness benchmark on realistic UI-style content across 8 languages. Actual results vary with content and language.</string>
     <string name="privacy_categories_header">Protected categories</string>
     <string name="privacy_category_credentials">Passwords &amp; credentials</string>
     <string name="privacy_category_cards_iban">Payment cards &amp; IBANs</string>

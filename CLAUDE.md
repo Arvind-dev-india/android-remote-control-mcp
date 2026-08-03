@@ -377,6 +377,17 @@ This project uses **DataStore** (not Room database) for persisting settings. The
 - When adding a new MCP tool, you MUST classify it as device-content or action-only and use the appropriate result helper. If uncertain, use the untrusted variant.
 - **Limitation**: Image content (screenshots, camera photos) cannot carry an inline text warning. The `untrustedImageResult` and `untrustedTextAndImageResult` helpers add the warning as a `TextContent` item before the `ImageContent`, which is the best available mitigation.
 
+### Privacy detection effectiveness table — ABSOLUTE RULE
+- The Privacy Mode settings screen publishes measured per-category detection rates
+  (`MEASURED_DETECTION_RATES` in `app/src/main/kotlin/.../ui/screens/settings/PrivacySettingsScreen.kt`).
+- Whenever ANY privacy detection logic changes — the deterministic detectors (`privacy/.../privacy/detectors/`),
+  `ContextKeywords`, `ContextExtractor`, `RedactionEngine` merge/filter logic, `BioDecoder`, the tokenizer,
+  `WindowPacker`, `OrtPiiModelRunner`, or the pinned model assets (`PrivacyModelAssets`) — you MUST re-run the
+  effectiveness benchmark (`make privacy-benchmark`) and update `MEASURED_DETECTION_RATES` with the new
+  corpus B (`ui-synthetic`) FULL-layer per-category recall values from the generated `report.md`.
+- If effectiveness numbers are also published in the README, they MUST be refreshed in the same change.
+- You MUST NEVER leave stale published numbers after a detection-logic change. There are ZERO exceptions.
+
 ---
 
 ## 8) Frontend Rules (Jetpack Compose + Material Design 3)

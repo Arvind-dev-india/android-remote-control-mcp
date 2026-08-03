@@ -211,8 +211,44 @@ fun PrivacySettingsScreen(
                 text = stringResource(R.string.privacy_disclaimer),
                 style = MaterialTheme.typography.bodySmall,
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            // 7. Measured detection rates
+            DetectionRatesSection()
         }
     }
+}
+
+@Composable
+private fun DetectionRatesSection() {
+    Text(
+        text = stringResource(R.string.privacy_detection_rates_header),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Spacer(Modifier.height(8.dp))
+    PiiCategory.entries.forEach { category ->
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(categoryLabel(category)),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = MEASURED_DETECTION_RATES.getValue(category),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = stringResource(R.string.privacy_detection_rates_caption),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -340,3 +376,20 @@ private fun categoryLabel(category: PiiCategory): Int =
 private fun formatEstimate(estimate: Double): String = "%.1f".format(estimate)
 
 private const val PERCENT_DIVISOR = 100f
+
+/**
+ * Per-category share of PII items detected by the FULL production pipeline, measured with
+ * `make privacy-benchmark` on the UI-shaped corpus B (ui-synthetic, seed 20260803, run 2026-08-03).
+ * ABSOLUTE RULE (see CLAUDE.md "Privacy detection effectiveness table"): whenever ANY privacy
+ * detection logic changes, the benchmark MUST be re-run and these values updated from report.md.
+ */
+private val MEASURED_DETECTION_RATES: Map<PiiCategory, String> =
+    mapOf(
+        PiiCategory.CREDENTIALS to "90.9%",
+        PiiCategory.CARDS_AND_IBAN to "75.3%",
+        PiiCategory.EMAILS to "100.0%",
+        PiiCategory.PHONE_NUMBERS to "84.4%",
+        PiiCategory.NAMES to "0.8%",
+        PiiCategory.ADDRESSES to "77.9%",
+        PiiCategory.NATIONAL_IDS to "93.0%",
+    )
