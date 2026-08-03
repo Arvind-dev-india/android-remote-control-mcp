@@ -50,7 +50,8 @@
     <string name="about_link_issues">Report an Issue</string>
     <string name="about_attributions_section">Attributions</string>
     <string name="about_attribution_dbip">IP geolocation data by DB-IP (db-ip.com), licensed under CC BY 4.0.</string>
-    <string name="about_footer">Open Source • MIT License</string>
+    <string name="about_attribution_privacy_model">Privacy Mode PII detection model by Ai4Privacy (MIT license). Built with Llama.</string>
+    <string name="about_footer">Open Source, MIT License</string>
 
     <!-- Clipboard -->
     <string name="copied_to_clipboard">Copied to clipboard</string>
@@ -123,18 +124,18 @@
     <string name="permission_microphone_rationale">Adds audio to recorded video.</string>
 
     <!-- Permission Warning (main screen: accessibility is the one required permission) -->
-    <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
-    <string name="server_pending_approvals_message">%1$d pending connection approval(s). Tap to review.</string>
+    <string name="permission_warning_title">Accessibility permission required</string>
+    <string name="permission_warning_action">Go to permissions</string>
+    <string name="server_pending_approvals_title">%1$d pending connection approval(s)</string>
+    <string name="server_pending_approvals_action">Review</string>
 
     <!-- Network Access Suggestion (main screen: localhost-only bind with no tunnel) -->
     <string name="server_network_access_suggestion_title">Reachable from this device only</string>
-    <string name="server_network_access_suggestion_body">The server is bound to localhost with no tunnel, so only this device can reach it. Bind to the network (0.0.0.0) for access over Wi-Fi, or set up a tunnel for access over the internet.</string>
     <string name="server_network_access_suggestion_wifi">Enable Wi-Fi access</string>
     <string name="server_network_access_suggestion_tunnel">Set up tunnel</string>
 
     <!-- Battery Optimization -->
     <string name="battery_optimization_card_title">Keep the server running</string>
-    <string name="battery_optimization_card_body">Android battery optimization can stop the MCP server in the background. Disable it for this app so the server stays reachable.</string>
     <string name="battery_optimization_card_action">Disable battery optimization</string>
 
     <!-- Server Logs -->
@@ -296,6 +297,10 @@
     <string name="privacy_status_unavailable">UNAVAILABLE: %1$s</string>
     <string name="privacy_status_disabled">Disabled</string>
     <string name="privacy_benchmark_estimate">MCP tools will take approximately +%1$s s on average (estimated for 100 on-screen elements)</string>
+    <string name="privacy_benchmark_running">Measuring on-device performance… you can keep using the app or turn Privacy Mode off; the measurement finishes on its own</string>
+    <string name="privacy_enable_preparing">Preparing Privacy Mode…</string>
+    <string name="privacy_detection_rates_header">Measured detection rates</string>
+    <string name="privacy_detection_rates_caption">Share of personal data items detected per category, measured with the project\'s effectiveness benchmark on realistic UI-style content across 8 languages. Actual results vary with content and language.</string>
     <string name="privacy_categories_header">Protected categories</string>
     <string name="privacy_category_credentials">Passwords &amp; credentials</string>
     <string name="privacy_category_cards_iban">Payment cards &amp; IBANs</string>
@@ -305,13 +310,13 @@
     <string name="privacy_category_addresses">Addresses</string>
     <string name="privacy_category_national_ids">National IDs &amp; documents</string>
     <string name="privacy_mode_header">Redaction style</string>
-    <string name="privacy_mode_pseudonymize">Pseudonymize (stable placeholders, tools keep working)</string>
+    <string name="privacy_mode_pseudonymize">Pseudonymize (consistent placeholders, tools keep working)</string>
     <string name="privacy_mode_redact">Fully redact</string>
     <string name="privacy_format_header">Placeholder format</string>
-    <string name="privacy_format_hashed">Hashed (EMAIL#a1b2c)</string>
-    <string name="privacy_format_numbered">Numbered ([EMAIL_1])</string>
+    <string name="privacy_format_hashed">Consistent — the same value always keeps the same placeholder (EMAIL#a1b2c)</string>
+    <string name="privacy_format_numbered">Numbered — sequential per session ([EMAIL_1])</string>
     <string name="privacy_disclaimer">Detection is best-effort mitigation, not a guarantee. No detector catches all personal data; screenshots are masked only where flagged screen elements have bounds.</string>
     <string name="privacy_card_title">Worried about personal data?</string>
-    <string name="privacy_card_message">Screen content is sent to the AI provider. Enable Privacy Mode to detect and hide passwords, cards, emails, phone numbers, names and more.</string>
     <string name="privacy_card_action">Set up Privacy Mode</string>
+    <string name="privacy_card_dismiss">Dismiss</string>
 </resources>

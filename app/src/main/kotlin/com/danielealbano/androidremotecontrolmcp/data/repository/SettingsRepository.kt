@@ -256,6 +256,12 @@ interface SettingsRepository : EventChannelSettings {
     /** Emits the stored Privacy Mode benchmark estimate (seconds), or null if never measured. */
     val privacyBenchmarkEstimateSeconds: Flow<Double?>
 
+    /** Persists whether the home-screen Privacy Mode callout card was dismissed. */
+    suspend fun updatePrivacyModeCardDismissed(dismissed: Boolean)
+
+    /** Emits whether the home-screen Privacy Mode callout card was dismissed (default false). */
+    val privacyModeCardDismissed: Flow<Boolean>
+
     /**
      * Data class representing a stored storage location record.
      * This is the persistence format; the full [StorageLocation] includes

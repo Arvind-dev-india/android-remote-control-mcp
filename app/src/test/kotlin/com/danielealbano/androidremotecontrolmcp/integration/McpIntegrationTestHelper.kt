@@ -44,6 +44,7 @@ import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.RedactionEngine
 import com.danielealbano.androidremotecontrolmcp.privacy.Redactor
 import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CardDetector
 import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CredentialDetector
@@ -179,18 +180,20 @@ object McpIntegrationTestHelper {
         val pipeline =
             PrivacyPipelineImpl(
                 manager = manager,
-                deterministicEngine =
-                    DeterministicEngine(
-                        CredentialDetector(),
-                        CardDetector(),
-                        IbanDetector(),
-                        EmailDetector(),
-                        PhoneDetector(),
-                        NationalIdDetector(),
+                engine =
+                    RedactionEngine(
+                        DeterministicEngine(
+                            CredentialDetector(),
+                            CardDetector(),
+                            IbanDetector(),
+                            EmailDetector(),
+                            PhoneDetector(),
+                            NationalIdDetector(),
+                        ),
+                        NerEngine(piiModelInference, NerCache()),
+                        ContextExtractor(),
+                        Redactor(pseudonymStore),
                     ),
-                nerEngine = NerEngine(piiModelInference, NerCache()),
-                contextExtractor = ContextExtractor(),
-                redactor = Redactor(pseudonymStore),
             )
         return MockDependencies(
             actionExecutor = mockk(relaxed = true),

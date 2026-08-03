@@ -57,6 +57,8 @@ fun PrivacySettingsScreen(
     val downloadState by viewModel.privacyDownloadState.collectAsStateWithLifecycle()
     val benchmarkEstimate by viewModel.privacyBenchmarkEstimate.collectAsStateWithLifecycle()
     val consentRequired by viewModel.consentRequired.collectAsStateWithLifecycle()
+    val enableInProgress by viewModel.privacyEnableInProgress.collectAsStateWithLifecycle()
+    val benchmarkRunning by viewModel.privacyBenchmarkRunning.collectAsStateWithLifecycle()
 
     val downloadInProgress = downloadState is DownloadState.Downloading || downloadState is DownloadState.Verifying
 
@@ -114,64 +116,23 @@ fun PrivacySettingsScreen(
                             viewModel.disablePrivacyMode()
                         }
                     },
-                    enabled = !downloadInProgress,
+                    // Disabled through the WHOLE enable window (request -> download -> warm-up), not
+                    // just while DownloadState reports progress; stays usable during the benchmark,
+                    // which finishes and stores its result even if Privacy Mode is toggled off.
+                    enabled = !downloadInProgress && !enableInProgress,
                 )
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // 2. Status + download progress
-            Text(
-                text = statusText(status),
-                style = MaterialTheme.typography.bodyMedium,
+            // 2. Status + download / warm-up / benchmark progress
+            PrivacyProgressSection(
+                status = status,
+                downloadState = downloadState,
+                enableInProgress = enableInProgress,
+                benchmarkRunning = benchmarkRunning,
+                benchmarkEstimate = benchmarkEstimate,
             )
-            when (val state = downloadState) {
-                is DownloadState.Downloading -> {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { state.progressPercent / PERCENT_DIVISOR },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        text = stringResource(R.string.privacy_download_progress, state.progressPercent),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                is DownloadState.Verifying -> {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text(
-                        text = stringResource(R.string.privacy_download_verifying),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                is DownloadState.Failed -> {
-                    Text(
-                        text = stringResource(R.string.privacy_download_failed, state.reason),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-
-                else -> {
-                    Unit
-                }
-            }
-
-            // 3. Benchmark estimate
-            benchmarkEstimate?.let { estimate ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text =
-                        stringResource(
-                            R.string.privacy_benchmark_estimate,
-                            formatEstimate(estimate),
-                        ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -193,6 +154,10 @@ fun PrivacySettingsScreen(
                     Switch(
                         checked = config.isCategoryEnabled(category),
                         onCheckedChange = { enabled -> viewModel.updatePrivacyCategoryEnabled(category, enabled) },
+                        // Categories are only editable while Privacy Mode is ON and not mid-enable:
+                        // toggling them while disabled or during the download would silently change
+                        // what gets protected once the mode comes up.
+                        enabled = config.enabled && !downloadInProgress && !enableInProgress,
                     )
                 }
             }
@@ -246,7 +211,124 @@ fun PrivacySettingsScreen(
                 text = stringResource(R.string.privacy_disclaimer),
                 style = MaterialTheme.typography.bodySmall,
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            // 7. Measured detection rates
+            DetectionRatesSection()
         }
+    }
+}
+
+@Composable
+private fun DetectionRatesSection() {
+    Text(
+        text = stringResource(R.string.privacy_detection_rates_header),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Spacer(Modifier.height(8.dp))
+    PiiCategory.entries
+        .map { category -> category to stringResource(categoryLabel(category)) }
+        .sortedBy { (_, label) -> label }
+        .forEach { (category, label) ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = MEASURED_DETECTION_RATES.getValue(category),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = stringResource(R.string.privacy_detection_rates_caption),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun PrivacyProgressSection(
+    status: PrivacyModeStatus,
+    downloadState: DownloadState,
+    enableInProgress: Boolean,
+    benchmarkRunning: Boolean,
+    benchmarkEstimate: Double?,
+) {
+    Text(
+        text = statusText(status),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    when (downloadState) {
+        is DownloadState.Downloading -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { downloadState.progressPercent / PERCENT_DIVISOR },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.privacy_download_progress, downloadState.progressPercent),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is DownloadState.Verifying -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                text = stringResource(R.string.privacy_download_verifying),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is DownloadState.Failed -> {
+            Text(
+                text = stringResource(R.string.privacy_download_failed, downloadState.reason),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        else -> {
+            // Instant feedback for the enable phases DownloadState cannot see: the 1-2 s of
+            // connection setup before Downloading fires (Idle) and the model warm-up after the
+            // download (Completed).
+            if (enableInProgress) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.privacy_enable_preparing),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+
+    if (benchmarkRunning) {
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        Text(
+            text = stringResource(R.string.privacy_benchmark_running),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    benchmarkEstimate?.let { estimate ->
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text =
+                stringResource(
+                    R.string.privacy_benchmark_estimate,
+                    formatEstimate(estimate),
+                ),
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
@@ -297,3 +379,20 @@ private fun categoryLabel(category: PiiCategory): Int =
 private fun formatEstimate(estimate: Double): String = "%.1f".format(estimate)
 
 private const val PERCENT_DIVISOR = 100f
+
+/**
+ * Per-category share of PII items detected by the FULL production pipeline, measured with
+ * `make privacy-benchmark` on the UI-shaped corpus B (ui-synthetic, seed 20260803, run 2026-08-03).
+ * ABSOLUTE RULE (see CLAUDE.md "Privacy detection effectiveness table"): whenever ANY privacy
+ * detection logic changes, the benchmark MUST be re-run and these values updated from report.md.
+ */
+private val MEASURED_DETECTION_RATES: Map<PiiCategory, String> =
+    mapOf(
+        PiiCategory.CREDENTIALS to "90.9%",
+        PiiCategory.CARDS_AND_IBAN to "75.3%",
+        PiiCategory.EMAILS to "100.0%",
+        PiiCategory.PHONE_NUMBERS to "84.4%",
+        PiiCategory.NAMES to "0.8%",
+        PiiCategory.ADDRESSES to "77.9%",
+        PiiCategory.NATIONAL_IDS to "93.0%",
+    )

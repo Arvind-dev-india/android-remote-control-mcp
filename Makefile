@@ -1,5 +1,5 @@
 .PHONY: help check-deps check-deps-updates update-deps build build-foss build-release clean \
-        test-unit test-integration test-e2e test coverage \
+        test-unit test-integration test-e2e test coverage privacy-benchmark \
         lint lint-fix \
         install install-release uninstall grant-permissions start-server forward-port \
         setup-emulator start-emulator stop-emulator \
@@ -145,13 +145,16 @@ clean: ## Clean build artifacts
 # ─────────────────────────────────────────────────────────────────────────────
 
 test-unit: ## Run unit tests (includes integration tests since both are JVM-based)
-	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test
+	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test :privacy:test :privacy-benchmark:test
 
 test-integration: ## Run integration tests (JVM-based, no emulator required)
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testGmsDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"
 
 test-e2e: ## Run E2E tests (requires rootful podman socket)
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) DOCKER_HOST=unix:///run/podman/podman.sock TESTCONTAINERS_RYUK_DISABLED=true $(GRADLE) :e2e-tests:cleanTest :e2e-tests:test
+
+privacy-benchmark: ## Run the Privacy Mode effectiveness benchmark (downloads model + dataset to privacy-benchmark/.cache on first run)
+	$(GRADLE) :privacy-benchmark:run $(if $(BENCHMARK_ARGS),--args="$(BENCHMARK_ARGS)",)
 
 test: test-unit test-e2e ## Run all tests
 

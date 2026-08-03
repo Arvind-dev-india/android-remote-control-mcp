@@ -2,6 +2,7 @@
 
 package com.danielealbano.androidremotecontrolmcp.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dns
@@ -35,6 +36,13 @@ fun MainScreen(
 ) {
     var selectedTabRoute by rememberSaveable { mutableStateOf(TopLevelRoute.Server.route) }
     var pendingSettingsRoute by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Back on the Settings/About tab returns to the Server tab instead of leaving the app. The
+    // settings NavHost registers its own back callback AFTER this one, so it wins while its back
+    // stack is non-empty: back inside a settings sub-screen still pops to the settings index first.
+    BackHandler(enabled = selectedTabRoute != TopLevelRoute.Server.route) {
+        selectedTabRoute = TopLevelRoute.Server.route
+    }
 
     Scaffold(
         bottomBar = {

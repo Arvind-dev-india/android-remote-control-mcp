@@ -1,6 +1,5 @@
 package com.danielealbano.androidremotecontrolmcp.privacy.model
 
-import android.content.Context
 import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelAssets.ModelAsset
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -9,8 +8,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -77,9 +74,7 @@ class PrivacyModelDownloaderTest {
 
     @BeforeEach
     fun setUp() {
-        val context = mockk<Context>()
-        every { context.filesDir } returns tempDir
-        store = PrivacyModelStore(context)
+        store = PrivacyModelStore(tempDir)
         downloader = PrivacyModelDownloader(store, UnconfinedTestDispatcher())
         downloader.assets =
             listOf(asset("model.bin", "/model", modelData), asset("tok.bin", "/tok", tokData))

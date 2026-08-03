@@ -17,6 +17,7 @@ The app runs directly on your Android device (or emulator) and exposes an HTTP s
 - [Features](#features)
 - [Install](#install)
 - [Setup](#setup)
+- [Privacy Mode](#privacy-mode)
 - [Integrations](#integrations)
 - [Configuration](#configuration)
 - [Permissions Reference](#permissions-reference)
@@ -161,6 +162,51 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full build requirements and instructi
 The server starts on `http://127.0.0.1:8080` by default. The connection info (IP, port, token, URL) is displayed on the Server tab.
 
 > **Note**: `127.0.0.1` refers to the phone's localhost, not your computer. To connect from your computer, use [adb port forwarding](#using-with-adb-port-forwarding), bind to `0.0.0.0` (network mode), or enable a [remote access tunnel](#using-remote-access-tunnels).
+
+---
+
+## Privacy Mode
+
+Privacy Mode detects and hides personal data — emails, credit cards and IBANs, credentials, phone
+numbers, national IDs, addresses, and names — in everything the MCP tools return (screen content,
+notifications, clipboard, files, …) **before it leaves the device** for the AI provider. Detection
+runs fully on-device: fast rule-based checks (checksums, formats, field context) combined with a
+local NER model — no cloud calls. Detected values are either pseudonymized with consistent
+placeholders (`EMAIL#a1b2c`, so AI tools keep working across screens) or fully redacted. Detection
+is best-effort mitigation, not a guarantee.
+
+The model is the [Ai4Privacy multilingual anonymiser](https://huggingface.co/ai4privacy/llama-ai4privacy-multilingual-categorical-anonymiser-openpii)
+(MIT license, Built with Llama), downloaded once on first enable (~150 MB) directly from the pinned
+Hugging Face revision and checksum-verified on device.
+
+### Measured detection rates
+
+Share of personal data items detected per category by the full pipeline, measured with the in-repo
+effectiveness benchmark (`make privacy-benchmark`) on realistic UI-style content across 8 languages:
+
+| Category | Detected |
+|---|---|
+| Addresses | 77.9% |
+| Cards & IBANs | 75.3% |
+| Credentials | 90.9% |
+| Emails | 100.0% |
+| Names | 0.8% |
+| National IDs | 93.0% |
+| Phone numbers | 84.4% |
+
+Names are the on-device model's known weak spot (it recognizes common Western names far better than
+the globally diverse names in the benchmark); improving name detection with a fine-tuned model is on
+the roadmap. Actual results vary with content and language.
+
+### Enabling Privacy Mode
+
+- **From the main Server screen**: tap **Set up Privacy Mode** on the Privacy Mode card (shown while
+  the mode is off).
+- **Or via Settings → Privacy**: turn on **Enable Privacy Mode** and confirm the one-time model
+  download. After the download and warm-up, a short on-device benchmark measures the expected
+  per-screen overhead and shows it on the same screen.
+- Protected categories, pseudonymize-vs-redact, and the placeholder format are configurable in
+  **Settings → Privacy**.
 
 ---
 

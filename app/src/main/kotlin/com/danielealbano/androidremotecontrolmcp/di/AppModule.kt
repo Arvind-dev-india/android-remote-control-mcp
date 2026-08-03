@@ -22,6 +22,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordina
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelStore
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
@@ -73,16 +74,6 @@ import kotlinx.coroutines.Dispatchers
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
-/** Qualifier for the IO [CoroutineDispatcher]. */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class IoDispatcher
-
-/** Qualifier for the CPU-bound default [CoroutineDispatcher] (e.g. on-device ML inference). */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class DefaultDispatcher
-
 /** Qualifier for the dedicated OAuth-clients Preferences DataStore. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -133,6 +124,15 @@ object AppModule {
     @Provides
     @DefaultDispatcher
     fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
+
+    /**
+     * Provides the Privacy Mode model store rooted at the app's files directory.
+     */
+    @Provides
+    @Singleton
+    fun providePrivacyModelStore(
+        @ApplicationContext context: Context,
+    ): PrivacyModelStore = PrivacyModelStore(context.filesDir)
 }
 
 @Module

@@ -83,3 +83,5 @@ app/replay_*.log
 
 # Cached DB-IP source CSV for the geolocation DB generator (the DB itself is generated under build/)
 .dbip-cache/
+
+privacy-benchmark/.cache/

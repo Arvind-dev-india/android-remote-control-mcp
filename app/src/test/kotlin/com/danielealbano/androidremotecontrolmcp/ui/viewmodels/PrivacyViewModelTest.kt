@@ -14,6 +14,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,7 @@ class PrivacyViewModelTest {
     private lateinit var statusFlow: MutableStateFlow<PrivacyModeStatus>
     private lateinit var downloadStateFlow: MutableStateFlow<DownloadState>
     private lateinit var benchmarkFlow: MutableStateFlow<Double?>
+    private lateinit var cardDismissedFlow: MutableStateFlow<Boolean>
     private lateinit var viewModel: PrivacyViewModel
 
     @BeforeEach
@@ -48,14 +50,18 @@ class PrivacyViewModelTest {
         statusFlow = MutableStateFlow(PrivacyModeStatus.Disabled)
         downloadStateFlow = MutableStateFlow(DownloadState.Idle)
         benchmarkFlow = MutableStateFlow(null)
+        cardDismissedFlow = MutableStateFlow(false)
 
         settingsRepository = mockk(relaxed = true)
         every { settingsRepository.serverConfig } returns configFlow
         every { settingsRepository.privacyBenchmarkEstimateSeconds } returns benchmarkFlow
+        every { settingsRepository.privacyModeCardDismissed } returns cardDismissedFlow
 
         privacyModeManager = mockk(relaxed = true)
         every { privacyModeManager.status } returns statusFlow
         every { privacyModeManager.downloadState } returns downloadStateFlow
+        every { privacyModeManager.enableInProgress } returns MutableStateFlow(false)
+        every { privacyModeManager.benchmarkRunning } returns MutableStateFlow(false)
 
         viewModel = PrivacyViewModel(settingsRepository, privacyModeManager)
     }
@@ -82,7 +88,7 @@ class PrivacyViewModelTest {
             coEvery { privacyModeManager.isModelReady() } returns true
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
-            coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 1) { privacyModeManager.enableWithDownloadInBackground() }
             assertEquals(false, viewModel.consentRequired.value)
         }
 
@@ -93,7 +99,7 @@ class PrivacyViewModelTest {
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
             assertEquals(true, viewModel.consentRequired.value)
-            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 0) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test
@@ -107,7 +113,7 @@ class PrivacyViewModelTest {
             advanceUntilIdle()
 
             assertEquals(false, viewModel.consentRequired.value)
-            coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 1) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test
@@ -120,7 +126,7 @@ class PrivacyViewModelTest {
             viewModel.cancelConsent()
 
             assertEquals(false, viewModel.consentRequired.value)
-            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 0) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test
@@ -153,5 +159,24 @@ class PrivacyViewModelTest {
                 assertEquals(1.5, awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `privacyCardDismissed exposes stored value`() =
+        runTest {
+            viewModel.privacyCardDismissed.test {
+                assertEquals(false, awaitItem())
+                cardDismissedFlow.value = true
+                assertEquals(true, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `dismissPrivacyCard persists the dismissal`() =
+        runTest {
+            viewModel.dismissPrivacyCard()
+            advanceUntilIdle()
+            coVerify { settingsRepository.updatePrivacyModeCardDismissed(true) }
         }
 }

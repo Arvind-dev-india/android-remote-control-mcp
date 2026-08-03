@@ -1,8 +1,5 @@
 package com.danielealbano.androidremotecontrolmcp.privacy.model
 
-import android.content.Context
-import io.mockk.every
-import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -21,9 +18,7 @@ class PrivacyModelStoreTest {
 
     @BeforeEach
     fun setUp() {
-        val context = mockk<Context>()
-        every { context.filesDir } returns tempDir
-        store = PrivacyModelStore(context)
+        store = PrivacyModelStore(tempDir)
     }
 
     private fun sparse(

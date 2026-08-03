@@ -424,9 +424,10 @@ dependencies {
     // Accompanist
     implementation(libs.accompanist.permissions)
 
-    // Privacy Mode (on-device PII detection)
+    // Privacy Mode (on-device PII detection). The detection core lives in :privacy (pure JVM,
+    // compileOnly onnxruntime); the Android AAR below supplies ai.onnxruntime.* at app runtime.
+    implementation(project(":privacy"))
     implementation(libs.onnxruntime.android)
-    implementation(libs.libphonenumber)
 
     // Unit Testing
     testImplementation(platform(libs.junit.bom))
@@ -434,7 +435,6 @@ dependencies {
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.onnxruntime.jvm)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
