@@ -2528,7 +2528,7 @@ Acceptance criteria:
 
 ### T6.1 — Makefile
 
-- [ ] A6.1.1 — Modify `Makefile` in TWO places:
+- [x] A6.1.1 — Modify `Makefile` in TWO places:
   1. Add the target (Testing section, after `test-e2e`):
 
 ```make

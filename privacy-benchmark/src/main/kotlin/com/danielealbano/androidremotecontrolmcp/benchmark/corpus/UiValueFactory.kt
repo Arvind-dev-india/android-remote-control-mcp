@@ -29,17 +29,45 @@ class UiValueFactory {
     ): Pair<String, List<GoldSpan>> {
         val value =
             when (kind) {
-                FieldKind.NAME -> fullName(language, rng)
-                FieldKind.EMAIL -> email(rng)
-                FieldKind.PHONE -> phone(language, rng)
-                FieldKind.CARD -> IdValueGenerators.card(rng)
-                FieldKind.IBAN -> IdValueGenerators.iban(language, rng)
-                FieldKind.NATIONAL_ID -> IdValueGenerators.nationalId(language, rng)
-                FieldKind.PASSWORD ->
+                FieldKind.NAME -> {
+                    fullName(language, rng)
+                }
+
+                FieldKind.EMAIL -> {
+                    email(rng)
+                }
+
+                FieldKind.PHONE -> {
+                    phone(language, rng)
+                }
+
+                FieldKind.CARD -> {
+                    IdValueGenerators.card(rng)
+                }
+
+                FieldKind.IBAN -> {
+                    IdValueGenerators.iban(language, rng)
+                }
+
+                FieldKind.NATIONAL_ID -> {
+                    IdValueGenerators.nationalId(language, rng)
+                }
+
+                FieldKind.PASSWORD -> {
                     PASSWORD_POOL[rng.nextInt(PASSWORD_POOL.size)] + RandomText.digits(rng, PASSWORD_SUFFIX)
-                FieldKind.API_KEY -> apiKey(rng)
-                FieldKind.ADDRESS -> address(language, rng)
-                else -> error("not a positive field kind: $kind")
+                }
+
+                FieldKind.API_KEY -> {
+                    apiKey(rng)
+                }
+
+                FieldKind.ADDRESS -> {
+                    address(language, rng)
+                }
+
+                else -> {
+                    error("not a positive field kind: $kind")
+                }
             }
         return value to listOf(GoldSpan(0, value.length, requireNotNull(kind.category)))
     }
@@ -49,13 +77,29 @@ class UiValueFactory {
         rng: Random,
     ): String =
         when (kind) {
-            FieldKind.ORDER -> "ORD-" + RandomText.digits(rng, ORDER_DIGITS)
-            FieldKind.TRACKING -> "1Z999AA1" + RandomText.digits(rng, TRACKING_DIGITS)
-            FieldKind.REFERENCE -> IdValueGenerators.uuidLike(rng)
-            FieldKind.INVOICE ->
+            FieldKind.ORDER -> {
+                "ORD-" + RandomText.digits(rng, ORDER_DIGITS)
+            }
+
+            FieldKind.TRACKING -> {
+                "1Z999AA1" + RandomText.digits(rng, TRACKING_DIGITS)
+            }
+
+            FieldKind.REFERENCE -> {
+                IdValueGenerators.uuidLike(rng)
+            }
+
+            FieldKind.INVOICE -> {
                 "INV-" + RandomText.digits(rng, INVOICE_GROUP_1) + "-" + RandomText.digits(rng, INVOICE_GROUP_2)
-            FieldKind.PLAIN -> PLAIN_SENTENCES[rng.nextInt(PLAIN_SENTENCES.size)]
-            else -> error("not a negative field kind: $kind")
+            }
+
+            FieldKind.PLAIN -> {
+                PLAIN_SENTENCES[rng.nextInt(PLAIN_SENTENCES.size)]
+            }
+
+            else -> {
+                error("not a negative field kind: $kind")
+            }
         }
 
     private fun sentenceWithName(

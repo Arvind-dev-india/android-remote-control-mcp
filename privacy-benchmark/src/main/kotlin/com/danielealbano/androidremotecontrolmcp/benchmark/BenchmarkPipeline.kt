@@ -55,22 +55,32 @@ class BenchmarkPipeline(
     private fun newNerEngine(): NerEngine = NerEngine(inferenceOverride ?: runner, NerCache())
 
     private fun newRedactionEngine(): RedactionEngine =
-        RedactionEngine(deterministicEngine, newNerEngine(), contextExtractor, redactor)
+        RedactionEngine(
+            deterministicEngine,
+            newNerEngine(),
+            contextExtractor,
+            redactor,
+        )
 
     suspend fun detect(
         layer: Layer,
         samples: List<BenchmarkSample>,
     ): List<List<PiiDetection>> =
         when (layer) {
-            Layer.DETERMINISTIC ->
+            Layer.DETERMINISTIC -> {
                 samples.map {
                     DeterministicEngine.mergeOverlaps(deterministicEngine.detectAll(it.text, it.context))
                 }
+            }
+
             Layer.MODEL -> {
                 val engine = newNerEngine()
                 samples.chunked(CHUNK).flatMap { detectModelChunk(engine, it) }
             }
-            Layer.FULL -> detectFull(samples)
+
+            Layer.FULL -> {
+                detectFull(samples)
+            }
         }
 
     /**
@@ -78,9 +88,7 @@ class BenchmarkPipeline(
      * ([Redactor.apply]) in a SINGLE model pass — the exact composition of
      * [RedactionEngine.redactTexts] without re-running inference for the redacted texts.
      */
-    suspend fun detectAndRedactFull(
-        samples: List<BenchmarkSample>,
-    ): Pair<List<List<PiiDetection>>, List<String>> {
+    suspend fun detectAndRedactFull(samples: List<BenchmarkSample>): Pair<List<List<PiiDetection>>, List<String>> {
         val detections = detectFull(samples)
         val redacted =
             samples.mapIndexed { index, sample ->

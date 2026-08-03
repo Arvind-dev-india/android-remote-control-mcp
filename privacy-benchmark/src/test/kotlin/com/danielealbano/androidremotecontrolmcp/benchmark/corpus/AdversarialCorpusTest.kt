@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test
 class AdversarialCorpusTest {
     private val corpus = AdversarialCorpusLoader().load()
 
-    private fun groupOf(sample: BenchmarkSample): String =
-        sample.id.removePrefix("c-").substringBeforeLast("-")
+    private fun groupOf(sample: BenchmarkSample): String = sample.id.removePrefix("c-").substringBeforeLast("-")
 
     @Test
     fun `loads all cases with exact group counts`() {
@@ -22,7 +21,13 @@ class AdversarialCorpusTest {
 
     @Test
     fun `ids are unique and spans are valid`() {
-        assertEquals(corpus.samples.size, corpus.samples.map { it.id }.toSet().size)
+        assertEquals(
+            corpus.samples.size,
+            corpus.samples
+                .map { it.id }
+                .toSet()
+                .size,
+        )
         for (sample in corpus.samples) {
             assertTrue(groupOf(sample) in EXPECTED_GROUP_COUNTS, "unknown group for ${sample.id}")
             for (span in sample.gold) {

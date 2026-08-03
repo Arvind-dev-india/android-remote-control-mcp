@@ -1,7 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.benchmark
 
-import com.danielealbano.androidremotecontrolmcp.benchmark.corpus.Ai4PrivacyCorpusLoader
 import com.danielealbano.androidremotecontrolmcp.benchmark.corpus.AdversarialCorpusLoader
+import com.danielealbano.androidremotecontrolmcp.benchmark.corpus.Ai4PrivacyCorpusLoader
 import com.danielealbano.androidremotecontrolmcp.benchmark.corpus.LoadedCorpus
 import com.danielealbano.androidremotecontrolmcp.benchmark.corpus.UiCorpusGenerator
 import com.danielealbano.androidremotecontrolmcp.benchmark.scoring.BenchmarkReport
@@ -15,15 +15,6 @@ import java.io.File
 import java.time.Instant
 import java.util.Locale
 import kotlin.system.exitProcess
-
-data class BenchmarkArgs(
-    val corpora: List<String> = listOf("a", "b", "c"),
-    val layers: List<Layer> = listOf(Layer.DETERMINISTIC, Layer.MODEL, Layer.FULL),
-    val sample: Int = 0,
-    val seed: Long = DEFAULT_SEED,
-    val cacheDir: File = File("privacy-benchmark/.cache"),
-    val outDir: File = File("privacy-benchmark/build/reports/privacy-benchmark"),
-)
 
 internal val USAGE =
     """
@@ -39,20 +30,38 @@ internal fun parseArgs(args: Array<String>): BenchmarkArgs {
         val value = arg.substringAfter("=")
         parsed =
             when (key) {
-                "--corpora" ->
+                "--corpora" -> {
                     parsed.copy(
                         corpora =
                             value.split(",").onEach {
                                 require(it in setOf("a", "b", "c")) { "unknown corpus: $it" }
                             },
                     )
-                "--layers" ->
+                }
+
+                "--layers" -> {
                     parsed.copy(layers = value.split(",").map { Layer.valueOf(it.uppercase(Locale.ROOT)) })
-                "--sample" -> parsed.copy(sample = value.toInt())
-                "--seed" -> parsed.copy(seed = value.toLong())
-                "--cache-dir" -> parsed.copy(cacheDir = File(value))
-                "--out" -> parsed.copy(outDir = File(value))
-                else -> throw IllegalArgumentException("unknown argument: $key")
+                }
+
+                "--sample" -> {
+                    parsed.copy(sample = value.toInt())
+                }
+
+                "--seed" -> {
+                    parsed.copy(seed = value.toLong())
+                }
+
+                "--cache-dir" -> {
+                    parsed.copy(cacheDir = File(value))
+                }
+
+                "--out" -> {
+                    parsed.copy(outDir = File(value))
+                }
+
+                else -> {
+                    throw IllegalArgumentException("unknown argument: $key")
+                }
             }
     }
     return parsed
@@ -121,9 +130,18 @@ private fun loadCorpus(
             val dataset = downloader.ensure(BenchmarkAssets.DATASET, File(args.cacheDir, DATASET_DIR))
             Ai4PrivacyCorpusLoader().load(dataset, args.sample)
         }
-        "b" -> UiCorpusGenerator(args.seed).generate()
-        "c" -> AdversarialCorpusLoader().load()
-        else -> error("unreachable: corpus $id")
+
+        "b" -> {
+            UiCorpusGenerator(args.seed).generate()
+        }
+
+        "c" -> {
+            AdversarialCorpusLoader().load()
+        }
+
+        else -> {
+            error("unreachable: corpus $id")
+        }
     }
 
 private suspend fun runLayer(
@@ -150,7 +168,6 @@ private suspend fun runLayer(
     return score
 }
 
-private const val DEFAULT_SEED = 20260803L
 private const val USAGE_EXIT_CODE = 2
 private const val NANOS_PER_MILLI = 1_000_000L
 private const val MODEL_DIR = "privacy_model"

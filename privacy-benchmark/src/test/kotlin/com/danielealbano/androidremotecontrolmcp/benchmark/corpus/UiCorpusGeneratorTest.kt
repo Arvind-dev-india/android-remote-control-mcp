@@ -15,7 +15,11 @@ class UiCorpusGeneratorTest {
 
     private fun valueSamplesAtRow(rowIndexes: Set<Int>): List<BenchmarkSample> =
         corpus.samples.filter { sample ->
-            val row = sample.id.substringAfterLast("-r").substringBefore("-").toIntOrNull()
+            val row =
+                sample.id
+                    .substringAfterLast("-r")
+                    .substringBefore("-")
+                    .toIntOrNull()
             sample.id.endsWith("-value") && row != null && row in rowIndexes
         }
 
@@ -25,8 +29,7 @@ class UiCorpusGeneratorTest {
     }
 
     /** Row indexes for a given context style under the `index % 5` rotation over 10 rows. */
-    private fun rowsFor(style: ContextStyle): Set<Int> =
-        setOf(style.ordinal, style.ordinal + ContextStyle.entries.size)
+    private fun rowsFor(style: ContextStyle): Set<Int> = setOf(style.ordinal, style.ordinal + ContextStyle.entries.size)
 
     private fun maxDigitRun(text: String): Int {
         var best = 0

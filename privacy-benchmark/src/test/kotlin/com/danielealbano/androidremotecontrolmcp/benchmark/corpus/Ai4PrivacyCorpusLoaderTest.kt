@@ -76,7 +76,13 @@ class Ai4PrivacyCorpusLoaderTest {
         val corpus = loader.load(file)
 
         assertEquals(1, corpus.samples.size)
-        assertNull(corpus.samples.first().gold.first().category)
+        assertNull(
+            corpus.samples
+                .first()
+                .gold
+                .first()
+                .category,
+        )
         assertEquals(1, corpus.unknownLabels["NEWLABEL"])
     }
 

@@ -133,7 +133,8 @@ class RedactionEngineTest {
                     placeholderFormat = PlaceholderFormat.NUMBERED,
                 )
 
-            val result = engine.redactTexts(listOf(TextItem("mail a@b.com", DetectionContext.forField("email"))), config)
+            val result =
+                engine.redactTexts(listOf(TextItem("mail a@b.com", DetectionContext.forField("email"))), config)
 
             assertEquals("mail [EMAIL_1]", result.first())
             coVerify(exactly = 0) { nerEngine.detect(any()) }
@@ -205,7 +206,11 @@ class RedactionEngineTest {
 
             val processed = engine.redactTree(tree(root), numbered)
 
-            val redactedValue = processed.result.windows.first().tree.children[1].text
+            val redactedValue =
+                processed.result.windows
+                    .first()
+                    .tree.children[1]
+                    .text
             assertEquals("[ID_1]", redactedValue)
         }
 

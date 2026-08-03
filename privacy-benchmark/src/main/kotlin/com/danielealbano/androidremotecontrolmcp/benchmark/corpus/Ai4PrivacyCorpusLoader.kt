@@ -39,16 +39,15 @@ class Ai4PrivacyCorpusLoader {
         var dropped = 0
         val unknownLabels = mutableMapOf<String, Int>()
         file.bufferedReader().useLines { lines ->
-            for (line in lines) {
-                if (line.isBlank()) continue
+            lines.filter { it.isNotBlank() }.forEach { line ->
                 val row = json.decodeFromString(Ai4PrivacyRow.serializer(), line)
                 val gold = toGoldSpans(row, unknownLabels)
                 if (gold == null) {
                     dropped++
-                    continue
+                } else {
+                    samples +=
+                        BenchmarkSample("a-${row.uid}", row.sourceText, DetectionContext.EMPTY, gold, row.language)
                 }
-                samples +=
-                    BenchmarkSample("a-${row.uid}", row.sourceText, DetectionContext.EMPTY, gold, row.language)
             }
         }
         return LoadedCorpus("ai4privacy-500k-validation", subsample(samples, sample), dropped, unknownLabels)
