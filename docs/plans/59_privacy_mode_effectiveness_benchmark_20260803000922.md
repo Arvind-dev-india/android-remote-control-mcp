@@ -2579,7 +2579,7 @@ Attribution requirements (CC-BY-4.0): the dataset link + DOI line above MUST rem
 - [x] A6.3.2 — `set -a && source .env && set +a && ./gradlew :app:test :privacy:test :privacy-benchmark:test jacocoTestReport jacocoTestCoverageVerification 2>&1 | tee /tmp/p59-test.log | tail -20` — fix everything until green (including any unrelated broken test). This also verifies BOTH coverage gates: `:privacy` ≥ 0.50 (with the OrtPiiModelRunner exclusion) AND `:app` still ≥ 0.50 after the well-covered privacy classes moved out (review finding P59-013). If either gate fails, STOP and ask the user how to proceed.
 - [x] A6.3.3 — `make build 2>&1 | tee /tmp/p59-build.log | tail -20` — no errors, no warnings.
 - [x] A6.3.4 — Spawn `code-reviewer` in plan compliance mode over the full implementation; fix ALL findings; re-run until clean.
-- [ ] A6.3.5 — Push, open PR via `gh pr create` per TOOLS.md, report PR URL. If the user has NOT (yet) approved publication at A6.2.2, the PR contains the benchmark tooling WITHOUT any README numbers section — the README publication happens later as a separate user-approved change, and A6.2.2 stays unchecked until then.
+- [x] A6.3.5 — Push, open PR via `gh pr create` per TOOLS.md, report PR URL. If the user has NOT (yet) approved publication at A6.2.2, the PR contains the benchmark tooling WITHOUT any README numbers section — the README publication happens later as a separate user-approved change, and A6.2.2 stays unchecked until then.
 
 ---
 
