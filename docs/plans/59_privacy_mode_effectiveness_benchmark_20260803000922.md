@@ -1663,7 +1663,7 @@ Acceptance criteria:
 
 ### T4.1 — Schema, loader, cases
 
-- [ ] A4.1.1 — Create `.../benchmark/corpus/AdversarialCorpusLoader.kt`:
+- [x] A4.1.1 — Create `.../benchmark/corpus/AdversarialCorpusLoader.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -1728,7 +1728,7 @@ class AdversarialCorpusLoader {
 }
 ```
 
-- [ ] A4.1.2 — Create `privacy-benchmark/src/main/resources/corpus_c.jsonl` with EXACTLY these groups/counts (author each case following the group spec; ids `"<group>-<nn>"`; gold offsets computed against the final text):
+- [x] A4.1.2 — Create `privacy-benchmark/src/main/resources/corpus_c.jsonl` with EXACTLY these groups/counts (author each case following the group spec; ids `"<group>-<nn>"`; gold offsets computed against the final text):
 
 | group | count | spec |
 |---|---|---|
@@ -1747,7 +1747,7 @@ class AdversarialCorpusLoader {
 | `mixed-language` | 6 | two languages in one text with PII in each; gold per span |
 | `lookalike-negatives` | 16 | order/tracking/invoice numbers, UUIDs, MAC addresses, ISBNs, version strings, timestamps, prices, coordinates; gold `[]` |
 
-- [ ] T4.1 tests — **File**: `.../benchmark/corpus/AdversarialCorpusTest.kt`
+- [x] T4.1 tests — **File**: `.../benchmark/corpus/AdversarialCorpusTest.kt`
 
   | Test | Verifies |
   |------|----------|
