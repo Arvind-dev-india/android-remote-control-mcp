@@ -59,9 +59,9 @@ The app runs directly on your Android device (or emulator) and exposes an HTTP s
 - Auto-start on boot
 - Remote access tunnels via Cloudflare Quick Tunnels or ngrok (public HTTPS URL)
 
-### 55 MCP Tools across 13 Categories
+### 57 MCP Tools across 14 Categories
 
-Screen introspection, system actions, touch actions, gestures, node actions, text input, utilities, file operations, app management, camera, intents, notifications, and location.
+Screen introspection, system actions, touch actions, gestures, node actions, text input, utilities, file operations, app management, camera, intents, notifications, location, and sharing.
 
 All tool names use the `android_` prefix by default (e.g., `android_tap`). When a device slug is configured (e.g., `pixel7`), the prefix becomes `android_pixel7_` (e.g., `android_pixel7_tap`).
 
@@ -82,7 +82,7 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for the full tool reference with inpu
 
 | Feature | This project | [mobile-mcp] | [Android-MCP] | [android-mcp-server] | [adb-mcp] | [droidrun-mcp] |
 |---------|:-:|:-:|:-:|:-:|:-:|:-:|
-| MCP tools | 55 | 21 | 11 | 5 | 10 | 11 |
+| MCP tools | 57 | 21 | 11 | 5 | 10 | 11 |
 | Runs on the phone (no ADB) | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 | Action latency | 10-100 ms | 1-4 s | 1-4 s | 1-4 s | 1-4 s | 1-4 s |
 | Works over the internet | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |

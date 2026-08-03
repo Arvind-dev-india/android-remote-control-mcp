@@ -28,12 +28,13 @@ This document provides a comprehensive reference for all MCP tools available in 
 15. [Intent Tools](#11-intent-tools)
 16. [Notification Tools](#12-notification-tools)
 17. [Location Tools](#13-location-tools)
+18. [Sharing Tools](#14-sharing-tools)
 
 ---
 
 ## Overview
 
-The MCP server exposes 55 tools via the JSON-RPC 2.0 protocol, organized into 13 categories:
+The MCP server exposes 57 tools via the JSON-RPC 2.0 protocol, organized into 14 categories:
 
 | Category | Tools | Plan |
 |----------|-------|------|
@@ -50,6 +51,7 @@ The MCP server exposes 55 tools via the JSON-RPC 2.0 protocol, organized into 13
 | Intent | `android_send_intent`, `android_open_uri` | 31 |
 | Notification | `android_notification_list`, `android_notification_open`, `android_notification_dismiss`, `android_notification_snooze`, `android_notification_action`, `android_notification_reply` | 32 |
 | Location | `android_get_location` | 43 |
+| Sharing | `android_get_shared_content`, `android_share_file_via_web` | 48 |
 
 ## Tool Naming Convention
 
@@ -3348,3 +3350,107 @@ Retrieves the device's current location including coordinates, accuracy, and str
 
 - **Location data exposure**: The `get_location` tool exposes the device's precise geographic coordinates to MCP clients. Ensure bearer token authentication is enabled in production to restrict access.
 - **Fresh GPS fix**: When `fresh_fix=true`, the tool actively queries the GPS hardware, which may have battery implications if called frequently.
+
+## 14. Sharing Tools
+
+Sharing tools bridge the Android Share sheet and MCP clients. The app is registered as an Android share target: content shared to it (text, images, files) lands in an in-memory inbox that MCP clients drain with `android_get_shared_content`. In the other direction, `android_share_file_via_web` exposes a device file as a temporary capability URL that clients (or the user) can fetch.
+
+**File**: `app/src/main/kotlin/.../mcp/tools/SharingTools.kt`
+**Services**: `SharedContentInbox`, `EphemeralFileLinkService`, `FileOperationProvider`
+**Permission**: None (share intents are user-initiated; file access uses the authorized storage locations)
+
+**Capability URLs**: Both tools can return temporary download URLs served by the MCP server itself. Each URL embeds a random single-purpose token, expires after 1 hour, allows multiple fetches, and is served from memory (total in-memory budget 64 MB).
+
+### `android_get_shared_content`
+
+Returns and clears all items shared to the app via the Android Share sheet since the last call. Read-once: the inbox is drained on read, so content must be re-shared to be read again.
+
+**Parameters**: None.
+
+**Returns**: One content block per shared item, prefixed by the untrusted-content warning:
+- **Text**: returned inline as text content.
+- **Textual files** (e.g., `.txt`, `.json`): returned inline with filename, MIME type, and size.
+- **Images**: a downscaled inline image plus a text block with a full-resolution capability URL (expires 1 hour).
+- **Other files** (e.g., PDF, binaries): a text block with filename, MIME type, size, and a capability URL (expires 1 hour); text/PDF URLs can be read via web fetch, other types are download-only.
+
+If nothing has been shared, returns a note explaining that content must first be shared to the app.
+
+**Example Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_get_shared_content",
+    "arguments": {}
+  }
+}
+```
+
+**Example Response** (shared text):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      { "type": "text", "text": "<untrusted-content warning>" },
+      { "type": "text", "text": "Meeting at 10am tomorrow" }
+    ]
+  }
+}
+```
+
+**Error Cases**: None specific — an empty inbox is a normal (non-error) response.
+
+### `android_share_file_via_web`
+
+Exposes an existing device file as a temporary capability URL. Use it to let an MCP client read a device PDF/text file via web fetch, or to hand the user a download link.
+
+**Parameters**:
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `location_id` | string | Yes | - | The authorized storage location identifier (from `android_list_storage_locations`) |
+| `path` | string | Yes | - | Relative path to the file within the location |
+
+**Returns**: A text block (prefixed by the untrusted-content warning) with the filename, MIME type, size in bytes, and the capability URL (expires 1 hour, multiple fetches allowed). The file is served from memory, so it is limited to 64 MB or the configured file size limit, whichever is smaller.
+
+**Example Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_share_file_via_web",
+    "arguments": {
+      "location_id": "loc_a1b2c3",
+      "path": "Documents/report.pdf"
+    }
+  }
+}
+```
+
+**Example Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      { "type": "text", "text": "<untrusted-content warning>\nFile 'report.pdf' application/pdf (204800 bytes) at https://device.example.com/s/<token> (expires 1h). web_fetch can read text/PDF; other types are download-only." }
+    ]
+  }
+}
+```
+
+**Error Cases** (returned as `CallToolResult(isError = true)`):
+- **Invalid params**: `location_id` or `path` missing or not a string
+- **Action failed**: file not found, location not authorized, or file exceeds the size limit (the smaller of the configured file size limit and the 64 MB in-memory budget)
+
+### Security Considerations
+
+- **Capability URLs are bearer links**: anyone holding the URL can fetch the file until it expires (1 hour). The random token is the only protection — treat returned URLs as sensitive.
+- **Privacy Mode**: when enabled, device-derived text (shared text, textual file contents, filenames) is redacted before being returned; inline images and served file bytes are not redacted.
