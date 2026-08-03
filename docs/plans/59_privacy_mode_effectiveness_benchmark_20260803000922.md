@@ -2523,7 +2523,7 @@ USER DECISION (2026-08-03): the measured numbers MUST NOT be published anywhere 
 Acceptance criteria:
 - [x] `make privacy-benchmark` runs the tool.
 - [x] Full benchmark run completed (complete Corpus A validation split + B + C); `report.json`/`report.md` produced and the measured tables PRESENTED to the user.
-- [ ] README "Privacy Mode effectiveness" section added ONLY IF AND WHEN the user explicitly approves the numbers (template below); otherwise the section is NOT added and A6.2.2 stays unchecked.
+- [x] README "Privacy Mode effectiveness" section added ONLY IF AND WHEN the user explicitly approves the numbers (template below); otherwise the section is NOT added and A6.2.2 stays unchecked.
 - [x] All quality gates green; code-reviewer plan-compliance pass.
 
 ### T6.1 — Makefile
@@ -2541,7 +2541,7 @@ privacy-benchmark: ## Run the Privacy Mode effectiveness benchmark (downloads mo
 ### T6.2 — Run the benchmark; present the numbers; publish ONLY on user approval
 
 - [x] A6.2.1 — Run the full benchmark locally: `make privacy-benchmark 2>&1 | tee /tmp/p59-privacy-benchmark.log | tail -20` (full Corpus A; expect a long model pass). Inspect `/tmp/p59-privacy-benchmark.log` and `privacy-benchmark/build/reports/privacy-benchmark/report.md` — do NOT re-run to re-read output. Then PRESENT the measured tables and headline numbers from `report.md` to the user and STOP: the user reviews and decides what (if anything) gets published and where (README and/or UI wording are the user's call after seeing the numbers).
-- [ ] A6.2.2 — **GATED ON EXPLICIT USER APPROVAL — you MUST NOT perform this action, or publish the numbers anywhere else, until the user has reviewed the A6.2.1 report and explicitly approved publication.** If approved, modify `README.md` in TWO places (the README has NO existing Privacy Mode section — verified 2026-08-03, review finding P59-023):
+- [x] A6.2.2 — **GATED ON EXPLICIT USER APPROVAL — you MUST NOT perform this action, or publish the numbers anywhere else, until the user has reviewed the A6.2.1 report and explicitly approved publication.** If approved, modify `README.md` in TWO places (the README has NO existing Privacy Mode section — verified 2026-08-03, review finding P59-023):
   1. Add `- [Privacy Mode effectiveness](#privacy-mode-effectiveness)` to the `## Contents` list, between the `Features` and `Install` entries (matching the list's existing format).
   2. Insert the `## Privacy Mode effectiveness` section immediately BEFORE the `## Install` heading (i.e., at the end of the `## Features` section, after `### Comparison with Alternatives`), with EXACTLY this structure, pasting the measured tables from `report.md`:
 
@@ -2660,3 +2660,14 @@ label list omits that label (the loader's unknown-label counter surfaced them du
 full run). USER DECISION: map `CREDITCARDNUMBER` → `CARDS_AND_IBAN` in `Ai4PrivacyCorpusLoader`
 (giving in-domain card measurements) and re-run the benchmark. The plan's pinned mapping table
 above reflects the pre-run knowledge and is superseded on this one label by this note.
+
+## Implementation note — user-approved README publication (2026-08-03)
+
+USER DECISION at publication time: instead of the A6.2.2 template, the README gains a
+`## Privacy Mode` section placed BEFORE `## Integrations` with (a) a brief explanation of the
+feature, (b) the per-category detection-rates table (corpus B ui-synthetic FULL-layer recall — the
+same numbers published in the app's Privacy settings screen, alphabetical by label, no
+static/model split and no layer totals), and (c) enable instructions for both entry points. The
+model attribution (MIT, Built with Llama) and the `make privacy-benchmark` reproduce command are
+included; the ai4privacy dataset attribution is not required here because the published numbers
+come from the project's own synthetic corpus B, not the CC-BY dataset.
