@@ -24,6 +24,9 @@ application {
 tasks.named<JavaExec>("run") {
     // Corpus A holds ~116k samples in memory plus ONNX Runtime buffers.
     maxHeapSize = "4g"
+    // The CLI's default --cache-dir/--out are repo-root-relative (privacy-benchmark/.cache, matching
+    // .gitignore); JavaExec would otherwise run from this module dir and nest them one level deeper.
+    workingDir = rootProject.projectDir
 }
 
 ktlint {
