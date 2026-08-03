@@ -42,6 +42,12 @@ import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSystemActionT
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTextInputTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTouchActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerUtilityTools
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
@@ -60,6 +66,7 @@ import com.danielealbano.androidremotecontrolmcp.services.notifications.Notifica
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
@@ -160,6 +167,18 @@ class McpServerService : Service() {
     @Inject lateinit var geoIpResolver: GeoIpResolver
 
     @Inject lateinit var serverLogRepository: ServerLogRepository
+
+    @Inject lateinit var privacyToolGate: PrivacyToolGate
+
+    @Inject lateinit var placeholderSubstitutor: PlaceholderSubstitutor
+
+    @Inject lateinit var screenshotRedactor: ScreenshotRedactor
+
+    @Inject lateinit var privacyModeManager: PrivacyModeManager
+
+    @Inject lateinit var pseudonymStore: PseudonymStore
+
+    @Inject lateinit var nerCache: NerCache
 
     /** Config of the currently running server; used to build capability-link base URLs. */
     @Volatile
@@ -310,6 +329,15 @@ class McpServerService : Service() {
             // one-time gzip-inflate + mmap cost. Best-effort; a failure just leaves it lazy.
             coroutineScope.launch { geoIpResolver.resolve("8.8.8.8") }
 
+            // Surface Privacy Mode readiness at start so the user learns of a failure now, not at the
+            // first data-returning tool call. Off the request path; the result updates the manager status.
+            if (config.privacyModeConfig.enabled) {
+                coroutineScope.launch {
+                    val message = privacyStatusLogMessage(privacyModeManager.selfCheck())
+                    serverLogRepository.log(ServerLogEntry.Type.PRIVACY, message)
+                }
+            }
+
             updateStatus(
                 ServerStatus.Running(
                     port = config.port,
@@ -409,6 +437,28 @@ class McpServerService : Service() {
         fileSizeLimitMb: Int,
     ) {
         val registrar = LoggedToolRegistrar(server, serverLogRepository)
+        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms)
+        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
+        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(
+            registrar,
+            notificationProvider,
+            privacyToolGate,
+            placeholderSubstitutor,
+            toolNamePrefix,
+            perms,
+        )
+        registerLocationTools(registrar, locationProvider, privacyToolGate, toolNamePrefix, perms)
+        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
+    }
+
+    private fun registerAccessibilityToolBundle(
+        registrar: LoggedToolRegistrar,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
         registerScreenIntrospectionTools(
             registrar,
             treeParser,
@@ -420,6 +470,8 @@ class McpServerService : Service() {
             nodeCache,
             screenStateSnapshotCache,
             webViewNodeMerger,
+            privacyToolGate,
+            screenshotRedactor,
             toolNamePrefix,
             perms,
         )
@@ -433,6 +485,8 @@ class McpServerService : Service() {
             actionExecutor,
             accessibilityServiceProvider,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -443,6 +497,8 @@ class McpServerService : Service() {
             accessibilityServiceProvider,
             typeInputController,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
@@ -452,16 +508,11 @@ class McpServerService : Service() {
             elementFinder,
             accessibilityServiceProvider,
             nodeCache,
+            privacyToolGate,
+            placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
-        registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(registrar, appManager, toolNamePrefix, perms)
-        registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(registrar, intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(registrar, notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(registrar, locationProvider, toolNamePrefix, perms)
-        registerSharingBundle(registrar, toolNamePrefix, perms, fileSizeLimitMb)
     }
 
     private fun registerSharingBundle(
@@ -477,6 +528,7 @@ class McpServerService : Service() {
             fileOperationProvider,
             fileSizeLimitMb,
             currentBaseUrl,
+            privacyToolGate,
             toolNamePrefix,
             perms,
         )
@@ -484,6 +536,10 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         screenStateSnapshotCache.clear()
+        // Release the Privacy Mode model and clear session-scoped pseudonym/NER caches (never persisted).
+        privacyModeManager.shutdown()
+        pseudonymStore.clear()
+        nerCache.clear()
         Log.i(TAG, "McpServerService destroying")
         updateStatus(ServerStatus.Stopping)
 
@@ -612,6 +668,26 @@ internal fun serverStatusLogMessage(status: ServerStatus): String =
         ServerStatus.Stopping -> "Server stopping"
         ServerStatus.Stopped -> "Server stopped"
         is ServerStatus.Error -> "Server error: ${status.message}"
+    }
+
+/** Server-log message for a Privacy Mode self-check result at server start. */
+internal fun privacyStatusLogMessage(status: PrivacyModeStatus): String =
+    when (status) {
+        is PrivacyModeStatus.Ready -> {
+            "Privacy mode ready (model)"
+        }
+
+        is PrivacyModeStatus.ReadyDeterministicOnly -> {
+            "Privacy mode ready (deterministic only)"
+        }
+
+        is PrivacyModeStatus.Unavailable -> {
+            "Privacy mode UNAVAILABLE: ${status.reason} — data-returning tools are blocked"
+        }
+
+        is PrivacyModeStatus.Disabled -> {
+            "Privacy mode disabled"
+        }
     }
 
 /** Server-log message for a tunnel status transition; null when not logged by the observer. */

@@ -20,6 +20,10 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenServiceImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCacheImpl
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -74,6 +78,11 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class IoDispatcher
 
+/** Qualifier for the CPU-bound default [CoroutineDispatcher] (e.g. on-device ML inference). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DefaultDispatcher
+
 /** Qualifier for the dedicated OAuth-clients Preferences DataStore. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -117,6 +126,13 @@ object AppModule {
     @Provides
     @IoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Provides [Dispatchers.Default] for CPU-bound work (on-device NER inference).
+     */
+    @Provides
+    @DefaultDispatcher
+    fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 }
 
 @Module
@@ -246,4 +262,12 @@ abstract class ServiceModule {
     @Binds
     @Singleton
     abstract fun bindOAuthApprovalCoordinator(impl: OAuthApprovalCoordinatorImpl): OAuthApprovalCoordinator
+
+    @Binds
+    @Singleton
+    abstract fun bindPrivacyPipeline(impl: PrivacyPipelineImpl): PrivacyPipeline
+
+    @Binds
+    @Singleton
+    abstract fun bindPiiModelInference(impl: OrtPiiModelRunner): PiiModelInference
 }

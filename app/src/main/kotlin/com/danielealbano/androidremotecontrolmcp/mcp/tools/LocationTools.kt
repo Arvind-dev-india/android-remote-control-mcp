@@ -5,6 +5,7 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
@@ -22,6 +23,7 @@ class GetLocationHandler
     @Inject
     constructor(
         private val locationProvider: LocationProvider,
+        private val privacyToolGate: PrivacyToolGate,
     ) {
         suspend fun execute(
             arguments: JsonObject?,
@@ -45,12 +47,13 @@ class GetLocationHandler
             }
 
             val locationData = result.getOrThrow()
+            val redactedStreet = privacyToolGate.text(locationData.street, "address")
             val jsonResult =
                 buildJsonObject {
                     put("latitude", locationData.latitude)
                     put("longitude", locationData.longitude)
                     put("accuracy_meters", locationData.accuracyMeters)
-                    put("street", locationData.street)
+                    put("street", redactedStreet)
                 }
 
             return McpToolUtils.untrustedTextResult(jsonResult.toString())
@@ -101,11 +104,12 @@ class GetLocationHandler
 fun registerLocationTools(
     registrar: LoggedToolRegistrar,
     locationProvider: LocationProvider,
+    privacyToolGate: PrivacyToolGate,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(GetLocationHandler.TOOL_NAME)) {
-        GetLocationHandler(locationProvider).register(
+        GetLocationHandler(locationProvider, privacyToolGate).register(
             registrar,
             toolNamePrefix,
             freshFixParamEnabled =

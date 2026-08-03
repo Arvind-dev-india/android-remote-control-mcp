@@ -375,7 +375,17 @@ NGROK_JNILIBS_DIR := app/src/main/jniLibs
 NGROK_JAVA_JAR := $(NGROK_SRC_DIR)/ngrok-java/target/ngrok-java-1.2.0-SNAPSHOT.jar
 NGROK_NATIVE_CLASSES_JAR := $(NGROK_NATIVE_DIR)/target/ngrok-java-native-classes.jar
 NGROK_HOST_NATIVE_DIR := $(NGROK_NATIVE_DIR)/target/aarch64-apple-darwin/release
-JAVA_HOME_17 ?= $(or $(JAVA_HOME),/opt/homebrew/opt/openjdk@17)
+# JDK home used to bootstrap the ngrok-java native build (Maven still selects the compiler via
+# toolchains.xml). Resolution order: an explicit JAVA_HOME wins; otherwise detect per-OS — macOS
+# uses java_home (falling back to the homebrew openjdk@17), any other OS derives it from the javac
+# on PATH. Override explicitly with `make ... JAVA_HOME_17=/path/to/jdk` if detection is wrong.
+ifneq ($(strip $(JAVA_HOME)),)
+JAVA_HOME_17 ?= $(JAVA_HOME)
+else ifeq ($(shell uname -s),Darwin)
+JAVA_HOME_17 ?= $(shell /usr/libexec/java_home -v 17 2>/dev/null || echo /opt/homebrew/opt/openjdk@17)
+else
+JAVA_HOME_17 ?= $(shell d=$$(command -v javac 2>/dev/null) && dirname "$$(dirname "$$(readlink -f "$$d")")")
+endif
 
 compile-ngrok-native: ## Build ngrok-java native library from source (requires Rust + Android NDK + Maven)
 	@if [ ! -f "$(NGROK_NATIVE_DIR)/Cargo.toml" ]; then \

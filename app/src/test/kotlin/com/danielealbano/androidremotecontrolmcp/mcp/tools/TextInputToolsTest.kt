@@ -15,6 +15,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionEx
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.TypeInputController
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowData
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -683,6 +684,8 @@ class TextInputToolsTest {
                 mockAccessibilityServiceProvider,
                 mockTypeInputController,
                 mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+                PrivacyToolTestDoubles.identitySubstitutor(),
             )
 
         private fun setupDefaultMocks(existingText: String = "existing") {
@@ -928,6 +931,8 @@ class TextInputToolsTest {
                 mockAccessibilityServiceProvider,
                 mockTypeInputController,
                 mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+                PrivacyToolTestDoubles.identitySubstitutor(),
             )
 
         private fun setupDefaultMocks(existingText: String = "Hello") {
@@ -1142,6 +1147,8 @@ class TextInputToolsTest {
                 mockAccessibilityServiceProvider,
                 mockTypeInputController,
                 mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+                PrivacyToolTestDoubles.identitySubstitutor(),
             )
 
         private fun setupDefaultMocks(existingText: String = "Hello World") {
@@ -1440,6 +1447,7 @@ class TextInputToolsTest {
                 mockAccessibilityServiceProvider,
                 mockTypeInputController,
                 mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
             )
 
         @Test

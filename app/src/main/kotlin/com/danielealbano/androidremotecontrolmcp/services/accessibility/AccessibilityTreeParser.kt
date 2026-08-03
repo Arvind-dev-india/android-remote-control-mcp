@@ -56,6 +56,9 @@ data class AccessibilityNodeData(
     val focusable: Boolean = false,
     val scrollable: Boolean = false,
     val editable: Boolean = false,
+    val isPassword: Boolean = false,
+    val hintText: String? = null,
+    val labeledByText: String? = null,
     val enabled: Boolean = false,
     val visible: Boolean = false,
     val webRole: String? = null,
@@ -191,6 +194,9 @@ class AccessibilityTreeParser
             val focusable = node.isFocusable
             val scrollable = node.isScrollable
             val editable = node.isEditable
+            val isPassword = node.isPassword
+            val hintText = node.hintText?.toString()?.takeIf { it.isNotEmpty() }
+            val labeledByText = readLabeledByText(node)
             val enabled = node.isEnabled
             val visible = isNodeVisible(node)
 
@@ -217,6 +223,9 @@ class AccessibilityTreeParser
                         focusable = focusable,
                         scrollable = scrollable,
                         editable = editable,
+                        isPassword = isPassword,
+                        hintText = hintText,
+                        labeledByText = labeledByText,
                         enabled = enabled,
                         visible = visible,
                         webRole = webRole,
@@ -280,6 +289,9 @@ class AccessibilityTreeParser
                     focusable = focusable,
                     scrollable = scrollable,
                     editable = editable,
+                    isPassword = isPassword,
+                    hintText = hintText,
+                    labeledByText = labeledByText,
                     enabled = enabled,
                     visible = visible,
                     webRole = webRole,
@@ -306,6 +318,19 @@ class AccessibilityTreeParser
          * Checks whether [node] is visible to the user.
          */
         fun isNodeVisible(node: AccessibilityNodeInfo): Boolean = node.isVisibleToUser
+
+        /**
+         * Resolves the text of the node's label association ([AccessibilityNodeInfo.getLabeledBy]),
+         * preferring the label's text and falling back to its content description. Returns null when
+         * there is no label or it has no text. [getLabeledBy] can throw [IllegalStateException] on
+         * stale nodes, so failures are swallowed to null.
+         */
+        private fun readLabeledByText(node: AccessibilityNodeInfo): String? =
+            runCatching {
+                node.labeledBy?.let { label ->
+                    (label.text?.toString() ?: label.contentDescription?.toString())?.takeIf { it.isNotEmpty() }
+                }
+            }.getOrNull()
 
         /**
          * Generates a stable, deterministic node ID based on the node's properties.

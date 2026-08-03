@@ -131,6 +131,7 @@ private fun ServerLogEntryRow(entry: ServerLogEntry) {
         ServerLogEntry.Type.AUTH,
         ServerLogEntry.Type.CHANNEL,
         ServerLogEntry.Type.SETTINGS,
+        ServerLogEntry.Type.PRIVACY,
         -> {
             Row(
                 modifier =

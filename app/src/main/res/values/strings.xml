@@ -153,6 +153,7 @@
     <string name="server_logs_type_auth">Auth</string>
     <string name="server_logs_type_channel">Channel</string>
     <string name="server_logs_type_settings">Settings</string>
+    <string name="server_logs_type_privacy">Privacy</string>
 
     <!-- Remote Access / Tunnel -->
     <string name="remote_access_title">Remote Access</string>
@@ -280,4 +281,37 @@
     <string name="notification_oauth_approval_title">Connection request pending</string>
     <string name="notification_oauth_approval_body">%1$d request(s) waiting — tap to review</string>
     <string name="event_channel_subtitle">Notifications and WiFi event forwarding</string>
+    <string name="settings_privacy_title">Privacy Mode</string>
+    <string name="settings_privacy_subtitle">Hide personal data from AI providers</string>
+    <string name="privacy_enable_label">Enable Privacy Mode</string>
+    <string name="privacy_consent_title">Download detection model?</string>
+    <string name="privacy_consent_message">Privacy Mode needs a ~154 MB detection model, downloaded once from Hugging Face (the open-source ai4privacy model) and verified by checksum. Continue?</string>
+    <string name="privacy_consent_confirm">Download and enable</string>
+    <string name="privacy_consent_cancel">Cancel</string>
+    <string name="privacy_download_progress">Downloading model… %1$d%%</string>
+    <string name="privacy_download_verifying">Verifying download…</string>
+    <string name="privacy_download_failed">Model download failed: %1$s</string>
+    <string name="privacy_status_ready">Active — model loaded</string>
+    <string name="privacy_status_deterministic">Active — pattern detection only (model categories disabled)</string>
+    <string name="privacy_status_unavailable">UNAVAILABLE: %1$s</string>
+    <string name="privacy_status_disabled">Disabled</string>
+    <string name="privacy_benchmark_estimate">MCP tools will take approximately +%1$s s on average (estimated for 100 on-screen elements)</string>
+    <string name="privacy_categories_header">Protected categories</string>
+    <string name="privacy_category_credentials">Passwords &amp; credentials</string>
+    <string name="privacy_category_cards_iban">Payment cards &amp; IBANs</string>
+    <string name="privacy_category_emails">Email addresses</string>
+    <string name="privacy_category_phones">Phone numbers</string>
+    <string name="privacy_category_names">Names</string>
+    <string name="privacy_category_addresses">Addresses</string>
+    <string name="privacy_category_national_ids">National IDs &amp; documents</string>
+    <string name="privacy_mode_header">Redaction style</string>
+    <string name="privacy_mode_pseudonymize">Pseudonymize (stable placeholders, tools keep working)</string>
+    <string name="privacy_mode_redact">Fully redact</string>
+    <string name="privacy_format_header">Placeholder format</string>
+    <string name="privacy_format_hashed">Hashed (EMAIL#a1b2c)</string>
+    <string name="privacy_format_numbered">Numbered ([EMAIL_1])</string>
+    <string name="privacy_disclaimer">Detection is best-effort mitigation, not a guarantee. No detector catches all personal data; screenshots are masked only where flagged screen elements have bounds.</string>
+    <string name="privacy_card_title">Worried about personal data?</string>
+    <string name="privacy_card_message">Screen content is sent to the AI provider. Enable Privacy Mode to detect and hide passwords, cards, emails, phone numbers, names and more.</string>
+    <string name="privacy_card_action">Set up Privacy Mode</string>
 </resources>

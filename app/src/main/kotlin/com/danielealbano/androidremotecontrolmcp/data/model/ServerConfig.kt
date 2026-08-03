@@ -57,6 +57,7 @@ data class ServerConfig(
     val bearerTokenEnabled: Boolean = true,
     val publicUrlOverride: String = "",
     val toolPermissionsConfig: ToolPermissionsConfig = ToolPermissionsConfig(),
+    val privacyModeConfig: PrivacyModeConfig = PrivacyModeConfig(),
 ) {
     companion object {
         /** Default server port. */

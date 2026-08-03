@@ -424,12 +424,18 @@ dependencies {
     // Accompanist
     implementation(libs.accompanist.permissions)
 
+    // Privacy Mode (on-device PII detection)
+    implementation(libs.onnxruntime.android)
+    implementation(libs.libphonenumber)
+
     // Unit Testing
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.onnxruntime.jvm)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)

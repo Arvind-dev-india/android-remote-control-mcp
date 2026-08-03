@@ -16,6 +16,7 @@ fun ServerTabScreen(
     onNavigateToPermissions: () -> Unit,
     onNavigateToNetworkSettings: () -> Unit,
     onNavigateToTunnelSettings: () -> Unit,
+    onOpenPrivacySettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
 ) {
@@ -31,6 +32,7 @@ fun ServerTabScreen(
                 onShowAllLogs = { navController.navigate(ServerRoute.Logs.route) },
                 onNavigateToNetworkSettings = onNavigateToNetworkSettings,
                 onNavigateToTunnelSettings = onNavigateToTunnelSettings,
+                onOpenPrivacySettings = onOpenPrivacySettings,
                 viewModel = viewModel,
             )
         }

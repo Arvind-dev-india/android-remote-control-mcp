@@ -2,6 +2,9 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationData
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
@@ -46,6 +49,7 @@ class NotificationListHandler
     @Inject
     constructor(
         private val notificationProvider: NotificationProvider,
+        private val privacyToolGate: PrivacyToolGate,
     ) {
         suspend fun execute(arguments: JsonObject?): CallToolResult {
             if (!notificationProvider.isReady()) {
@@ -63,42 +67,72 @@ class NotificationListHandler
                     .let { if (it <= 0) null else it }
             Logger.d(TAG, "Executing notification_list, package=$packageName, limit=$limit")
             val notifications = notificationProvider.getNotifications(packageName, limit)
-            val json =
-                buildJsonObject {
-                    putJsonArray("notifications") {
-                        for (n in notifications) {
-                            add(
-                                buildJsonObject {
-                                    put("notification_id", n.notificationId)
-                                    put("package_name", n.packageName)
-                                    put("app_name", n.appName)
-                                    put("title", n.title)
-                                    put("text", n.text)
-                                    put("big_text", n.bigText)
-                                    put("sub_text", n.subText)
-                                    put("timestamp", n.timestamp)
-                                    put("is_ongoing", n.isOngoing)
-                                    put("is_clearable", n.isClearable)
-                                    put("category", n.category)
-                                    put("group_key", n.groupKey)
-                                    putJsonArray("actions") {
-                                        for (a in n.actions) {
-                                            add(
-                                                buildJsonObject {
-                                                    put("action_id", a.actionId)
-                                                    put("title", a.title)
-                                                    put("accepts_text", a.acceptsText)
-                                                },
-                                            )
-                                        }
+
+            // Batch-redact every device-derived text field in a single model pass.
+            val redacted = privacyToolGate.texts(collectRedactableFields(notifications))
+            return McpToolUtils.untrustedTextResult(buildNotificationsJson(notifications, redacted).toString())
+        }
+
+        /** Flattens every device-derived text field (in stable order) for a single batched redaction pass. */
+        private fun collectRedactableFields(notifications: List<NotificationData>): List<Pair<String?, String>> {
+            val fields = mutableListOf<Pair<String?, String>>()
+            for (n in notifications) {
+                fields += n.appName to "notification app"
+                fields += n.title to "notification title"
+                fields += n.text to "notification text"
+                fields += n.bigText to "notification text"
+                fields += n.subText to "notification text"
+                for (a in n.actions) fields += a.title to "notification action"
+            }
+            return fields
+        }
+
+        /** Rebuilds the JSON payload, consuming [redacted] in the same order [collectRedactableFields] produced it. */
+        private fun buildNotificationsJson(
+            notifications: List<NotificationData>,
+            redacted: List<String?>,
+        ): JsonObject {
+            var cursor = 0
+            return buildJsonObject {
+                putJsonArray("notifications") {
+                    for (n in notifications) {
+                        val appName = redacted[cursor++]
+                        val title = redacted[cursor++]
+                        val text = redacted[cursor++]
+                        val bigText = redacted[cursor++]
+                        val subText = redacted[cursor++]
+                        add(
+                            buildJsonObject {
+                                put("notification_id", n.notificationId)
+                                put("package_name", n.packageName)
+                                put("app_name", appName)
+                                put("title", title)
+                                put("text", text)
+                                put("big_text", bigText)
+                                put("sub_text", subText)
+                                put("timestamp", n.timestamp)
+                                put("is_ongoing", n.isOngoing)
+                                put("is_clearable", n.isClearable)
+                                put("category", n.category)
+                                put("group_key", n.groupKey)
+                                putJsonArray("actions") {
+                                    for (a in n.actions) {
+                                        val actionTitle = redacted[cursor++]
+                                        add(
+                                            buildJsonObject {
+                                                put("action_id", a.actionId)
+                                                put("title", actionTitle)
+                                                put("accepts_text", a.acceptsText)
+                                            },
+                                        )
                                     }
-                                },
-                            )
-                        }
+                                }
+                            },
+                        )
                     }
-                    put("count", notifications.size)
                 }
-            return McpToolUtils.untrustedTextResult(json.toString())
+                put("count", notifications.size)
+            }
         }
 
         fun register(
@@ -371,6 +405,7 @@ class NotificationReplyHandler
     @Inject
     constructor(
         private val notificationProvider: NotificationProvider,
+        private val substitutor: PlaceholderSubstitutor,
     ) {
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -381,7 +416,7 @@ class NotificationReplyHandler
             }
             val actionId = McpToolUtils.requireString(arguments, "action_id")
             validateActionId(actionId)
-            val text = McpToolUtils.requireString(arguments, "text")
+            val text = substitutor.substitute(McpToolUtils.requireString(arguments, "text"))
             if (text.isEmpty()) {
                 throw McpToolException.InvalidParams("Parameter 'text' must not be empty")
             }
@@ -438,14 +473,17 @@ class NotificationReplyHandler
 // Registration function
 // ─────────────────────────────────────────────────────────────────────────────
 
+@Suppress("LongParameterList")
 fun registerNotificationTools(
     registrar: LoggedToolRegistrar,
     notificationProvider: NotificationProvider,
+    privacyToolGate: PrivacyToolGate,
+    substitutor: PlaceholderSubstitutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(NotificationListHandler.TOOL_NAME)) {
-        NotificationListHandler(notificationProvider).register(registrar, toolNamePrefix)
+        NotificationListHandler(notificationProvider, privacyToolGate).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationOpenHandler.TOOL_NAME)) {
         NotificationOpenHandler(notificationProvider).register(registrar, toolNamePrefix)
@@ -460,6 +498,6 @@ fun registerNotificationTools(
         NotificationActionHandler(notificationProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(NotificationReplyHandler.TOOL_NAME)) {
-        NotificationReplyHandler(notificationProvider).register(registrar, toolNamePrefix)
+        NotificationReplyHandler(notificationProvider, substitutor).register(registrar, toolNamePrefix)
     }
 }

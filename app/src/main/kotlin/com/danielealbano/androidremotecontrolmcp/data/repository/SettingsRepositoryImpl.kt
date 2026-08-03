@@ -11,9 +11,13 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
+import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -59,6 +63,8 @@ private val TOOL_PERMISSIONS_KEY = stringPreferencesKey("tool_permissions")
 private val AUTHORIZED_LOCATIONS_KEY = stringPreferencesKey("authorized_storage_locations")
 private val BUILTIN_LOCATION_PERMISSIONS_KEY = stringPreferencesKey("builtin_location_permissions")
 private val EVENT_CHANNEL_CONFIG_KEY = stringPreferencesKey("event_channel_config")
+private val PRIVACY_MODE_CONFIG_KEY = stringPreferencesKey("privacy_mode_config")
+private val PRIVACY_BENCHMARK_SECONDS_KEY = stringPreferencesKey("privacy_benchmark_estimate_seconds")
 
 /**
  * Regex pattern for valid hostnames.
@@ -123,6 +129,7 @@ private fun mapPreferencesToServerConfig(prefs: Preferences): ServerConfig {
         bearerTokenEnabled = prefs[BEARER_TOKEN_ENABLED_KEY] ?: true,
         publicUrlOverride = prefs[PUBLIC_URL_OVERRIDE_KEY] ?: "",
         toolPermissionsConfig = ToolPermissionsConfig.fromJsonOrDefault(prefs[TOOL_PERMISSIONS_KEY]),
+        privacyModeConfig = PrivacyModeConfig.fromJsonOrDefault(prefs[PRIVACY_MODE_CONFIG_KEY]),
     )
 }
 
@@ -159,6 +166,38 @@ private fun logToolPermissionsDiff(
             logger.submit("param:$tool:$param", "disabled", "enabled") { _, _ ->
                 "Parameter '$param' of tool '$tool' enabled"
             }
+        }
+    }
+}
+
+private fun logPrivacyModeDiff(
+    logger: SettingsChangeLogger,
+    old: PrivacyModeConfig,
+    new: PrivacyModeConfig,
+) {
+    if (old.enabled != new.enabled) {
+        logger.submit("privacy_enabled", old.enabled.toString(), new.enabled.toString()) { _, n ->
+            "Privacy mode ${if (n.toBoolean()) "enabled" else "disabled"}"
+        }
+    }
+    (new.disabledCategories - old.disabledCategories).forEach { category ->
+        logger.submit("privacy_category:${category.name}", "enabled", "disabled") { _, _ ->
+            "Privacy category '${category.name}' disabled"
+        }
+    }
+    (old.disabledCategories - new.disabledCategories).forEach { category ->
+        logger.submit("privacy_category:${category.name}", "disabled", "enabled") { _, _ ->
+            "Privacy category '${category.name}' enabled"
+        }
+    }
+    if (old.redactionMode != new.redactionMode) {
+        logger.submit("privacy_redaction_mode", old.redactionMode.name, new.redactionMode.name) { o, n ->
+            "Privacy redaction mode changed $o → $n"
+        }
+    }
+    if (old.placeholderFormat != new.placeholderFormat) {
+        logger.submit("privacy_placeholder_format", old.placeholderFormat.name, new.placeholderFormat.name) { o, n ->
+            "Privacy placeholder format changed $o → $n"
         }
     }
 }
@@ -507,6 +546,45 @@ class SettingsRepositoryImpl
                 logToolPermissionsDiff(settingsChangeLogger, current, updated)
             }
         }
+
+        private suspend fun editPrivacyConfig(transform: (PrivacyModeConfig) -> PrivacyModeConfig) {
+            dataStore.edit { prefs ->
+                val current = PrivacyModeConfig.fromJsonOrDefault(prefs[PRIVACY_MODE_CONFIG_KEY])
+                val updated = transform(current)
+                prefs[PRIVACY_MODE_CONFIG_KEY] = updated.toJson()
+                logPrivacyModeDiff(settingsChangeLogger, current, updated)
+            }
+        }
+
+        override suspend fun updatePrivacyModeConfig(config: PrivacyModeConfig) = editPrivacyConfig { config }
+
+        override suspend fun updatePrivacyModeEnabled(enabled: Boolean) {
+            editPrivacyConfig { it.copy(enabled = enabled) }
+        }
+
+        override suspend fun updatePrivacyCategoryEnabled(
+            category: PiiCategory,
+            enabled: Boolean,
+        ) = editPrivacyConfig {
+            it.copy(
+                disabledCategories =
+                    if (enabled) it.disabledCategories - category else it.disabledCategories + category,
+            )
+        }
+
+        override suspend fun updatePrivacyRedactionMode(mode: RedactionMode) {
+            editPrivacyConfig { it.copy(redactionMode = mode) }
+        }
+
+        override suspend fun updatePrivacyPlaceholderFormat(format: PlaceholderFormat) =
+            editPrivacyConfig { it.copy(placeholderFormat = format) }
+
+        override suspend fun updatePrivacyBenchmarkEstimateSeconds(seconds: Double) {
+            dataStore.edit { prefs -> prefs[PRIVACY_BENCHMARK_SECONDS_KEY] = seconds.toString() }
+        }
+
+        override val privacyBenchmarkEstimateSeconds: Flow<Double?> =
+            dataStore.data.map { prefs -> prefs[PRIVACY_BENCHMARK_SECONDS_KEY]?.toDoubleOrNull() }
 
         override fun validateDownloadTimeout(seconds: Int): Result<Int> =
             if (seconds in ServerConfig.MIN_DOWNLOAD_TIMEOUT_SECONDS..ServerConfig.MAX_DOWNLOAD_TIMEOUT_SECONDS) {
