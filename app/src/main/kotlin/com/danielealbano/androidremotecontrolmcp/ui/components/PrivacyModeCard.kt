@@ -20,7 +20,6 @@ fun PrivacyModeCard(
     CalloutCard(
         icon = Icons.Default.Lightbulb,
         title = stringResource(R.string.privacy_card_title),
-        body = stringResource(R.string.privacy_card_message),
         modifier = modifier,
     ) {
         TextButton(onClick = onSetupClick) {

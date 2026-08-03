@@ -24,15 +24,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * The uniform callout card used on the server screen: gray icon + title on the first row, body
- * text below, and (optionally) right-aligned action buttons.
+ * The uniform compact callout card used on the server screen: gray icon + title on the first row
+ * and (optionally) right-aligned action buttons.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CalloutCard(
     icon: ImageVector,
     title: String,
-    body: String,
     modifier: Modifier = Modifier,
     actions: (@Composable FlowRowScope.() -> Unit)? = null,
 ) {
@@ -51,14 +50,8 @@ fun CalloutCard(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (actions != null) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),

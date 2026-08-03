@@ -223,7 +223,6 @@ private fun NoAuthWarningCard() {
     CalloutCard(
         icon = Icons.Default.Warning,
         title = stringResource(R.string.access_no_auth_warning_title),
-        body = stringResource(R.string.access_no_auth_warning_body),
     )
 }
 
@@ -235,7 +234,6 @@ private fun NetworkAccessSuggestionCard(
     CalloutCard(
         icon = Icons.Default.Info,
         title = stringResource(R.string.server_network_access_suggestion_title),
-        body = stringResource(R.string.server_network_access_suggestion_body),
     ) {
         TextButton(onClick = onEnableWifi) {
             Text(stringResource(R.string.server_network_access_suggestion_wifi))
@@ -253,8 +251,7 @@ private fun PendingApprovalsCard(
 ) {
     CalloutCard(
         icon = Icons.Default.Notifications,
-        title = stringResource(R.string.server_pending_approvals_title),
-        body = stringResource(R.string.server_pending_approvals_message, count),
+        title = stringResource(R.string.server_pending_approvals_title, count),
     ) {
         TextButton(onClick = onClick) {
             Text(stringResource(R.string.server_pending_approvals_action))
@@ -267,7 +264,6 @@ private fun PermissionWarningCard(onClick: () -> Unit) {
     CalloutCard(
         icon = Icons.Default.Warning,
         title = stringResource(R.string.permission_warning_title),
-        body = stringResource(R.string.permission_warning_message),
     ) {
         TextButton(onClick = onClick) {
             Text(stringResource(R.string.permission_warning_action))

@@ -19,7 +19,6 @@ fun BatteryOptimizationCard(
     CalloutCard(
         icon = Icons.Default.BatteryAlert,
         title = stringResource(R.string.battery_optimization_card_title),
-        body = stringResource(R.string.battery_optimization_card_body),
         modifier = modifier,
     ) {
         TextButton(onClick = onRequestExemption) {
