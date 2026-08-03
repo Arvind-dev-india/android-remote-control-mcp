@@ -14,6 +14,7 @@ import com.danielealbano.androidremotecontrolmcp.R
 @Composable
 fun PrivacyModeCard(
     onSetupClick: () -> Unit,
+    onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     CalloutCard(
@@ -24,6 +25,9 @@ fun PrivacyModeCard(
     ) {
         TextButton(onClick = onSetupClick) {
             Text(text = stringResource(R.string.privacy_card_action))
+        }
+        TextButton(onClick = onDismissClick) {
+            Text(text = stringResource(R.string.privacy_card_dismiss))
         }
     }
 }

@@ -77,6 +77,7 @@ fun ServerScreen(
     val logsViewModel: LogsViewModel = hiltViewModel()
 
     val privacyConfig by privacyViewModel.privacyConfig.collectAsStateWithLifecycle()
+    val privacyCardDismissed by privacyViewModel.privacyCardDismissed.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
     val serverStatus by viewModel.serverStatus.collectAsStateWithLifecycle()
     val recentServerLogs by logsViewModel.recentServerLogs.collectAsStateWithLifecycle()
@@ -144,8 +145,11 @@ fun ServerScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            if (!privacyConfig.enabled) {
-                PrivacyModeCard(onSetupClick = onOpenPrivacySettings)
+            if (!privacyConfig.enabled && !privacyCardDismissed) {
+                PrivacyModeCard(
+                    onSetupClick = onOpenPrivacySettings,
+                    onDismissClick = { privacyViewModel.dismissPrivacyCard() },
+                )
                 Spacer(Modifier.height(16.dp))
             }
 

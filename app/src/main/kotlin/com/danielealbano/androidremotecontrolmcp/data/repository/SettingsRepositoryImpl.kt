@@ -65,6 +65,7 @@ private val BUILTIN_LOCATION_PERMISSIONS_KEY = stringPreferencesKey("builtin_loc
 private val EVENT_CHANNEL_CONFIG_KEY = stringPreferencesKey("event_channel_config")
 private val PRIVACY_MODE_CONFIG_KEY = stringPreferencesKey("privacy_mode_config")
 private val PRIVACY_BENCHMARK_SECONDS_KEY = stringPreferencesKey("privacy_benchmark_estimate_seconds")
+private val PRIVACY_CARD_DISMISSED_KEY = booleanPreferencesKey("privacy_mode_card_home_dismissed")
 
 /**
  * Regex pattern for valid hostnames.
@@ -585,6 +586,13 @@ class SettingsRepositoryImpl
 
         override val privacyBenchmarkEstimateSeconds: Flow<Double?> =
             dataStore.data.map { prefs -> prefs[PRIVACY_BENCHMARK_SECONDS_KEY]?.toDoubleOrNull() }
+
+        override suspend fun updatePrivacyModeCardDismissed(dismissed: Boolean) {
+            dataStore.edit { prefs -> prefs[PRIVACY_CARD_DISMISSED_KEY] = dismissed }
+        }
+
+        override val privacyModeCardDismissed: Flow<Boolean> =
+            dataStore.data.map { prefs -> prefs[PRIVACY_CARD_DISMISSED_KEY] ?: false }
 
         override fun validateDownloadTimeout(seconds: Int): Result<Int> =
             if (seconds in ServerConfig.MIN_DOWNLOAD_TIMEOUT_SECONDS..ServerConfig.MAX_DOWNLOAD_TIMEOUT_SECONDS) {

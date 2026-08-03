@@ -50,6 +50,15 @@ class PrivacyViewModel
             settingsRepository.privacyBenchmarkEstimateSeconds
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), null)
 
+        /** True once the user dismissed the home-screen Privacy Mode callout card (persisted). */
+        val privacyCardDismissed: StateFlow<Boolean> =
+            settingsRepository.privacyModeCardDismissed
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), false)
+
+        fun dismissPrivacyCard() {
+            viewModelScope.launch { settingsRepository.updatePrivacyModeCardDismissed(true) }
+        }
+
         private val mutableConsentRequired = MutableStateFlow(false)
 
         /** True when the master toggle was turned on but the model must be downloaded first (consent). */

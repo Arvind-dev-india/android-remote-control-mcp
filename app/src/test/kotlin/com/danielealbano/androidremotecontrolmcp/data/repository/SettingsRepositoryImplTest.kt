@@ -1624,5 +1624,13 @@ class SettingsRepositoryImplTest {
                 repository.updatePrivacyBenchmarkEstimateSeconds(1.5)
                 assertEquals(1.5, repository.privacyBenchmarkEstimateSeconds.first())
             }
+
+        @Test
+        fun `privacy card dismissal persists and defaults to false`() =
+            testScope.runTest {
+                assertFalse(repository.privacyModeCardDismissed.first())
+                repository.updatePrivacyModeCardDismissed(true)
+                assertTrue(repository.privacyModeCardDismissed.first())
+            }
     }
 }

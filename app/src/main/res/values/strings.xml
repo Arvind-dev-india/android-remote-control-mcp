@@ -323,4 +323,5 @@
     <string name="privacy_card_title">Worried about personal data?</string>
     <string name="privacy_card_message">Screen content is sent to the AI provider. Enable Privacy Mode to detect and hide passwords, cards, emails, phone numbers, names and more.</string>
     <string name="privacy_card_action">Set up Privacy Mode</string>
+    <string name="privacy_card_dismiss">Dismiss</string>
 </resources>

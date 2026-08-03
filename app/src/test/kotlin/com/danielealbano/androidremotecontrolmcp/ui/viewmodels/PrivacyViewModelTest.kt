@@ -39,6 +39,7 @@ class PrivacyViewModelTest {
     private lateinit var statusFlow: MutableStateFlow<PrivacyModeStatus>
     private lateinit var downloadStateFlow: MutableStateFlow<DownloadState>
     private lateinit var benchmarkFlow: MutableStateFlow<Double?>
+    private lateinit var cardDismissedFlow: MutableStateFlow<Boolean>
     private lateinit var viewModel: PrivacyViewModel
 
     @BeforeEach
@@ -49,10 +50,12 @@ class PrivacyViewModelTest {
         statusFlow = MutableStateFlow(PrivacyModeStatus.Disabled)
         downloadStateFlow = MutableStateFlow(DownloadState.Idle)
         benchmarkFlow = MutableStateFlow(null)
+        cardDismissedFlow = MutableStateFlow(false)
 
         settingsRepository = mockk(relaxed = true)
         every { settingsRepository.serverConfig } returns configFlow
         every { settingsRepository.privacyBenchmarkEstimateSeconds } returns benchmarkFlow
+        every { settingsRepository.privacyModeCardDismissed } returns cardDismissedFlow
 
         privacyModeManager = mockk(relaxed = true)
         every { privacyModeManager.status } returns statusFlow
@@ -156,5 +159,24 @@ class PrivacyViewModelTest {
                 assertEquals(1.5, awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `privacyCardDismissed exposes stored value`() =
+        runTest {
+            viewModel.privacyCardDismissed.test {
+                assertEquals(false, awaitItem())
+                cardDismissedFlow.value = true
+                assertEquals(true, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `dismissPrivacyCard persists the dismissal`() =
+        runTest {
+            viewModel.dismissPrivacyCard()
+            advanceUntilIdle()
+            coVerify { settingsRepository.updatePrivacyModeCardDismissed(true) }
         }
 }
