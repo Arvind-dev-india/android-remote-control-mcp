@@ -876,7 +876,7 @@ Non-derivable constraints baked into the code below (do not change them):
 - **Keyword alignment**: the fr NATIONAL_ID label "Numéro de sécurité sociale" deliberately does NOT match `ContextKeywords.NATIONAL_ID` (measures the keyword gap honestly); every other NATIONAL_ID label and all PASSWORD labels DO match their keyword sets; API_KEY's "Access token" matches the "token" credential keyword. hi/te use English UI labels (realistic for Indian-market apps).
 - **Negatives**: every maximal digit run stays < 12 chars (below `CardDetector.MIN_CARD_DIGITS`); the UUID forces the first char of every group to `a`–`f` because an all-digit group would let the dash-tolerant `DIGIT_RUN` see a ≥12-digit Luhn candidate.
 
-- [ ] A3.1.1 — Create `.../benchmark/corpus/FieldKind.kt`:
+- [x] A3.1.1 — Create `.../benchmark/corpus/FieldKind.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -908,7 +908,7 @@ enum class FieldKind(
 }
 ```
 
-- [ ] A3.1.2 — Create `.../benchmark/corpus/RandomText.kt`:
+- [x] A3.1.2 — Create `.../benchmark/corpus/RandomText.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -957,7 +957,7 @@ object RandomText {
 }
 ```
 
-- [ ] A3.1.3 — Create `.../benchmark/corpus/IdValueGenerators.kt`:
+- [x] A3.1.3 — Create `.../benchmark/corpus/IdValueGenerators.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -1121,7 +1121,7 @@ object IdValueGenerators {
 }
 ```
 
-- [ ] A3.1.4 — Create `.../benchmark/corpus/UiValueFactory.kt`:
+- [x] A3.1.4 — Create `.../benchmark/corpus/UiValueFactory.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -1404,7 +1404,7 @@ class UiValueFactory {
 }
 ```
 
-- [ ] A3.1.5 — Create `.../benchmark/corpus/UiCorpusGenerator.kt`:
+- [x] A3.1.5 — Create `.../benchmark/corpus/UiCorpusGenerator.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -1633,7 +1633,7 @@ class UiCorpusGenerator(
 }
 ```
 
-- [ ] T3.1 tests — **File**: `.../benchmark/corpus/UiCorpusGeneratorTest.kt`
+- [x] T3.1 tests — **File**: `.../benchmark/corpus/UiCorpusGeneratorTest.kt`
 
   | Test | Verifies |
   |------|----------|
