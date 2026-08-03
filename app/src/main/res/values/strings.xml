@@ -123,8 +123,12 @@
     <string name="permission_microphone_rationale">Adds audio to recorded video.</string>
 
     <!-- Permission Warning (main screen: accessibility is the one required permission) -->
-    <string name="permission_warning_message">Accessibility permission is required. Tap to grant.</string>
-    <string name="server_pending_approvals_message">%1$d pending connection approval(s). Tap to review.</string>
+    <string name="permission_warning_title">Accessibility permission required</string>
+    <string name="permission_warning_message">The MCP server needs the accessibility permission to read the screen and perform actions.</string>
+    <string name="permission_warning_action">Go to permissions</string>
+    <string name="server_pending_approvals_title">Pending connection approvals</string>
+    <string name="server_pending_approvals_message">%1$d connection request(s) are waiting for your approval.</string>
+    <string name="server_pending_approvals_action">Review</string>
 
     <!-- Network Access Suggestion (main screen: localhost-only bind with no tunnel) -->
     <string name="server_network_access_suggestion_title">Reachable from this device only</string>
@@ -296,6 +300,7 @@
     <string name="privacy_status_unavailable">UNAVAILABLE: %1$s</string>
     <string name="privacy_status_disabled">Disabled</string>
     <string name="privacy_benchmark_estimate">MCP tools will take approximately +%1$s s on average (estimated for 100 on-screen elements)</string>
+    <string name="privacy_benchmark_running">Measuring on-device performance… you can keep using the app or turn Privacy Mode off; the measurement finishes on its own</string>
     <string name="privacy_categories_header">Protected categories</string>
     <string name="privacy_category_credentials">Passwords &amp; credentials</string>
     <string name="privacy_category_cards_iban">Payment cards &amp; IBANs</string>

@@ -57,6 +57,8 @@ fun PrivacySettingsScreen(
     val downloadState by viewModel.privacyDownloadState.collectAsStateWithLifecycle()
     val benchmarkEstimate by viewModel.privacyBenchmarkEstimate.collectAsStateWithLifecycle()
     val consentRequired by viewModel.consentRequired.collectAsStateWithLifecycle()
+    val enableInProgress by viewModel.privacyEnableInProgress.collectAsStateWithLifecycle()
+    val benchmarkRunning by viewModel.privacyBenchmarkRunning.collectAsStateWithLifecycle()
 
     val downloadInProgress = downloadState is DownloadState.Downloading || downloadState is DownloadState.Verifying
 
@@ -114,7 +116,10 @@ fun PrivacySettingsScreen(
                             viewModel.disablePrivacyMode()
                         }
                     },
-                    enabled = !downloadInProgress,
+                    // Disabled through the WHOLE enable window (request -> download -> warm-up), not
+                    // just while DownloadState reports progress; stays usable during the benchmark,
+                    // which finishes and stores its result even if Privacy Mode is toggled off.
+                    enabled = !downloadInProgress && !enableInProgress,
                 )
             }
 
@@ -160,7 +165,15 @@ fun PrivacySettingsScreen(
                 }
             }
 
-            // 3. Benchmark estimate
+            // 3. Benchmark progress + estimate
+            if (benchmarkRunning) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.privacy_benchmark_running),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             benchmarkEstimate?.let { estimate ->
                 Spacer(Modifier.height(8.dp))
                 Text(

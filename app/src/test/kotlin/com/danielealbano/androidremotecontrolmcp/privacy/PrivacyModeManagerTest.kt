@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -143,5 +144,68 @@ class PrivacyModeManagerTest {
 
             assertEquals(PrivacyModeStatus.Ready, result.getOrNull())
             coVerify { settingsRepository.updatePrivacyBenchmarkEstimateSeconds(any()) }
+        }
+
+    @Test
+    fun `enableWithDownloadInBackground launches the enable flow`() =
+        runTest {
+            withConfig(
+                PrivacyModeConfig(
+                    enabled = true,
+                    disabledCategories = setOf(PiiCategory.NAMES, PiiCategory.ADDRESSES, PiiCategory.NATIONAL_IDS),
+                ),
+            )
+
+            manager.enableWithDownloadInBackground()
+
+            coVerify { settingsRepository.updatePrivacyModeEnabled(true) }
+        }
+
+    @Test
+    fun `benchmark exposes running state while measuring and clears it after`() =
+        runTest {
+            coEvery { runner.infer(any()) } answers {
+                assertTrue(manager.benchmarkRunning.value, "benchmarkRunning must be true while measuring")
+                emptyList()
+            }
+
+            manager.benchmark()
+
+            assertFalse(manager.benchmarkRunning.value)
+        }
+
+    @Test
+    fun `enable window covers download but not the benchmark`() =
+        runTest {
+            withConfig(PrivacyModeConfig(enabled = true))
+            every { store.isReady() } returns false andThen true
+            coEvery { downloader.download() } answers {
+                assertTrue(manager.enableInProgress.value, "enableInProgress must cover the download")
+                Result.success(Unit)
+            }
+            coEvery { runner.warmUp() } returns Result.success(Unit)
+            every { settingsRepository.privacyBenchmarkEstimateSeconds } returns flowOf(null)
+            coEvery { runner.infer(any()) } answers {
+                assertFalse(manager.enableInProgress.value, "the benchmark must run OUTSIDE the enable window")
+                assertTrue(manager.benchmarkRunning.value)
+                emptyList()
+            }
+
+            manager.enableWithDownload()
+
+            assertFalse(manager.enableInProgress.value)
+            assertFalse(manager.benchmarkRunning.value)
+        }
+
+    @Test
+    fun `enableInProgress cleared when download fails`() =
+        runTest {
+            withConfig(PrivacyModeConfig(enabled = true))
+            every { store.isReady() } returns false
+            coEvery { downloader.download() } returns Result.failure(IOException("offline"))
+
+            manager.enableWithDownload()
+
+            assertFalse(manager.enableInProgress.value)
         }
 }

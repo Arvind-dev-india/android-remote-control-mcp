@@ -14,6 +14,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +57,8 @@ class PrivacyViewModelTest {
         privacyModeManager = mockk(relaxed = true)
         every { privacyModeManager.status } returns statusFlow
         every { privacyModeManager.downloadState } returns downloadStateFlow
+        every { privacyModeManager.enableInProgress } returns MutableStateFlow(false)
+        every { privacyModeManager.benchmarkRunning } returns MutableStateFlow(false)
 
         viewModel = PrivacyViewModel(settingsRepository, privacyModeManager)
     }
@@ -82,7 +85,7 @@ class PrivacyViewModelTest {
             coEvery { privacyModeManager.isModelReady() } returns true
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
-            coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 1) { privacyModeManager.enableWithDownloadInBackground() }
             assertEquals(false, viewModel.consentRequired.value)
         }
 
@@ -93,7 +96,7 @@ class PrivacyViewModelTest {
             viewModel.requestEnablePrivacyMode()
             advanceUntilIdle()
             assertEquals(true, viewModel.consentRequired.value)
-            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 0) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test
@@ -107,7 +110,7 @@ class PrivacyViewModelTest {
             advanceUntilIdle()
 
             assertEquals(false, viewModel.consentRequired.value)
-            coVerify(exactly = 1) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 1) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test
@@ -120,7 +123,7 @@ class PrivacyViewModelTest {
             viewModel.cancelConsent()
 
             assertEquals(false, viewModel.consentRequired.value)
-            coVerify(exactly = 0) { privacyModeManager.enableWithDownload() }
+            verify(exactly = 0) { privacyModeManager.enableWithDownloadInBackground() }
         }
 
     @Test

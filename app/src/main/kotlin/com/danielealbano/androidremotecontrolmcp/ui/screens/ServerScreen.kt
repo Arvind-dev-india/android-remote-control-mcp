@@ -48,6 +48,7 @@ import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
 import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
+import com.danielealbano.androidremotecontrolmcp.ui.components.CalloutCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.PrivacyModeCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
@@ -215,24 +216,11 @@ fun ServerScreen(
 
 @Composable
 private fun NoAuthWarningCard() {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.access_no_auth_warning_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
+    CalloutCard(
+        icon = Icons.Default.Warning,
+        title = stringResource(R.string.access_no_auth_warning_title),
+        body = stringResource(R.string.access_no_auth_warning_body),
+    )
 }
 
 @Composable
@@ -240,39 +228,16 @@ private fun NetworkAccessSuggestionCard(
     onEnableWifi: () -> Unit,
     onSetUpTunnel: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.server_network_access_suggestion_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.server_network_access_suggestion_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            ) {
-                TextButton(onClick = onEnableWifi) {
-                    Text(stringResource(R.string.server_network_access_suggestion_wifi))
-                }
-                TextButton(onClick = onSetUpTunnel) {
-                    Text(stringResource(R.string.server_network_access_suggestion_tunnel))
-                }
-            }
+    CalloutCard(
+        icon = Icons.Default.Info,
+        title = stringResource(R.string.server_network_access_suggestion_title),
+        body = stringResource(R.string.server_network_access_suggestion_body),
+    ) {
+        TextButton(onClick = onEnableWifi) {
+            Text(stringResource(R.string.server_network_access_suggestion_wifi))
+        }
+        TextButton(onClick = onSetUpTunnel) {
+            Text(stringResource(R.string.server_network_access_suggestion_tunnel))
         }
     }
 }
@@ -282,48 +247,26 @@ private fun PendingApprovalsCard(
     count: Int,
     onClick: () -> Unit,
 ) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    CalloutCard(
+        icon = Icons.Default.Notifications,
+        title = stringResource(R.string.server_pending_approvals_title),
+        body = stringResource(R.string.server_pending_approvals_message, count),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.server_pending_approvals_message, count),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        TextButton(onClick = onClick) {
+            Text(stringResource(R.string.server_pending_approvals_action))
         }
     }
 }
 
 @Composable
 private fun PermissionWarningCard(onClick: () -> Unit) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    CalloutCard(
+        icon = Icons.Default.Warning,
+        title = stringResource(R.string.permission_warning_title),
+        body = stringResource(R.string.permission_warning_message),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.permission_warning_message),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        TextButton(onClick = onClick) {
+            Text(stringResource(R.string.permission_warning_action))
         }
     }
 }

@@ -40,6 +40,12 @@ class PrivacyViewModel
 
         val privacyDownloadState: StateFlow<DownloadState> = privacyModeManager.downloadState
 
+        /** True from an enable request until download + warm-up complete (disables the master toggle). */
+        val privacyEnableInProgress: StateFlow<Boolean> = privacyModeManager.enableInProgress
+
+        /** True while the on-device performance benchmark is measuring. */
+        val privacyBenchmarkRunning: StateFlow<Boolean> = privacyModeManager.benchmarkRunning
+
         val privacyBenchmarkEstimate: StateFlow<Double?> =
             settingsRepository.privacyBenchmarkEstimateSeconds
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), null)
@@ -52,12 +58,13 @@ class PrivacyViewModel
         /**
          * Master-toggle ON entry point. [PrivacyModeManager.isModelReady] does its filesystem check off
          * the main thread; if ready, enable immediately, otherwise raise [consentRequired] so the screen
-         * can show the download dialog.
+         * can show the download dialog. The enable flow itself runs in the manager's own scope so it
+         * survives leaving this screen.
          */
         fun requestEnablePrivacyMode() {
             viewModelScope.launch {
                 if (privacyModeManager.isModelReady()) {
-                    privacyModeManager.enableWithDownload()
+                    privacyModeManager.enableWithDownloadInBackground()
                 } else {
                     mutableConsentRequired.value = true
                 }
@@ -67,7 +74,7 @@ class PrivacyViewModel
         /** Consent dialog confirmed: clear the prompt and enable (downloading the model as part of it). */
         fun confirmDownloadAndEnable() {
             mutableConsentRequired.value = false
-            viewModelScope.launch { privacyModeManager.enableWithDownload() }
+            privacyModeManager.enableWithDownloadInBackground()
         }
 
         /** Consent dialog dismissed: leave Privacy Mode off. */
