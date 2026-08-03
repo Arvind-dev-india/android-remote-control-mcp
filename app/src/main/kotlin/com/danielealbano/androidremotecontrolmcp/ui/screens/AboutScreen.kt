@@ -51,6 +51,8 @@ private const val ISSUES_URL = "https://github.com/danielealbano/android-remote-
 private const val LINKEDIN_URL = "https://linkedin.com/in/danielesalvatorealbano"
 private const val X_URL = "https://x.com/daniele_dll"
 private const val DBIP_URL = "https://db-ip.com"
+private const val PRIVACY_MODEL_URL =
+    "https://huggingface.co/ai4privacy/llama-ai4privacy-multilingual-categorical-anonymiser-openpii"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,6 +226,16 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                 modifier =
                     Modifier.clickable {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DBIP_URL)))
+                    },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.about_attribution_privacy_model),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier =
+                    Modifier.clickable {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_MODEL_URL)))
                     },
             )
 
