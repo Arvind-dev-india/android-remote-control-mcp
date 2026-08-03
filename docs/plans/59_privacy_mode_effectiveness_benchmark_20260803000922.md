@@ -1768,7 +1768,7 @@ Acceptance criteria:
 
 ### T5.1 — Pipeline factory + layer runner
 
-- [ ] A5.1.1 — Create `.../benchmark/BenchmarkPipeline.kt`:
+- [x] A5.1.1 — Create `.../benchmark/BenchmarkPipeline.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark
@@ -1893,7 +1893,7 @@ class BenchmarkPipeline(
 
 (Add `import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference` to the import list above.)
 
-- [ ] T5.1 tests — **File**: `.../benchmark/BenchmarkPipelineTest.kt` — **Setup**: `BenchmarkPipeline(tempDir, fakeInference)` where `fakeInference` is a hand-written `PiiModelInference` stub returning preset `NerResult`s; the real model/store are never touched
+- [x] T5.1 tests — **File**: `.../benchmark/BenchmarkPipelineTest.kt` — **Setup**: `BenchmarkPipeline(tempDir, fakeInference)` where `fakeInference` is a hand-written `PiiModelInference` stub returning preset `NerResult`s; the real model/store are never touched
 
   | Test | Verifies |
   |------|----------|
@@ -1904,7 +1904,7 @@ class BenchmarkPipeline(
 
 ### T5.2 — Scorer
 
-- [ ] A5.2.1 — Create `.../benchmark/scoring/Scorer.kt` implementing EXACTLY the plan's scoring rules:
+- [x] A5.2.1 — Create `.../benchmark/scoring/Scorer.kt` implementing EXACTLY the plan's scoring rules:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.scoring
@@ -2205,7 +2205,7 @@ class Scorer {
 }
 ```
 
-- [ ] T5.2 tests — **File**: `.../benchmark/scoring/ScorerTest.kt` — **Setup**: hand-built samples/predictions with known counts
+- [x] T5.2 tests — **File**: `.../benchmark/scoring/ScorerTest.kt` — **Setup**: hand-built samples/predictions with known counts
 
   | Test | Verifies |
   |------|----------|
@@ -2222,7 +2222,7 @@ class Scorer {
 
 ### T5.3 — Report writer + main
 
-- [ ] A5.3.1 — Create `.../benchmark/scoring/ReportWriter.kt`:
+- [x] A5.3.1 — Create `.../benchmark/scoring/ReportWriter.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.scoring
@@ -2330,7 +2330,7 @@ class ReportWriter {
 }
 ```
 
-- [ ] A5.3.2 — Create `.../benchmark/BenchmarkMain.kt`:
+- [x] A5.3.2 — Create `.../benchmark/BenchmarkMain.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark
@@ -2492,7 +2492,7 @@ private const val MODEL_DIR = "privacy_model"
 private const val DATASET_DIR = "dataset"
 ```
 
-- [ ] T5.3 tests — **File**: `.../benchmark/scoring/ReportWriterTest.kt`
+- [x] T5.3 tests — **File**: `.../benchmark/scoring/ReportWriterTest.kt`
 
   | Test | Verifies |
   |------|----------|
