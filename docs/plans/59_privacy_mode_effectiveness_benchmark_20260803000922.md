@@ -56,15 +56,15 @@ Acceptance criteria:
 
 ### T1.1 — Module skeleton
 
-- [ ] A1.1.1 — Modify `gradle/libs.versions.toml`: add to `[libraries]`:
+- [x] A1.1.1 — Modify `gradle/libs.versions.toml`: add to `[libraries]`:
 
 ```toml
 javax-inject = { group = "javax.inject", name = "javax.inject", version = "1" }
 ```
 
-- [ ] A1.1.2 — Modify `settings.gradle.kts`: add `include(":privacy")` after `include(":app")`.
+- [x] A1.1.2 — Modify `settings.gradle.kts`: add `include(":privacy")` after `include(":app")`.
 
-- [ ] A1.1.3 — Create `privacy/build.gradle.kts`:
+- [x] A1.1.3 — Create `privacy/build.gradle.kts`:
 
 ```kotlin
 plugins {
@@ -161,14 +161,14 @@ DoD: `./gradlew :privacy:build` succeeds (module empty at this point).
 
 ### T1.2 — Move accessibility data classes
 
-- [ ] A1.2.1 — Create `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/accessibility/AccessibilityData.kt`: move the four `@Serializable` data classes `BoundsData`, `AccessibilityNodeData`, `WindowData`, `MultiWindowResult` VERBATIM (including KDoc) out of `app/src/main/kotlin/.../services/accessibility/AccessibilityTreeParser.kt`. Package stays `com.danielealbano.androidremotecontrolmcp.services.accessibility`; only import needed is `kotlinx.serialization.Serializable`.
-- [ ] A1.2.2 — Modify `AccessibilityTreeParser.kt`: delete the four moved class definitions (and the now-unused `Serializable` import if no other use remains). Everything else unchanged.
+- [x] A1.2.1 — Create `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/accessibility/AccessibilityData.kt`: move the four `@Serializable` data classes `BoundsData`, `AccessibilityNodeData`, `WindowData`, `MultiWindowResult` VERBATIM (including KDoc) out of `app/src/main/kotlin/.../services/accessibility/AccessibilityTreeParser.kt`. Package stays `com.danielealbano.androidremotecontrolmcp.services.accessibility`; only import needed is `kotlinx.serialization.Serializable`.
+- [x] A1.2.2 — Modify `AccessibilityTreeParser.kt`: delete the four moved class definitions (and the now-unused `Serializable` import if no other use remains). Everything else unchanged.
 
 DoD: no duplicate class definitions; `:app` still compiles once A1.5.1 adds the module dependency (compile check deferred to end of US1 per plan workflow).
 
 ### T1.3 — Move the detection core
 
-- [ ] A1.3.1 — Move VERBATIM (git mv; identical content, identical package) from `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/` to `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/`:
+- [x] A1.3.1 — Move VERBATIM (git mv; identical content, identical package) from `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/` to `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/`:
 
 | File |
 |---|
@@ -201,9 +201,9 @@ DoD: no duplicate class definitions; `:app` still compiles once A1.5.1 adds the 
 | `privacy/model/PrivacyModelAssets.kt` |
 | `data/model/PrivacyModeConfig.kt` (includes `RedactionMode`, `PlaceholderFormat`) |
 
-- [ ] A1.3.2 — Create `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/di/DispatcherQualifiers.kt`: move the `IoDispatcher` and `DefaultDispatcher` qualifier annotations VERBATIM (including `@Qualifier`, `@Retention`, KDoc) out of `app/src/main/kotlin/.../di/AppModule.kt`. Delete them from `AppModule.kt` (same package `…di` → no other change). The `OAuthClientsDataStore` qualifier and all providers stay in `AppModule.kt`.
+- [x] A1.3.2 — Create `privacy/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/di/DispatcherQualifiers.kt`: move the `IoDispatcher` and `DefaultDispatcher` qualifier annotations VERBATIM (including `@Qualifier`, `@Retention`, KDoc) out of `app/src/main/kotlin/.../di/AppModule.kt`. Delete them from `AppModule.kt` (same package `…di` → no other change). The `OAuthClientsDataStore` qualifier and all providers stay in `AppModule.kt`.
 
-- [ ] A1.3.3 — Move + refactor `privacy/model/PrivacyModelStore.kt` to `privacy/src/main/kotlin/.../privacy/model/PrivacyModelStore.kt`: replace the Android `Context` with a plain base directory. Class loses `@Singleton`/`@Inject` (scoping moves to the `:app` provider in A1.3.4). Only the header changes; every method body stays verbatim:
+- [x] A1.3.3 — Move + refactor `privacy/model/PrivacyModelStore.kt` to `privacy/src/main/kotlin/.../privacy/model/PrivacyModelStore.kt`: replace the Android `Context` with a plain base directory. Class loses `@Singleton`/`@Inject` (scoping moves to the `:app` provider in A1.3.4). Only the header changes; every method body stays verbatim:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.privacy.model
@@ -227,7 +227,7 @@ class PrivacyModelStore(
 }
 ```
 
-- [ ] A1.3.4 — Modify `app/src/main/kotlin/.../di/AppModule.kt`: add (next to the other providers):
+- [x] A1.3.4 — Modify `app/src/main/kotlin/.../di/AppModule.kt`: add (next to the other providers):
 
 ```kotlin
 @Provides
@@ -243,9 +243,9 @@ DoD: all listed files exist only under `privacy/`; `AppModule` provides the stor
 
 ### T1.4 — Extract `RedactionEngine`; slim `PrivacyPipelineImpl`
 
-- [ ] A1.4.1 — Create `privacy/src/main/kotlin/.../privacy/RedactionTypes.kt`: move `TextItem` and `ProcessedTree` VERBATIM from `app/src/main/kotlin/.../privacy/PrivacyPipeline.kt` (package `…privacy`; imports `BoundsData`, `MultiWindowResult`).
+- [x] A1.4.1 — Create `privacy/src/main/kotlin/.../privacy/RedactionTypes.kt`: move `TextItem` and `ProcessedTree` VERBATIM from `app/src/main/kotlin/.../privacy/PrivacyPipeline.kt` (package `…privacy`; imports `BoundsData`, `MultiWindowResult`).
 
-- [ ] A1.4.2 — Create `privacy/src/main/kotlin/.../privacy/RedactionEngine.kt`. The bodies of `detect`/`runModel`/`redactTree`/`collectFields`/`rebuild`/`FieldRef` are MOVED from the current `PrivacyPipelineImpl` — the ONLY behavioral difference is that `runModel` no longer catches `PrivacyModelException` (it propagates; `PrivacyPipelineImpl` maps it):
+- [x] A1.4.2 — Create `privacy/src/main/kotlin/.../privacy/RedactionEngine.kt`. The bodies of `detect`/`runModel`/`redactTree`/`collectFields`/`rebuild`/`FieldRef` are MOVED from the current `PrivacyPipelineImpl` — the ONLY behavioral difference is that `runModel` no longer catches `PrivacyModelException` (it propagates; `PrivacyPipelineImpl` maps it):
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.privacy
@@ -343,7 +343,7 @@ class RedactionEngine
     }
 ```
 
-- [ ] A1.4.3 — Replace `app/src/main/kotlin/.../privacy/PrivacyPipelineImpl.kt` in full:
+- [x] A1.4.3 — Replace `app/src/main/kotlin/.../privacy/PrivacyPipelineImpl.kt` in full:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.privacy
@@ -404,7 +404,7 @@ class PrivacyPipelineImpl
     }
 ```
 
-- [ ] A1.4.4 — Modify `app/src/main/kotlin/.../privacy/PrivacyPipeline.kt`: delete the moved `TextItem`/`ProcessedTree` definitions (interface + KDoc unchanged; drop now-unused imports).
+- [x] A1.4.4 — Modify `app/src/main/kotlin/.../privacy/PrivacyPipeline.kt`: delete the moved `TextItem`/`ProcessedTree` definitions (interface + KDoc unchanged; drop now-unused imports).
 
 Intended, output-neutral behavioral notes of this split (review finding P59-006): the old `processTree` called `manager.currentConfig()` twice (top-level + inside `processTexts`) and the readiness gate fired after `collectFields`; the new `gatedConfigOrNull()` reads the config ONCE and gates BEFORE any tree work. Outputs and thrown errors are identical for every input; only mock-observable interaction counts and throw ordering change. The slimmed `PrivacyPipelineImplTest` MUST assert the single-call behavior.
 
@@ -412,9 +412,9 @@ DoD: `PrivacyPipelineImpl` contains no detection mechanics; `RedactionEngine` co
 
 ### T1.5 — `:app` build file + move tests
 
-- [ ] A1.5.1 — Modify `app/build.gradle.kts` dependencies: add `implementation(project(":privacy"))`; remove `implementation(libs.libphonenumber)` (privacy-only, now inside `:privacy`); remove `testImplementation(libs.onnxruntime.jvm)` (its consumers move to `:privacy`). KEEP `implementation(libs.onnxruntime.android)` — it supplies `ai.onnxruntime.*` at app runtime for the `compileOnly` classes in `:privacy`, and its AAR classes are also on the `:app` unit-test classpath, which is what lets the staying `PrivacyModeManagerTest` keep `mockk<OrtPiiModelRunner>(relaxed = true)` compiling and running (verify this at the end-of-plan test gate — review finding P59-011).
+- [x] A1.5.1 — Modify `app/build.gradle.kts` dependencies: add `implementation(project(":privacy"))`; remove `implementation(libs.libphonenumber)` (privacy-only, now inside `:privacy`); remove `testImplementation(libs.onnxruntime.jvm)` (its consumers move to `:privacy`). KEEP `implementation(libs.onnxruntime.android)` — it supplies `ai.onnxruntime.*` at app runtime for the `compileOnly` classes in `:privacy`, and its AAR classes are also on the `:app` unit-test classpath, which is what lets the staying `PrivacyModeManagerTest` keep `mockk<OrtPiiModelRunner>(relaxed = true)` compiling and running (verify this at the end-of-plan test gate — review finding P59-011).
 
-- [ ] A1.5.2 — Move test files VERBATIM from `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/` to `privacy/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/`:
+- [x] A1.5.2 — Move test files VERBATIM from `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/` to `privacy/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/`:
 
 | File |
 |---|
@@ -438,11 +438,11 @@ DoD: `PrivacyPipelineImpl` contains no detection mechanics; `RedactionEngine` co
 | `privacy/tokenizer/TokenizerDataTest.kt` |
 | `privacy/tokenizer/TokenizerPerformanceTest.kt` |
 
-- [ ] A1.5.3 — Move test resources: `app/src/test/resources/privacy/**` (tokenizer.json + `tokenizer_fixtures/`) → `privacy/src/test/resources/privacy/**`.
+- [x] A1.5.3 — Move test resources: `app/src/test/resources/privacy/**` (tokenizer.json + `tokenizer_fixtures/`) → `privacy/src/test/resources/privacy/**`.
 
-- [ ] A1.5.4 — Move + adapt `privacy/model/PrivacyModelStoreTest.kt` → `privacy/src/test/.../privacy/model/PrivacyModelStoreTest.kt`: replace the mocked `Context.filesDir` setup with a JUnit `@TempDir` `File` passed straight to `PrivacyModelStore(baseDir)`. Assertions unchanged.
+- [x] A1.5.4 — Move + adapt `privacy/model/PrivacyModelStoreTest.kt` → `privacy/src/test/.../privacy/model/PrivacyModelStoreTest.kt`: replace the mocked `Context.filesDir` setup with a JUnit `@TempDir` `File` passed straight to `PrivacyModelStore(baseDir)`. Assertions unchanged.
 
-- [ ] A1.5.5 — Split `app/src/test/.../privacy/PrivacyPipelineImplTest.kt`:
+- [x] A1.5.5 — Split `app/src/test/.../privacy/PrivacyPipelineImplTest.kt`:
   - Mechanics tests move to a new `privacy/src/test/.../privacy/RedactionEngineTest.kt`, driving `RedactionEngine` with an explicit `PrivacyModeConfig` (no manager mock).
   - Gating tests stay in a slimmed `PrivacyPipelineImplTest.kt` (`:app`), mocking `PrivacyModeManager` + `RedactionEngine`.
 
@@ -468,15 +468,15 @@ DoD: `PrivacyPipelineImpl` contains no detection mechanics; `RedactionEngine` co
   | `PrivacyModelException maps to PrivacyModeUnavailable` | fail-closed mapping |
   | `processTree passthrough when disabled` | identity `ProcessedTree` |
 
-- [ ] A1.5.6 — Modify `app/src/test/.../privacy/model/PrivacyModelDownloaderTest.kt` (STAYS in `:app`): its setup constructs `PrivacyModelStore(context)` from a mocked `Context` — after A1.3.3 that is a type error. Replace the mocked-`Context` setup with a JUnit `@TempDir` `File` passed straight to `PrivacyModelStore(tempDir)` (drop the `Context`/MockK-context lines). Assertions unchanged.
+- [x] A1.5.6 — Modify `app/src/test/.../privacy/model/PrivacyModelDownloaderTest.kt` (STAYS in `:app`): its setup constructs `PrivacyModelStore(context)` from a mocked `Context` — after A1.3.3 that is a type error. Replace the mocked-`Context` setup with a JUnit `@TempDir` `File` passed straight to `PrivacyModelStore(tempDir)` (drop the `Context`/MockK-context lines). Assertions unchanged.
 
-- [ ] A1.5.7 — Tests that STAY in `:app` unchanged: `PrivacyModeManagerTest.kt`, `PrivacyToolTestDoubles.kt`, all integration tests (they compile against `:privacy` via the project dependency).
+- [x] A1.5.7 — Tests that STAY in `:app` unchanged: `PrivacyModeManagerTest.kt`, `PrivacyToolTestDoubles.kt`, all integration tests (they compile against `:privacy` via the project dependency).
 
 DoD: no test file exists in both modules; `privacy/src/test` has no Android/Hilt imports.
 
 ### T1.6 — Wire CI, Makefile, coverage
 
-- [ ] A1.6.1 — Modify `Makefile` `test-unit` target:
+- [x] A1.6.1 — Modify `Makefile` `test-unit` target:
 
 ```make
 test-unit: ## Run unit tests (includes integration tests since both are JVM-based)
@@ -485,7 +485,7 @@ test-unit: ## Run unit tests (includes integration tests since both are JVM-base
 
 (`:privacy-benchmark:test` is appended in US2 once that module exists.)
 
-- [ ] A1.6.2 — Modify `.github/workflows/ci.yml` unit-test job step (currently `./gradlew :app:test jacocoTestReport jacocoTestCoverageVerification`):
+- [x] A1.6.2 — Modify `.github/workflows/ci.yml` unit-test job step (currently `./gradlew :app:test jacocoTestReport jacocoTestCoverageVerification`):
 
 ```yaml
 run: ./gradlew :app:test :privacy:test jacocoTestReport jacocoTestCoverageVerification
