@@ -206,6 +206,10 @@ fun PrivacySettingsScreen(
                     Switch(
                         checked = config.isCategoryEnabled(category),
                         onCheckedChange = { enabled -> viewModel.updatePrivacyCategoryEnabled(category, enabled) },
+                        // Categories are only editable while Privacy Mode is ON and not mid-enable:
+                        // toggling them while disabled or during the download would silently change
+                        // what gets protected once the mode comes up.
+                        enabled = config.enabled && !downloadInProgress && !enableInProgress,
                     )
                 }
             }
