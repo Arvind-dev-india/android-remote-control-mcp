@@ -43,14 +43,22 @@ class Ai4PrivacyCorpusLoaderTest {
         val file =
             writeJsonl(
                 row(1, "Anna met on 12/03", "${mask("GIVENNAME", 0, 4, "Anna")}, ${mask("DATE", 12, 17, "12/03")}"),
+                row(2, "4111111111111111 charged", mask("CREDITCARDNUMBER", 0, 16, "4111111111111111")),
             )
 
         val corpus = loader.load(file)
 
-        assertEquals(1, corpus.samples.size)
+        assertEquals(2, corpus.samples.size)
         val gold = corpus.samples.first().gold
         assertEquals(PiiCategory.NAMES, gold[0].category)
         assertNull(gold[1].category)
+        assertEquals(
+            PiiCategory.CARDS_AND_IBAN,
+            corpus.samples[1]
+                .gold
+                .single()
+                .category,
+        )
         assertEquals(0, corpus.droppedRows)
     }
 

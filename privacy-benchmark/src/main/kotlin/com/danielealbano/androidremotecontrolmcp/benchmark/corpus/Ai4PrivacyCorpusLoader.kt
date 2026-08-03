@@ -83,6 +83,9 @@ class Ai4PrivacyCorpusLoader {
                 "GIVENNAME" to PiiCategory.NAMES,
                 "SURNAME" to PiiCategory.NAMES,
                 "EMAIL" to PiiCategory.EMAILS,
+                // Present in the pinned validation split (2,609 spans) although absent from the
+                // dataset card's label list; mapping user-approved 2026-08-03.
+                "CREDITCARDNUMBER" to PiiCategory.CARDS_AND_IBAN,
                 "TELEPHONENUM" to PiiCategory.PHONE_NUMBERS,
                 "STREET" to PiiCategory.ADDRESSES,
                 "CITY" to PiiCategory.ADDRESSES,

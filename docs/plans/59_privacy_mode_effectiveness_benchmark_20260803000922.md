@@ -2652,3 +2652,11 @@ USER DECISION applied: measured numbers MUST NOT be published anywhere without t
 ## Review Findings — round 10 (2026-08-03): **PASS** (0 CRITICAL, 0 WARNING, 0 INFO) — FINAL
 
 P59-029 verified genuinely fixed (line 7 aligns exactly with the US6 gating; grammar and references correct); the round-9 record verified accurate; nothing else disturbed (sacred header intact, append-only review history). All 29 findings (P59-001…P59-029) across two reviewer instances and ten rounds are resolved. The plan is settled and ready for implementation.
+
+## Implementation note — user-approved mapping amendment (2026-08-03)
+
+The pinned validation split contains 2,609 `CREDITCARDNUMBER` spans although the dataset card's
+label list omits that label (the loader's unknown-label counter surfaced them during the first
+full run). USER DECISION: map `CREDITCARDNUMBER` → `CARDS_AND_IBAN` in `Ai4PrivacyCorpusLoader`
+(giving in-domain card measurements) and re-run the benchmark. The plan's pinned mapping table
+above reflects the pre-run knowledge and is superseded on this one label by this note.
