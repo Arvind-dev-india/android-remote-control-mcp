@@ -89,7 +89,10 @@ class PrivacyModeManager
             withContext(ioDispatcher) {
                 // enableInProgress covers download + warm-up only; the first-time benchmark below
                 // runs OUTSIDE the window so the user can still toggle Privacy Mode off while it
-                // measures (it finishes and persists its estimate regardless).
+                // measures (it finishes and persists its estimate regardless). The benchmark
+                // decision is read INSIDE the window so the UI hands off from the enable indicator
+                // to the benchmark indicator without a gap.
+                var runFirstTimeBenchmark = false
                 val status =
                     try {
                         mutableEnableInProgress.value = true
@@ -106,14 +109,15 @@ class PrivacyModeManager
                                 return@withContext Result.success(failed)
                             }
                         }
-                        selfCheck()
+                        val checked = selfCheck()
+                        runFirstTimeBenchmark =
+                            checked is PrivacyModeStatus.Ready &&
+                            settingsRepository.privacyBenchmarkEstimateSeconds.first() == null
+                        checked
                     } finally {
                         mutableEnableInProgress.value = false
                     }
-                if (status is PrivacyModeStatus.Ready) {
-                    val neverBenchmarked = settingsRepository.privacyBenchmarkEstimateSeconds.first() == null
-                    if (neverBenchmarked) benchmark()
-                }
+                if (runFirstTimeBenchmark) benchmark()
                 Result.success(status)
             }
 

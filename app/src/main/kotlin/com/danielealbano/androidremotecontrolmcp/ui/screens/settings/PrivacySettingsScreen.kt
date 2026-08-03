@@ -125,66 +125,14 @@ fun PrivacySettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // 2. Status + download progress
-            Text(
-                text = statusText(status),
-                style = MaterialTheme.typography.bodyMedium,
+            // 2. Status + download / warm-up / benchmark progress
+            PrivacyProgressSection(
+                status = status,
+                downloadState = downloadState,
+                enableInProgress = enableInProgress,
+                benchmarkRunning = benchmarkRunning,
+                benchmarkEstimate = benchmarkEstimate,
             )
-            when (val state = downloadState) {
-                is DownloadState.Downloading -> {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { state.progressPercent / PERCENT_DIVISOR },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        text = stringResource(R.string.privacy_download_progress, state.progressPercent),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                is DownloadState.Verifying -> {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text(
-                        text = stringResource(R.string.privacy_download_verifying),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                is DownloadState.Failed -> {
-                    Text(
-                        text = stringResource(R.string.privacy_download_failed, state.reason),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-
-                else -> {
-                    Unit
-                }
-            }
-
-            // 3. Benchmark progress + estimate
-            if (benchmarkRunning) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Text(
-                    text = stringResource(R.string.privacy_benchmark_running),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            benchmarkEstimate?.let { estimate ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text =
-                        stringResource(
-                            R.string.privacy_benchmark_estimate,
-                            formatEstimate(estimate),
-                        ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -264,6 +212,84 @@ fun PrivacySettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+    }
+}
+
+@Composable
+private fun PrivacyProgressSection(
+    status: PrivacyModeStatus,
+    downloadState: DownloadState,
+    enableInProgress: Boolean,
+    benchmarkRunning: Boolean,
+    benchmarkEstimate: Double?,
+) {
+    Text(
+        text = statusText(status),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    when (downloadState) {
+        is DownloadState.Downloading -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { downloadState.progressPercent / PERCENT_DIVISOR },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.privacy_download_progress, downloadState.progressPercent),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is DownloadState.Verifying -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                text = stringResource(R.string.privacy_download_verifying),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is DownloadState.Failed -> {
+            Text(
+                text = stringResource(R.string.privacy_download_failed, downloadState.reason),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        else -> {
+            // Instant feedback for the enable phases DownloadState cannot see: the 1-2 s of
+            // connection setup before Downloading fires (Idle) and the model warm-up after the
+            // download (Completed).
+            if (enableInProgress) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.privacy_enable_preparing),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+
+    if (benchmarkRunning) {
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        Text(
+            text = stringResource(R.string.privacy_benchmark_running),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    benchmarkEstimate?.let { estimate ->
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text =
+                stringResource(
+                    R.string.privacy_benchmark_estimate,
+                    formatEstimate(estimate),
+                ),
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
