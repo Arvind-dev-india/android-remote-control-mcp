@@ -49,10 +49,10 @@ Measure the detection effectiveness of the whole Privacy Mode pipeline (determin
 Why: the benchmark needs in-process access to the production pipeline and a sibling module cannot depend on `com.android.application`. All moved files KEEP their package names → zero import churn in `:app`.
 
 Acceptance criteria:
-- [ ] `:privacy` compiles as a pure Kotlin/JVM module; `:app` depends on it and builds for all flavors.
-- [ ] Moved classes/tests keep their packages; `:app` sources need no import changes (only the listed file edits).
-- [ ] `RedactionEngine` (in `:privacy`) contains the exact production merge/filter/redact + tree-walk logic; `PrivacyPipelineImpl` (in `:app`) is only gating + fail-closed mapping + delegation.
-- [ ] ktlint, detekt, and jacoco (0.50 verification) apply to `:privacy`; CI and Makefile run its tests.
+- [x] `:privacy` compiles as a pure Kotlin/JVM module; `:app` depends on it and builds for all flavors.
+- [x] Moved classes/tests keep their packages; `:app` sources need no import changes (only the listed file edits).
+- [x] `RedactionEngine` (in `:privacy`) contains the exact production merge/filter/redact + tree-walk logic; `PrivacyPipelineImpl` (in `:app`) is only gating + fail-closed mapping + delegation.
+- [x] ktlint, detekt, and jacoco (0.50 verification) apply to `:privacy`; CI and Makefile run its tests.
 
 ### T1.1 — Module skeleton
 
@@ -502,9 +502,9 @@ DoD: US1 complete; per plan workflow, NO lint/test run yet (quality gates only a
 Why: on-demand, pinned, checksum-verified acquisition of dataset + model (nothing checked into the repo), and the shared sample/gold representation every corpus and the scorer use.
 
 Acceptance criteria:
-- [ ] `make privacy-benchmark`-runnable JVM application module (run target wired in US6).
-- [ ] First run downloads dataset (135 MB) + model (151 MB) + tokenizer into `privacy-benchmark/.cache/` (gitignored) with sha256 verification; later runs skip.
-- [ ] Corpus A loads the full validation split (or an evenly-spaced `--sample=N` subset), maps labels per the pinned table, drops+counts rows whose gold offsets fail the `value == substring` check.
+- [x] `make privacy-benchmark`-runnable JVM application module (run target wired in US6).
+- [x] First run downloads dataset (135 MB) + model (151 MB) + tokenizer into `privacy-benchmark/.cache/` (gitignored) with sha256 verification; later runs skip.
+- [x] Corpus A loads the full validation split (or an evenly-spaced `--sample=N` subset), maps labels per the pinned table, drops+counts rows whose gold offsets fail the `value == substring` check.
 
 ### T2.1 — Module skeleton
 
@@ -863,9 +863,9 @@ class Ai4PrivacyCorpusLoader {
 Why: the app's real inputs are short accessibility-node strings with UI context, which Corpus A (prose) does not represent; cards/IBANs/credentials are only measurable here and in Corpus C. The generator builds real `AccessibilityNodeData` screens and derives each sample's `DetectionContext` through the REAL `ContextExtractor` (including geometric nearest-label), so context construction is part of what is measured. Deterministic seed → reproducible published numbers.
 
 Acceptance criteria:
-- [ ] `UiCorpusGenerator(seed).generate()` is deterministic (identical output for identical seed).
-- [ ] All 8 languages × 40 screens; every screen mixes positive fields (6), negatives (4), and label nodes; context styles rotate LABELED_BY / GEOMETRIC / RESOURCE_ID / HINT / NONE.
-- [ ] Generated cards pass Luhn; generated IBANs pass mod-97; gold spans exactly cover injected values.
+- [x] `UiCorpusGenerator(seed).generate()` is deterministic (identical output for identical seed).
+- [x] All 8 languages × 40 screens; every screen mixes positive fields (6), negatives (4), and label nodes; context styles rotate LABELED_BY / GEOMETRIC / RESOURCE_ID / HINT / NONE.
+- [x] Generated cards pass Luhn; generated IBANs pass mod-97; gold spans exactly cover injected values.
 
 ### T3.1 — Generator
 
@@ -1659,7 +1659,7 @@ class UiCorpusGenerator(
 Why: quantify known-hard cases (obfuscation, partial values, lookalikes) that neither A (in-domain prose) nor B (well-formed values) stress.
 
 Acceptance criteria:
-- [ ] `corpus_c.jsonl` resource with EXACTLY the group counts below (126 cases), loaded into `BenchmarkSample`s; validation test enforces schema, bounds, unique ids, and per-group counts.
+- [x] `corpus_c.jsonl` resource with EXACTLY the group counts below (126 cases), loaded into `BenchmarkSample`s; validation test enforces schema, bounds, unique ids, and per-group counts.
 
 ### T4.1 — Schema, loader, cases
 
@@ -1762,9 +1762,9 @@ class AdversarialCorpusLoader {
 ## US5 — Layer runners, scorer, report, CLI main
 
 Acceptance criteria:
-- [ ] `deterministic` / `model` / `full` layers all run PRODUCTION classes (no reimplemented pipeline logic).
-- [ ] Scorer implements exactly the plan's scoring rules; report written as `report.json` + `report.md`.
-- [ ] `BenchmarkMain` downloads assets, warms up, runs selected corpora×layers, prints a summary, writes reports, and exits non-zero on failure.
+- [x] `deterministic` / `model` / `full` layers all run PRODUCTION classes (no reimplemented pipeline logic).
+- [x] Scorer implements exactly the plan's scoring rules; report written as `report.json` + `report.md`.
+- [x] `BenchmarkMain` downloads assets, warms up, runs selected corpora×layers, prints a summary, writes reports, and exits non-zero on failure.
 
 ### T5.1 — Pipeline factory + layer runner
 
@@ -2521,10 +2521,10 @@ private const val DATASET_DIR = "dataset"
 USER DECISION (2026-08-03): the measured numbers MUST NOT be published anywhere (README, UI, release notes) without the user first SEEING and APPROVING them. The benchmark run produces the report; publication is a separate, user-gated step.
 
 Acceptance criteria:
-- [ ] `make privacy-benchmark` runs the tool.
-- [ ] Full benchmark run completed (complete Corpus A validation split + B + C); `report.json`/`report.md` produced and the measured tables PRESENTED to the user.
+- [x] `make privacy-benchmark` runs the tool.
+- [x] Full benchmark run completed (complete Corpus A validation split + B + C); `report.json`/`report.md` produced and the measured tables PRESENTED to the user.
 - [ ] README "Privacy Mode effectiveness" section added ONLY IF AND WHEN the user explicitly approves the numbers (template below); otherwise the section is NOT added and A6.2.2 stays unchecked.
-- [ ] All quality gates green; code-reviewer plan-compliance pass.
+- [x] All quality gates green; code-reviewer plan-compliance pass.
 
 ### T6.1 — Makefile
 
@@ -2540,7 +2540,7 @@ privacy-benchmark: ## Run the Privacy Mode effectiveness benchmark (downloads mo
 
 ### T6.2 — Run the benchmark; present the numbers; publish ONLY on user approval
 
-- [ ] A6.2.1 — Run the full benchmark locally: `make privacy-benchmark 2>&1 | tee /tmp/p59-privacy-benchmark.log | tail -20` (full Corpus A; expect a long model pass). Inspect `/tmp/p59-privacy-benchmark.log` and `privacy-benchmark/build/reports/privacy-benchmark/report.md` — do NOT re-run to re-read output. Then PRESENT the measured tables and headline numbers from `report.md` to the user and STOP: the user reviews and decides what (if anything) gets published and where (README and/or UI wording are the user's call after seeing the numbers).
+- [x] A6.2.1 — Run the full benchmark locally: `make privacy-benchmark 2>&1 | tee /tmp/p59-privacy-benchmark.log | tail -20` (full Corpus A; expect a long model pass). Inspect `/tmp/p59-privacy-benchmark.log` and `privacy-benchmark/build/reports/privacy-benchmark/report.md` — do NOT re-run to re-read output. Then PRESENT the measured tables and headline numbers from `report.md` to the user and STOP: the user reviews and decides what (if anything) gets published and where (README and/or UI wording are the user's call after seeing the numbers).
 - [ ] A6.2.2 — **GATED ON EXPLICIT USER APPROVAL — you MUST NOT perform this action, or publish the numbers anywhere else, until the user has reviewed the A6.2.1 report and explicitly approved publication.** If approved, modify `README.md` in TWO places (the README has NO existing Privacy Mode section — verified 2026-08-03, review finding P59-023):
   1. Add `- [Privacy Mode effectiveness](#privacy-mode-effectiveness)` to the `## Contents` list, between the `Features` and `Install` entries (matching the list's existing format).
   2. Insert the `## Privacy Mode effectiveness` section immediately BEFORE the `## Install` heading (i.e., at the end of the `## Features` section, after `### Comparison with Alternatives`), with EXACTLY this structure, pasting the measured tables from `report.md`:
@@ -2575,10 +2575,10 @@ Attribution requirements (CC-BY-4.0): the dataset link + DOI line above MUST rem
 
 ### T6.3 — Quality gates + review
 
-- [ ] A6.3.1 — `make lint 2>&1 | tee /tmp/p59-lint.log | tail -20` — fix everything until clean.
-- [ ] A6.3.2 — `set -a && source .env && set +a && ./gradlew :app:test :privacy:test :privacy-benchmark:test jacocoTestReport jacocoTestCoverageVerification 2>&1 | tee /tmp/p59-test.log | tail -20` — fix everything until green (including any unrelated broken test). This also verifies BOTH coverage gates: `:privacy` ≥ 0.50 (with the OrtPiiModelRunner exclusion) AND `:app` still ≥ 0.50 after the well-covered privacy classes moved out (review finding P59-013). If either gate fails, STOP and ask the user how to proceed.
-- [ ] A6.3.3 — `make build 2>&1 | tee /tmp/p59-build.log | tail -20` — no errors, no warnings.
-- [ ] A6.3.4 — Spawn `code-reviewer` in plan compliance mode over the full implementation; fix ALL findings; re-run until clean.
+- [x] A6.3.1 — `make lint 2>&1 | tee /tmp/p59-lint.log | tail -20` — fix everything until clean.
+- [x] A6.3.2 — `set -a && source .env && set +a && ./gradlew :app:test :privacy:test :privacy-benchmark:test jacocoTestReport jacocoTestCoverageVerification 2>&1 | tee /tmp/p59-test.log | tail -20` — fix everything until green (including any unrelated broken test). This also verifies BOTH coverage gates: `:privacy` ≥ 0.50 (with the OrtPiiModelRunner exclusion) AND `:app` still ≥ 0.50 after the well-covered privacy classes moved out (review finding P59-013). If either gate fails, STOP and ask the user how to proceed.
+- [x] A6.3.3 — `make build 2>&1 | tee /tmp/p59-build.log | tail -20` — no errors, no warnings.
+- [x] A6.3.4 — Spawn `code-reviewer` in plan compliance mode over the full implementation; fix ALL findings; re-run until clean.
 - [ ] A6.3.5 — Push, open PR via `gh pr create` per TOOLS.md, report PR URL. If the user has NOT (yet) approved publication at A6.2.2, the PR contains the benchmark tooling WITHOUT any README numbers section — the README publication happens later as a separate user-approved change, and A6.2.2 stays unchecked until then.
 
 ---
