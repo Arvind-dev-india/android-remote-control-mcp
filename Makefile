@@ -145,7 +145,7 @@ clean: ## Clean build artifacts
 # ─────────────────────────────────────────────────────────────────────────────
 
 test-unit: ## Run unit tests (includes integration tests since both are JVM-based)
-	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test :privacy:test
+	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test :privacy:test :privacy-benchmark:test
 
 test-integration: ## Run integration tests (JVM-based, no emulator required)
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testGmsDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"

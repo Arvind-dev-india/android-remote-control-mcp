@@ -133,7 +133,7 @@ jobs:
       - name: Run unit tests with coverage
         env:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
-        run: ./gradlew :app:test :privacy:test jacocoTestReport jacocoTestCoverageVerification
+        run: ./gradlew :app:test :privacy:test :privacy-benchmark:test jacocoTestReport jacocoTestCoverageVerification
 
       - name: Upload unit test results
         if: always()

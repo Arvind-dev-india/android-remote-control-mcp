@@ -508,9 +508,9 @@ Acceptance criteria:
 
 ### T2.1 — Module skeleton
 
-- [ ] A2.1.1 — Modify `settings.gradle.kts`: add `include(":privacy-benchmark")`.
-- [ ] A2.1.2 — Modify `.gitignore`: add `privacy-benchmark/.cache/`.
-- [ ] A2.1.3 — Create `privacy-benchmark/build.gradle.kts`:
+- [x] A2.1.1 — Modify `settings.gradle.kts`: add `include(":privacy-benchmark")`.
+- [x] A2.1.2 — Modify `.gitignore`: add `privacy-benchmark/.cache/`.
+- [x] A2.1.3 — Create `privacy-benchmark/build.gradle.kts`:
 
 ```kotlin
 plugins {
@@ -576,11 +576,11 @@ tasks.test {
 
 No jacoco coverage gate on this module — user-approved decision (review finding P59-005): benchmark tooling carries mandatory unit tests but no coverage floor, like `:e2e-tests`.
 
-- [ ] A2.1.4 — Modify `Makefile` `test-unit` to append `:privacy-benchmark:test`, and modify the ci.yml unit-test step from A1.6.2 to append `:privacy-benchmark:test`.
+- [x] A2.1.4 — Modify `Makefile` `test-unit` to append `:privacy-benchmark:test`, and modify the ci.yml unit-test step from A1.6.2 to append `:privacy-benchmark:test`.
 
 ### T2.2 — Assets + downloader
 
-- [ ] A2.2.1 — Create `privacy-benchmark/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/benchmark/BenchmarkAssets.kt`:
+- [x] A2.2.1 — Create `privacy-benchmark/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/benchmark/BenchmarkAssets.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark
@@ -608,7 +608,7 @@ object BenchmarkAssets {
 }
 ```
 
-- [ ] A2.2.2 — Create `.../benchmark/BenchmarkDownloader.kt`: `java.net.http` streaming downloader with `.part` + sha256 verify, no extra dependencies:
+- [x] A2.2.2 — Create `.../benchmark/BenchmarkDownloader.kt`: `java.net.http` streaming downloader with `.part` + sha256 verify, no extra dependencies:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark
@@ -696,7 +696,7 @@ Model + tokenizer are ensured into `cacheDir/privacy_model/` (i.e. `PrivacyModel
 
 ### T2.3 — Corpus model + Corpus A loader
 
-- [ ] A2.3.1 — Create `.../benchmark/corpus/BenchmarkSample.kt`:
+- [x] A2.3.1 — Create `.../benchmark/corpus/BenchmarkSample.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -728,7 +728,7 @@ data class LoadedCorpus(
 )
 ```
 
-- [ ] A2.3.2 — Create `.../benchmark/corpus/Ai4PrivacyCorpusLoader.kt`:
+- [x] A2.3.2 — Create `.../benchmark/corpus/Ai4PrivacyCorpusLoader.kt`:
 
 ```kotlin
 package com.danielealbano.androidremotecontrolmcp.benchmark.corpus
@@ -839,7 +839,7 @@ class Ai4PrivacyCorpusLoader {
 }
 ```
 
-- [ ] T2.3 tests — **File**: `privacy-benchmark/src/test/kotlin/.../benchmark/corpus/Ai4PrivacyCorpusLoaderTest.kt` — **Setup**: write small JSONL fixtures to `@TempDir`
+- [x] T2.3 tests — **File**: `privacy-benchmark/src/test/kotlin/.../benchmark/corpus/Ai4PrivacyCorpusLoaderTest.kt` — **Setup**: write small JSONL fixtures to `@TempDir`
 
   | Test | Verifies |
   |------|----------|
