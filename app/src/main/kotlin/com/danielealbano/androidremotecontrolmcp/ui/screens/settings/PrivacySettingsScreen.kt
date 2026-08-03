@@ -227,22 +227,25 @@ private fun DetectionRatesSection() {
         style = MaterialTheme.typography.titleSmall,
     )
     Spacer(Modifier.height(8.dp))
-    PiiCategory.entries.forEach { category ->
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(categoryLabel(category)),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = MEASURED_DETECTION_RATES.getValue(category),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+    PiiCategory.entries
+        .map { category -> category to stringResource(categoryLabel(category)) }
+        .sortedBy { (_, label) -> label }
+        .forEach { (category, label) ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = MEASURED_DETECTION_RATES.getValue(category),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
-    }
     Spacer(Modifier.height(8.dp))
     Text(
         text = stringResource(R.string.privacy_detection_rates_caption),
