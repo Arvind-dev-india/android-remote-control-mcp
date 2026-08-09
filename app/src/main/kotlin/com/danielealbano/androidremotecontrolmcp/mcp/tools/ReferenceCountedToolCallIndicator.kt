@@ -1,22 +1,39 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.tools
 
-import java.util.concurrent.atomic.AtomicInteger
-
-/** Keeps an indicator visible until every overlapping tool invocation has completed. */
+/**
+ * Serializes overlapping tool-call transitions and keeps the delegate on the most recently started
+ * active tool. Delegate failures are swallowed so an optional visual indicator remains best-effort.
+ */
 class ReferenceCountedToolCallIndicator(
     private val delegate: ToolCallIndicator,
 ) : ToolCallIndicator {
-    private val activeCalls = AtomicInteger(0)
+    private val lock = Any()
+    private val activeTools = mutableListOf<String>()
 
     override fun onToolCallStarted(toolName: String) {
-        activeCalls.incrementAndGet()
-        delegate.onToolCallStarted(toolName)
+        synchronized(lock) {
+            activeTools += toolName
+            runCatching { delegate.onToolCallStarted(toolName) }
+        }
     }
 
     override fun onToolCallFinished(toolName: String) {
-        val remaining = activeCalls.updateAndGet { current -> (current - 1).coerceAtLeast(0) }
-        if (remaining == 0) {
-            delegate.onToolCallFinished(toolName)
+        synchronized(lock) {
+            val index = activeTools.indexOfLast { it == toolName }
+            if (index >= 0) {
+                val wasDisplayed = index == activeTools.lastIndex
+                activeTools.removeAt(index)
+                if (wasDisplayed) {
+                    val nextTool = activeTools.lastOrNull()
+                    runCatching {
+                        if (nextTool == null) {
+                            delegate.onToolCallFinished(toolName)
+                        } else {
+                            delegate.onToolCallStarted(nextTool)
+                        }
+                    }
+                }
+            }
         }
     }
 }

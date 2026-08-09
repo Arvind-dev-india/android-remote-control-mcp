@@ -250,8 +250,10 @@ class McpAccessibilityService : AccessibilityService() {
         val textView = (toolCallIndicatorView as? TextView) ?: createToolCallIndicatorView()
         textView.text = "MCP controlling · ${formatToolName(toolName)}"
         if (toolCallIndicatorView == null) {
-            windowManager.addView(textView, createToolCallIndicatorLayoutParams())
-            toolCallIndicatorView = textView
+            runCatching {
+                windowManager.addView(textView, createToolCallIndicatorLayoutParams())
+                toolCallIndicatorView = textView
+            }.onFailure { Log.w(TAG, "Could not show MCP tool-call indicator", it) }
         }
     }
 

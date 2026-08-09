@@ -29,13 +29,13 @@ internal fun loggedToolHandler(
     { request ->
         val startNs = System.nanoTime()
         var completed: CallToolResult? = null
-        toolCallIndicator.onToolCallStarted(toolName)
+        runCatching { toolCallIndicator.onToolCallStarted(toolName) }
         try {
             val result = handler(request)
             completed = result
             result
         } finally {
-            toolCallIndicator.onToolCallFinished(toolName)
+            runCatching { toolCallIndicator.onToolCallFinished(toolName) }
             val durationMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             val result = completed
             when {

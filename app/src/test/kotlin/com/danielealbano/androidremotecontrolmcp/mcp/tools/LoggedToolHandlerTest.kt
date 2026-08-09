@@ -96,6 +96,47 @@ class LoggedToolHandlerTest {
     }
 
     @Test
+    fun `finishing newest overlapping call restores the previous tool name`() {
+        val delegate = RecordingToolCallIndicator()
+        val indicator = ReferenceCountedToolCallIndicator(delegate)
+
+        indicator.onToolCallStarted("tap")
+        indicator.onToolCallStarted("swipe")
+        indicator.onToolCallFinished("swipe")
+
+        assertEquals(listOf("started:tap", "started:swipe", "started:tap"), delegate.events)
+        indicator.onToolCallFinished("tap")
+        assertEquals(
+            listOf("started:tap", "started:swipe", "started:tap", "finished:tap"),
+            delegate.events,
+        )
+    }
+
+    @Test
+    fun `indicator failures never change tool execution or logging`() =
+        runTest {
+            val recorder = RecordingServerLogRepository()
+            var executed = false
+            val throwingIndicator =
+                object : ToolCallIndicator {
+                    override fun onToolCallStarted(toolName: String) = error("start failed")
+
+                    override fun onToolCallFinished(toolName: String) = error("finish failed")
+                }
+            val handler =
+                loggedToolHandler(recorder, "tap", throwingIndicator) {
+                    executed = true
+                    CallToolResult(content = listOf(TextContent(text = "ok")))
+                }
+
+            val result = handler(request)
+
+            assertTrue(executed)
+            assertTrue(result.isError != true)
+            assertEquals("tap", recorder.ofType(ServerLogEntry.Type.TOOL_CALL).single().toolName)
+        }
+
+    @Test
     fun `isError result logs the constant failed marker`() =
         runTest {
             val recorder = RecordingServerLogRepository()
