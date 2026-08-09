@@ -23,6 +23,18 @@ import org.junit.jupiter.api.Test
 class LoggedToolHandlerTest {
     private val request = mockk<CallToolRequest>()
 
+    private class RecordingToolCallIndicator : ToolCallIndicator {
+        val events = mutableListOf<String>()
+
+        override fun onToolCallStarted(toolName: String) {
+            events += "started:$toolName"
+        }
+
+        override fun onToolCallFinished(toolName: String) {
+            events += "finished:$toolName"
+        }
+    }
+
     @Test
     fun `success logs empty message with duration`() =
         runTest {
@@ -39,6 +51,49 @@ class LoggedToolHandlerTest {
             assertEquals("tap", entry.toolName)
             assertTrue((entry.durationMs ?: -1L) >= 0L)
         }
+
+    @Test
+    fun `tool invocation shows and hides the visual indicator`() =
+        runTest {
+            val indicator = RecordingToolCallIndicator()
+            val handler =
+                loggedToolHandler(RecordingServerLogRepository(), "tap", indicator) {
+                    assertEquals(listOf("started:tap"), indicator.events)
+                    CallToolResult(content = listOf(TextContent(text = "ok")))
+                }
+
+            handler(request)
+
+            assertEquals(listOf("started:tap", "finished:tap"), indicator.events)
+        }
+
+    @Test
+    fun `thrown tool invocation still hides the visual indicator`() =
+        runTest {
+            val indicator = RecordingToolCallIndicator()
+            val handler =
+                loggedToolHandler(RecordingServerLogRepository(), "tap", indicator) {
+                    throw McpToolException.InvalidParams("boom")
+                }
+
+            runCatching { handler(request) }
+
+            assertEquals(listOf("started:tap", "finished:tap"), indicator.events)
+        }
+
+    @Test
+    fun `overlapping calls keep the visual indicator visible until the last call finishes`() {
+        val delegate = RecordingToolCallIndicator()
+        val indicator = ReferenceCountedToolCallIndicator(delegate)
+
+        indicator.onToolCallStarted("tap")
+        indicator.onToolCallStarted("swipe")
+        indicator.onToolCallFinished("tap")
+        assertEquals(listOf("started:tap", "started:swipe"), delegate.events)
+
+        indicator.onToolCallFinished("swipe")
+        assertEquals(listOf("started:tap", "started:swipe", "finished:swipe"), delegate.events)
+    }
 
     @Test
     fun `isError result logs the constant failed marker`() =
