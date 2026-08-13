@@ -341,24 +341,6 @@ class PermissionUtilsTest {
         }
 
         @Test
-        fun `returns true when short-form service is among multiple entries`() {
-            every {
-                Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
-            } returns "com.other.package/com.other.Service:" +
-                "com.danielealbano.androidremotecontrolmcp/" +
-                ".services.notifications.McpNotificationListenerService"
-
-            val serviceClass =
-                Class.forName(
-                    "com.danielealbano.androidremotecontrolmcp" +
-                        ".services.notifications.McpNotificationListenerService",
-                )
-            assertTrue(
-                PermissionUtils.isNotificationListenerEnabled(mockContext, serviceClass),
-            )
-        }
-
-        @Test
         fun `returns true when short-form service follows a non-matching and an empty entry`() {
             // The non-matching entry and the empty entry precede the match, so `any`
             // must evaluate both (including componentMatches("")) before matching.
