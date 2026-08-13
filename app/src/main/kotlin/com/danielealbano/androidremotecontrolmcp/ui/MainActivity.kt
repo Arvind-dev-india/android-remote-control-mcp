@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckScheduler
 import com.danielealbano.androidremotecontrolmcp.ui.screens.MainScreen
 import com.danielealbano.androidremotecontrolmcp.ui.theme.AndroidRemoteControlMcpTheme
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
@@ -63,6 +64,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Opportunistic update check each time the app is brought to the foreground (throttled by
+        // WorkManager's unique-work policy). Complements the periodic background check.
+        UpdateCheckScheduler.checkOnOpen(this)
     }
 
     override fun onResume() {

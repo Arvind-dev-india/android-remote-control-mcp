@@ -2,6 +2,8 @@
 
 package com.danielealbano.androidremotecontrolmcp.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -19,12 +21,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.ui.components.UpdateAvailableBanner
 import com.danielealbano.androidremotecontrolmcp.ui.navigation.SettingsRoute
 import com.danielealbano.androidremotecontrolmcp.ui.navigation.TopLevelRoute
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.UpdateViewModel
 
 @Composable
 fun MainScreen(
@@ -33,9 +39,12 @@ fun MainScreen(
     onRequestMicrophonePermission: () -> Unit,
     onRequestLocationPermission: () -> Unit,
     viewModel: MainViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel = hiltViewModel(),
 ) {
     var selectedTabRoute by rememberSaveable { mutableStateOf(TopLevelRoute.Server.route) }
     var pendingSettingsRoute by rememberSaveable { mutableStateOf<String?>(null) }
+    val availableUpdate by updateViewModel.availableUpdate.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     // Back on the Settings/About tab returns to the Server tab instead of leaving the app. The
     // settings NavHost registers its own back callback AFTER this one, so it wins while its back
@@ -45,6 +54,17 @@ fun MainScreen(
     }
 
     Scaffold(
+        topBar = {
+            availableUpdate?.let { update ->
+                UpdateAvailableBanner(
+                    versionName = update.versionName,
+                    onClick = {
+                        // No-op if the device has no browser to handle ACTION_VIEW (never crash).
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl))) }
+                    },
+                )
+            }
+        },
         bottomBar = {
             NavigationBar {
                 listOf(
