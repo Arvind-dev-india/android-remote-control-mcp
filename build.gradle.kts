@@ -72,6 +72,10 @@ allprojects {
                     useVersion("4.5.14")
                     because("CVE-2020-13956; androidLintTool/UTP pull vulnerable httpclient 4.5.6 (tooling only)")
                 }
+                group == "org.apache.httpcomponents.core5" && name in setOf("httpcore5", "httpcore5-h2") -> {
+                    useVersion("5.4.3")
+                    because("CVE-2026-54399; ktor-server-test-host -> ktor-client-apache5 -> httpclient5 pulls vulnerable httpcore5 5.3.6 (test only)")
+                }
                 group == "org.apache.commons" && name == "commons-lang3" -> {
                     useVersion("3.18.0")
                     because("CVE-2025-48924; androidLintTool/UTP pull vulnerable commons-lang3 3.16.0 (tooling only)")
