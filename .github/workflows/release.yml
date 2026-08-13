@@ -34,12 +34,14 @@ jobs:
           fi
 
       # ── 3. Wait for CI to pass on this commit (gates on existing CI results) ──
+      # The CI build-release job is a per-flavor matrix, so the checks are named
+      # "Build Release - GMS" and "Build Release - FOSS"; the regexp waits for both.
       - name: Wait for CI to pass
         uses: lewagon/wait-on-check-action@v1.8.1
         with:
           ref: ${{ github.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          check-name: 'Build Release'
+          check-regexp: '^Build Release - (GMS|FOSS)$'
           wait-interval: 30
           allowed-conclusions: success
           running-workflow-name: 'Create Draft Release'
