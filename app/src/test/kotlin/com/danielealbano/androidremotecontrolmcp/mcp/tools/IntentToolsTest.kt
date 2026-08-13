@@ -291,6 +291,39 @@ class IntentToolsTest {
             }
 
         @Test
+        fun `send_intent with package passes packageName to dispatcher`() =
+            runTest {
+                coEvery {
+                    mockIntentDispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "broadcast",
+                            action = "com.example.ACTION",
+                            packageName = "com.example.app",
+                        ),
+                    )
+                } returns Result.success(Unit)
+
+                val params =
+                    buildJsonObject {
+                        put("type", "broadcast")
+                        put("action", "com.example.ACTION")
+                        put("package", "com.example.app")
+                    }
+                val result = handler.execute(params)
+
+                assertEquals(1, result.content.size)
+                coVerify {
+                    mockIntentDispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "broadcast",
+                            action = "com.example.ACTION",
+                            packageName = "com.example.app",
+                        ),
+                    )
+                }
+            }
+
+        @Test
         fun `send_intent dispatcher failure returns error result`() =
             runTest {
                 coEvery {
@@ -361,6 +394,7 @@ class IntentToolsTest {
                             action = "android.intent.action.VIEW",
                             data = "https://example.com",
                             component = "com.example/com.example.Activity",
+                            packageName = "com.example",
                             extras = mapOf("id" to 42L, "name" to "test"),
                             extrasTypes = mapOf("id" to "long"),
                             flags = listOf("FLAG_ACTIVITY_CLEAR_TOP"),
@@ -374,6 +408,7 @@ class IntentToolsTest {
                         put("action", "android.intent.action.VIEW")
                         put("data", "https://example.com")
                         put("component", "com.example/com.example.Activity")
+                        put("package", "com.example")
                         putJsonObject("extras") {
                             put("id", 42)
                             put("name", "test")
@@ -400,6 +435,7 @@ class IntentToolsTest {
                             action = "android.intent.action.VIEW",
                             data = "https://example.com",
                             component = "com.example/com.example.Activity",
+                            packageName = "com.example",
                             extras = mapOf("id" to 42L, "name" to "test"),
                             extrasTypes = mapOf("id" to "long"),
                             flags = listOf("FLAG_ACTIVITY_CLEAR_TOP"),

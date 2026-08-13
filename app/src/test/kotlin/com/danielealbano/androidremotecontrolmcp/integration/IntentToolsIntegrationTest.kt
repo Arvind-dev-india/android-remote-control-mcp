@@ -120,6 +120,82 @@ class IntentToolsIntegrationTest {
         }
 
     @Test
+    fun `send_intent broadcast with package passes package through`() =
+        runTest {
+            val deps = McpIntegrationTestHelper.createMockDependencies()
+            coEvery {
+                deps.intentDispatcher.sendIntent(
+                    SendIntentRequest(
+                        type = "broadcast",
+                        action = "com.example.ACTION",
+                        packageName = "com.example.app",
+                    ),
+                )
+            } returns Result.success(Unit)
+
+            McpIntegrationTestHelper.withTestApplication(deps) { client, _ ->
+                val result =
+                    client.callTool(
+                        name = "android_send_intent",
+                        arguments =
+                            mapOf(
+                                "type" to "broadcast",
+                                "action" to "com.example.ACTION",
+                                "package" to "com.example.app",
+                            ),
+                    )
+                assertNotEquals(true, result.isError)
+                coVerify {
+                    deps.intentDispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "broadcast",
+                            action = "com.example.ACTION",
+                            packageName = "com.example.app",
+                        ),
+                    )
+                }
+            }
+        }
+
+    @Test
+    fun `send_intent with package and component passes both through`() =
+        runTest {
+            val deps = McpIntegrationTestHelper.createMockDependencies()
+            coEvery {
+                deps.intentDispatcher.sendIntent(
+                    SendIntentRequest(
+                        type = "activity",
+                        component = "com.example.app/com.example.app.MyActivity",
+                        packageName = "com.example.app",
+                    ),
+                )
+            } returns Result.success(Unit)
+
+            McpIntegrationTestHelper.withTestApplication(deps) { client, _ ->
+                val result =
+                    client.callTool(
+                        name = "android_send_intent",
+                        arguments =
+                            mapOf(
+                                "type" to "activity",
+                                "component" to "com.example.app/com.example.app.MyActivity",
+                                "package" to "com.example.app",
+                            ),
+                    )
+                assertNotEquals(true, result.isError)
+                coVerify {
+                    deps.intentDispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "activity",
+                            component = "com.example.app/com.example.app.MyActivity",
+                            packageName = "com.example.app",
+                        ),
+                    )
+                }
+            }
+        }
+
+    @Test
     fun `send_intent with flags passes flags through`() =
         runTest {
             val deps = McpIntegrationTestHelper.createMockDependencies()
