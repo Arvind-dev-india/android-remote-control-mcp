@@ -199,7 +199,7 @@ Tool errors are returned as `CallToolResult(isError = true)` with an error messa
 
 ## MCP Tools Specification
 
-The MCP server exposes 55 tools across 13 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
+The MCP server exposes 57 tools across 14 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
 
 > **Tool Naming Convention**: All tool names are prefixed with `android_` by default (e.g., `android_tap`, `android_find_nodes`). When a device slug is configured (e.g., `pixel7`), the prefix becomes `android_pixel7_` (e.g., `android_pixel7_tap`). See [MCP_TOOLS.md](MCP_TOOLS.md) for details.
 
@@ -225,13 +225,14 @@ The MCP server exposes 55 tools across 13 categories. For full JSON-RPC schemas,
 
 **Errors**: Returns `CallToolResult(isError = true)` if accessibility not enabled or action execution failed.
 
-### 3. Node Action Tools (4 tools)
+### 3. Node Action Tools (5 tools)
 
 | Tool | Description | Required Params | Optional Params |
 |------|-------------|-----------------|-----------------|
 | `android_find_nodes` | Find UI nodes by criteria | `by` (string: text/content_desc/resource_id/class_name), `value` (string) | `exact_match` (boolean, default false) |
 | `android_click_node` | Click an accessibility node | `node_id` (string) | — |
 | `android_long_click_node` | Long-click an accessibility node | `node_id` (string) | — |
+| `android_tap_node` | Gesture-based tap at a random point within node bounds (unlike `android_click_node`, which uses ACTION_CLICK) | `node_id` (string) | `inset_percentage` (number: 0.0-45.0, default 5.0) |
 | `android_scroll_to_node` | Scroll to make node visible | `node_id` (string) | — |
 
 **Errors**: Returns `CallToolResult(isError = true)` if node not found (ID invalid or stale) or node not clickable. `android_find_nodes` returns empty array (not error) when no matches found.
@@ -349,6 +350,27 @@ The MCP server exposes 55 tools across 13 categories. For full JSON-RPC schemas,
 **ID scheme**: `notification_id` = 6 hex chars (SHA-256 hash of notification key), `action_id` = 6 hex chars (SHA-256 hash of notification key + "::" + action index). Both returned by `android_notification_list`.
 
 **Errors**: All tools return `McpToolException.PermissionDenied` if notification listener is not enabled. ID-based tools return `McpToolException.ActionFailed` if the notification/action is not found. `android_notification_snooze` validates `duration_ms` (positive, max 604800000 = 7 days).
+
+### 13. Location Tools (1 tool)
+
+| Tool | Description | Required Params | Optional Params |
+|------|-------------|-----------------|-----------------|
+| `android_get_location` | Get current location (coordinates, accuracy, reverse-geocoded street address) | — | `fresh_fix` (boolean, default false: request a fresh GPS fix instead of last known location) |
+
+**Permission**: Requires `ACCESS_FINE_LOCATION` runtime permission. `fresh_fix` may take up to 10 seconds and can be force-disabled by the user via the MCP Tools settings toggle.
+
+**Errors**: Returns `McpToolException.PermissionDenied` if location permission not granted. Returns `McpToolException.ActionFailed` if location services are unavailable, no last known location exists, or the fresh fix times out (10 seconds).
+
+### 14. Sharing Tools (2 tools)
+
+| Tool | Description | Required Params | Optional Params |
+|------|-------------|-----------------|-----------------|
+| `android_get_shared_content` | Return and clear items shared to the app via the Android Share sheet (read-once inbox) | — | — |
+| `android_share_file_via_web` | Expose a device file as a temporary capability URL | `location_id` (string), `path` (string) | — |
+
+**Capability URLs**: Random single-purpose token, expires after 1 hour, multiple fetches allowed, served from memory (total in-memory budget 64 MB). `android_share_file_via_web` is limited to the smaller of the configured file size limit and 64 MB.
+
+**Errors**: `android_get_shared_content` has no specific errors — an empty inbox is a normal (non-error) response. `android_share_file_via_web` returns `McpToolException.InvalidParams` for missing/invalid `location_id` or `path`, and `McpToolException.ActionFailed` if the file is not found, the location is not authorized, or the file exceeds the size limit.
 
 ---
 
@@ -787,7 +809,7 @@ All common development tasks are accessible via `make <target>`. Run `make help`
 
 - **[TOOLS.md](TOOLS.md)** — Git branching conventions, commit format, PR creation, GitHub CLI commands, and local CI testing with `act`
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Detailed application architecture: component interactions, service lifecycle diagrams, threading model, inter-service communication patterns
-- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 55 tools
+- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 57 tools
 
 ---
 
