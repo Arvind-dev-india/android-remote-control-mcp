@@ -324,7 +324,7 @@ The MCP server exposes 55 tools across 13 categories. For full JSON-RPC schemas,
 
 | Tool | Description | Required Params | Optional Params |
 |------|-------------|-----------------|-----------------|
-| `android_send_intent` | Send an Android intent (activity, broadcast, or service) | `type` (string: activity/broadcast/service) | `action` (string), `data` (string), `component` (string, package/class), `extras` (object), `extras_types` (object), `flags` (string[]) |
+| `android_send_intent` | Send an Android intent (activity, broadcast, or service) | `type` (string: activity/broadcast/service) | `action` (string), `data` (string), `component` (string, package/class), `package` (string, target package / setPackage), `extras` (object), `extras_types` (object), `flags` (string[]) |
 | `android_open_uri` | Open a URI using ACTION_VIEW | `uri` (string) | `package_name` (string), `mime_type` (string) |
 
 **Extras type inference**: String values → `String`, integers fitting Int range → `Int`, integers exceeding Int range → `Long`, decimals → `Double`, booleans → `Boolean`, string arrays → `StringArrayList`. Use `extras_types` to override (supported: `"string"`, `"int"`, `"long"`, `"float"`, `"double"`, `"boolean"`).

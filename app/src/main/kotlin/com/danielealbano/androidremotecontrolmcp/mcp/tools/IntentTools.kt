@@ -10,6 +10,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -44,15 +45,19 @@ class SendIntentHandler
             val action =
                 McpToolUtils
                     .optionalString(arguments, "action", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
             val data =
                 McpToolUtils
                     .optionalString(arguments, "data", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
             val component =
                 McpToolUtils
                     .optionalString(arguments, "component", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
+            val packageName =
+                McpToolUtils
+                    .optionalString(arguments, "package", "")
+                    .ifBlank { null }
 
             val extras = extractExtras(arguments)
             val extrasTypes = extractExtrasTypes(arguments)
@@ -61,7 +66,7 @@ class SendIntentHandler
             Logger.d(TAG, "Executing send_intent: type=$type, action=$action")
             val result =
                 intentDispatcher.sendIntent(
-                    SendIntentRequest(type, action, data, component, extras, extrasTypes, flags),
+                    SendIntentRequest(type, action, data, component, packageName, extras, extrasTypes, flags),
                 )
             val actionLabel = action ?: "(none)"
             return McpToolUtils.handleActionResult(
@@ -173,51 +178,17 @@ class SendIntentHandler
             ToolSchema(
                 properties =
                     buildJsonObject {
-                        putJsonObject("type") {
-                            put("type", "string")
-                            put("description", "The intent delivery type: 'activity', 'broadcast', or 'service'")
-                        }
-                        putJsonObject("action") {
-                            put("type", "string")
-                            put("description", "The intent action (e.g., 'android.intent.action.VIEW')")
-                        }
-                        putJsonObject("data") {
-                            put("type", "string")
-                            put("description", "Data URI for the intent")
-                        }
-                        putJsonObject("component") {
-                            put("type", "string")
-                            put(
-                                "description",
-                                "Target component as 'package/class' " +
-                                    "(e.g., 'com.example.app/com.example.app.MyActivity')",
-                            )
-                        }
-                        putJsonObject("extras") {
-                            put("type", "object")
-                            put(
-                                "description",
-                                "Key-value extras. Values auto-typed: " +
-                                    "string\u2192String, integer\u2192Int/Long, decimal\u2192Double, " +
-                                    "boolean\u2192Boolean, string array\u2192StringArrayList",
-                            )
-                        }
-                        putJsonObject("extras_types") {
-                            put("type", "object")
-                            put(
-                                "description",
-                                "Type overrides for extras keys. " +
-                                    "Supported: 'string', 'int', 'long', 'float', 'double', 'boolean'",
-                            )
-                        }
+                        putStringProperty("type", "The intent delivery type: 'activity', 'broadcast', or 'service'")
+                        putStringProperty("action", "The intent action (e.g., 'android.intent.action.VIEW')")
+                        putStringProperty("data", "Data URI for the intent")
+                        putStringProperty("component", COMPONENT_DESCRIPTION)
+                        putStringProperty("package", PACKAGE_DESCRIPTION)
+                        putObjectProperty("extras", EXTRAS_DESCRIPTION)
+                        putObjectProperty("extras_types", EXTRAS_TYPES_DESCRIPTION)
                         putJsonObject("flags") {
                             put("type", "array")
                             putJsonObject("items") { put("type", "string") }
-                            put(
-                                "description",
-                                "Intent flag names (e.g., 'FLAG_ACTIVITY_CLEAR_TOP'). " +
-                                    "FLAG_ACTIVITY_NEW_TASK auto-added for activity type.",
-                            )
+                            put("description", FLAGS_DESCRIPTION)
                         }
                     },
                 required = listOf("type"),
@@ -231,8 +202,42 @@ class SendIntentHandler
                 "Send an Android intent. Supports starting activities, " +
                     "sending broadcasts, and starting services. Use for opening specific " +
                     "settings pages, triggering app-specific actions, or sending broadcasts."
+            private const val COMPONENT_DESCRIPTION =
+                "Target component as 'package/class' " +
+                    "(e.g., 'com.example.app/com.example.app.MyActivity')"
+            private const val PACKAGE_DESCRIPTION =
+                "Target package scoping delivery (maps to Intent.setPackage(), " +
+                    "equivalent to 'am ... -p'). For broadcasts this reaches a " +
+                    "manifest-declared receiver in that app without needing the " +
+                    "receiver's class name (e.g., 'com.example.app')"
+            private const val EXTRAS_DESCRIPTION =
+                "Key-value extras. Values auto-typed: " +
+                    "string→String, integer→Int/Long, decimal→Double, " +
+                    "boolean→Boolean, string array→StringArrayList"
+            private const val EXTRAS_TYPES_DESCRIPTION =
+                "Type overrides for extras keys. " +
+                    "Supported: 'string', 'int', 'long', 'float', 'double', 'boolean'"
+            private const val FLAGS_DESCRIPTION =
+                "Intent flag names (e.g., 'FLAG_ACTIVITY_CLEAR_TOP'). " +
+                    "FLAG_ACTIVITY_NEW_TASK auto-added for activity type."
         }
     }
+
+private fun JsonObjectBuilder.putStringProperty(
+    name: String,
+    description: String,
+) = putJsonObject(name) {
+    put("type", "string")
+    put("description", description)
+}
+
+private fun JsonObjectBuilder.putObjectProperty(
+    name: String,
+    description: String,
+) = putJsonObject(name) {
+    put("type", "object")
+    put("description", description)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // open_uri

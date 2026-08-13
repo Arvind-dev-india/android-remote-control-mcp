@@ -7,6 +7,9 @@ package com.danielealbano.androidremotecontrolmcp.services.intents
  * @property action Intent action string (e.g., `"android.intent.action.VIEW"`).
  * @property data Data URI for the intent.
  * @property component Target component as `"package/class"`.
+ * @property packageName Target package scoping delivery via `Intent.setPackage()`
+ *   (equivalent to `am ... -p`). For broadcasts this reaches a manifest-declared
+ *   receiver in that app without needing the receiver's class name.
  * @property extras Key-value extras with auto type inference.
  * @property extrasTypes Explicit type overrides for extras keys.
  * @property flags Intent flag names resolved via reflection.
@@ -16,6 +19,7 @@ data class SendIntentRequest(
     val action: String? = null,
     val data: String? = null,
     val component: String? = null,
+    val packageName: String? = null,
     val extras: Map<String, Any?>? = null,
     val extrasTypes: Map<String, String>? = null,
     val flags: List<String>? = null,
