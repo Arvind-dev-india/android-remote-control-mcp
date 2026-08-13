@@ -35,7 +35,7 @@ class McpProtocolIntegrationTest {
         }
 
     @Test
-    fun `listTools returns all 55 registered tools`() =
+    fun `listTools returns all 57 registered tools`() =
         runTest {
             McpIntegrationTestHelper.withTestApplication { client, _ ->
                 val result = client.listTools()
@@ -135,7 +135,7 @@ class McpProtocolIntegrationTest {
         }
 
     companion object {
-        private const val EXPECTED_TOOL_COUNT = 55
+        private const val EXPECTED_TOOL_COUNT = 57
 
         private val EXPECTED_TOOL_NAMES =
             setOf(
@@ -188,6 +188,13 @@ class McpProtocolIntegrationTest {
                 "android_open_app",
                 "android_list_apps",
                 "android_close_app",
+                // Camera tools
+                "android_list_cameras",
+                "android_list_camera_photo_resolutions",
+                "android_list_camera_video_resolutions",
+                "android_take_camera_photo",
+                "android_save_camera_photo",
+                "android_save_camera_video",
                 // Intent tools
                 "android_send_intent",
                 "android_open_uri",
@@ -200,6 +207,9 @@ class McpProtocolIntegrationTest {
                 "android_notification_reply",
                 // Location tools
                 "android_get_location",
+                // Sharing tools
+                "android_get_shared_content",
+                "android_share_file_via_web",
             )
     }
 }

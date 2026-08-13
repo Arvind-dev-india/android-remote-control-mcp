@@ -4,6 +4,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
@@ -32,6 +33,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerLocationTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerNodeActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerNotificationTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerScreenIntrospectionTools
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSharingTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSystemActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTextInputTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTouchActionTools
@@ -77,6 +79,7 @@ import com.danielealbano.androidremotecontrolmcp.services.screencapture.Screensh
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
+import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
@@ -108,6 +111,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  */
 object McpIntegrationTestHelper {
     const val TEST_BEARER_TOKEN = "test-integration-token"
+    const val TEST_BASE_URL = "http://localhost:8080"
 
     /**
      * Configures multi-window mocking on the given [MockDependencies].
@@ -213,6 +217,8 @@ object McpIntegrationTestHelper {
             intentDispatcher = mockk(relaxed = true),
             notificationProvider = mockk(relaxed = true),
             locationProvider = mockk(relaxed = true),
+            sharedContentInbox = mockk(relaxed = true),
+            ephemeralFileLinkService = mockk(relaxed = true),
             privacyStatusFlow = statusFlow,
             privacyConfigFlow = configFlow,
             privacyModeManager = manager,
@@ -339,6 +345,17 @@ object McpIntegrationTestHelper {
             perms,
         )
         registerLocationTools(registrar, deps.locationProvider, deps.privacyToolGate, toolNamePrefix, perms)
+        registerSharingTools(
+            registrar,
+            deps.sharedContentInbox,
+            deps.ephemeralFileLinkService,
+            deps.fileOperationProvider,
+            ServerConfig.DEFAULT_FILE_SIZE_LIMIT_MB,
+            { TEST_BASE_URL },
+            deps.privacyToolGate,
+            toolNamePrefix,
+            perms,
+        )
     }
 
     /**
@@ -591,6 +608,8 @@ data class MockDependencies(
     val intentDispatcher: IntentDispatcher,
     val notificationProvider: NotificationProvider,
     val locationProvider: LocationProvider,
+    val sharedContentInbox: SharedContentInbox,
+    val ephemeralFileLinkService: EphemeralFileLinkService,
     val privacyStatusFlow: MutableStateFlow<PrivacyModeStatus>,
     val privacyConfigFlow: MutableStateFlow<PrivacyModeConfig>,
     val privacyModeManager: PrivacyModeManager,
