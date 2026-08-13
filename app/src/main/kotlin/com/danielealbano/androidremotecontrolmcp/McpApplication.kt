@@ -31,13 +31,14 @@ class McpApplication :
     lateinit var workerFactory: HiltWorkerFactory
 
     // On-demand WorkManager initialization (the default initializer is removed in the manifest) so the
-    // Hilt-provided worker factory is used for @HiltWorker construction.
-    override val workManagerConfiguration: WorkConfiguration
-        get() =
-            WorkConfiguration
-                .Builder()
-                .setWorkerFactory(workerFactory)
-                .build()
+    // Hilt-provided worker factory is used for @HiltWorker construction. Built once (lazy): workerFactory
+    // is injected in super.onCreate(), before schedulePeriodic() first touches WorkManager.
+    override val workManagerConfiguration: WorkConfiguration by lazy {
+        WorkConfiguration
+            .Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()

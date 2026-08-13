@@ -10,7 +10,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.io.IOException
@@ -82,6 +84,43 @@ class GithubReleaseCheckerImplTest {
         runTest {
             val checker = checkerWith(jsonClient("""{"html_url":"https://x/rel"}"""))
             assertNull(checker.fetchLatestRelease())
+        }
+
+    @Test
+    fun `returns null when tag_name is blank`() =
+        runTest {
+            val checker = checkerWith(jsonClient("""{"tag_name":"   ","html_url":"https://x/rel"}"""))
+            assertNull(checker.fetchLatestRelease())
+        }
+
+    @Test
+    fun `sends the User-Agent and Accept headers GitHub requires`() =
+        runTest {
+            var userAgent: String? = null
+            var accept: String? = null
+            val checker =
+                checkerWith {
+                    HttpClient(MockEngine) {
+                        engine {
+                            addHandler { request ->
+                                userAgent = request.headers[HttpHeaders.UserAgent]
+                                accept = request.headers[HttpHeaders.Accept]
+                                respond(
+                                    """{"tag_name":"v1.11.0","html_url":"https://x/rel"}""",
+                                    HttpStatusCode.OK,
+                                    headersOf(HttpHeaders.ContentType, "application/json"),
+                                )
+                            }
+                        }
+                    }
+                }
+
+            checker.fetchLatestRelease()
+
+            // GitHub returns 403 to requests without a User-Agent — a regression dropping it must fail here.
+            assertNotNull(userAgent)
+            assertEquals("android-remote-control-mcp", userAgent)
+            assertTrue(accept?.contains("application/vnd.github") == true)
         }
 
     @Test

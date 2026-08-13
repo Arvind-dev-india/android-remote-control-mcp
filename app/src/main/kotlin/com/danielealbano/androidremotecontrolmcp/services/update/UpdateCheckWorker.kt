@@ -21,9 +21,15 @@ class UpdateCheckWorker
         @Assisted params: WorkerParameters,
         private val coordinator: UpdateCheckCoordinator,
     ) : CoroutineWorker(appContext, params) {
-        override suspend fun doWork(): Result =
-            try {
-                coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+        override suspend fun doWork(): Result {
+            val trigger =
+                if (inputData.getBoolean(KEY_ON_OPEN, false)) {
+                    UpdateCheckTrigger.ON_OPEN
+                } else {
+                    UpdateCheckTrigger.PERIODIC
+                }
+            return try {
+                coordinator.check(trigger)
                 Result.success()
             } catch (
                 @Suppress("TooGenericExceptionCaught") e: Exception,
@@ -31,8 +37,12 @@ class UpdateCheckWorker
                 Logger.w(TAG, "Update check worker failed: ${e.message}")
                 Result.success()
             }
+        }
 
         companion object {
             private const val TAG = "MCP:UpdateCheckWorker"
+
+            /** Input-data flag: true for the on-open one-shot run, false/absent for the periodic run. */
+            const val KEY_ON_OPEN = "on_open"
         }
     }

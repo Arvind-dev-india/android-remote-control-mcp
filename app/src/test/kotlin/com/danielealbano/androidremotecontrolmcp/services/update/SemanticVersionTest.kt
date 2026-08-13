@@ -37,6 +37,12 @@ class SemanticVersionTest {
     }
 
     @Test
+    fun `treats a numeric overflow as malformed`() {
+        // Digits match the regex but overflow Int; parse must return null rather than throw.
+        assertNull(SemanticVersion.parse("99999999999.0.0"))
+    }
+
+    @Test
     fun `orders by major then minor then patch`() {
         assertTrue(SemanticVersion.parse("2.0.0")!! > SemanticVersion.parse("1.99.99")!!)
         assertTrue(SemanticVersion.parse("1.11.0")!! > SemanticVersion.parse("1.10.9")!!)

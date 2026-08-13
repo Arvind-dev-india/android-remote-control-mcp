@@ -284,6 +284,12 @@ interface SettingsRepository : EventChannelSettings {
     /** Records the version for which an update notification has now been posted. */
     suspend fun setNotifiedUpdateVersion(version: String)
 
+    /** Returns the epoch-millis of the last automatic update check, or 0 if none has run. */
+    suspend fun getLastAutoCheckAtMillis(): Long
+
+    /** Records the epoch-millis of the most recent automatic update check (for on-open throttling). */
+    suspend fun setLastAutoCheckAtMillis(millis: Long)
+
     /**
      * Data class representing a stored storage location record.
      * This is the persistence format; the full [StorageLocation] includes

@@ -42,6 +42,7 @@ class GithubReleaseCheckerImpl
     ) : GithubReleaseChecker {
         // One OkHttp-backed client reused across checks (this is a @Singleton). Lazy so unit tests, which
         // override clientProvider before any call, never build a real engine. Overridable for tests.
+        // Intentionally not closed: it lives for the process lifetime, like the singleton that owns it.
         private val sharedClient: HttpClient by lazy { buildClient() }
         internal var clientProvider: () -> HttpClient = { sharedClient }
 

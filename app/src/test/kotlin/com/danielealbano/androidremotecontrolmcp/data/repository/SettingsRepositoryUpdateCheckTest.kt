@@ -106,4 +106,20 @@ class SettingsRepositoryUpdateCheckTest {
             repository.setNotifiedUpdateVersion("1.11.0")
             assertEquals("1.11.0", repository.getNotifiedUpdateVersion())
         }
+
+    @Test
+    fun `lastAutoCheckAtMillis defaults to zero and round-trips`() =
+        testScope.runTest {
+            assertEquals(0L, repository.getLastAutoCheckAtMillis())
+
+            repository.setLastAutoCheckAtMillis(123_456_789L)
+            assertEquals(123_456_789L, repository.getLastAutoCheckAtMillis())
+        }
+
+    @Test
+    fun `clearing an already-absent available update leaves it null`() =
+        testScope.runTest {
+            repository.setAvailableUpdate(null)
+            assertNull(repository.availableUpdate.first())
+        }
 }

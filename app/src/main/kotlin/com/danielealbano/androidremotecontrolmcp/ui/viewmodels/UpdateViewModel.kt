@@ -8,6 +8,7 @@ import com.danielealbano.androidremotecontrolmcp.services.update.AppVersionProvi
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckCoordinator
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckOutcome
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckTrigger
+import com.danielealbano.androidremotecontrolmcp.utils.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -70,26 +71,38 @@ class UpdateViewModel
         }
 
         fun checkNow() {
+            // Flip to Checking synchronously (called from the UI thread) so a fast double-tap — and the
+            // button's derived `enabled` flag — see the in-progress state before the coroutine starts.
             if (_checkState.value == UpdateCheckUiState.Checking) return
+            _checkState.value = UpdateCheckUiState.Checking
             viewModelScope.launch {
-                _checkState.value = UpdateCheckUiState.Checking
                 _checkState.value =
-                    when (val outcome = coordinator.check(UpdateCheckTrigger.MANUAL)) {
-                        is UpdateCheckOutcome.UpdateAvailable -> UpdateCheckUiState.UpdateFound(outcome.update)
+                    try {
+                        when (val outcome = coordinator.check(UpdateCheckTrigger.MANUAL)) {
+                            is UpdateCheckOutcome.UpdateAvailable -> UpdateCheckUiState.UpdateFound(outcome.update)
 
-                        UpdateCheckOutcome.UpToDate -> UpdateCheckUiState.UpToDate
+                            UpdateCheckOutcome.UpToDate -> UpdateCheckUiState.UpToDate
 
-                        UpdateCheckOutcome.Failed -> UpdateCheckUiState.Failed
+                            UpdateCheckOutcome.Failed -> UpdateCheckUiState.Failed
 
-                        UpdateCheckOutcome.DevBuild -> UpdateCheckUiState.DevBuild
+                            UpdateCheckOutcome.DevBuild -> UpdateCheckUiState.DevBuild
 
-                        // A manual check bypasses the enabled toggle, so Disabled is never returned here.
-                        UpdateCheckOutcome.Disabled -> UpdateCheckUiState.Idle
+                            // Manual bypasses the toggle and the throttle, so Disabled/Skipped never occur.
+                            UpdateCheckOutcome.Disabled, UpdateCheckOutcome.Skipped -> UpdateCheckUiState.Idle
+                        }
+                    } catch (
+                        @Suppress("TooGenericExceptionCaught") e: Exception,
+                    ) {
+                        // A DataStore read/write can throw (disk full / corrupt prefs); fail closed rather
+                        // than crash or leave the UI stuck on the spinner.
+                        Logger.w(TAG, "Manual update check failed: ${e.message}")
+                        UpdateCheckUiState.Failed
                     }
             }
         }
 
         companion object {
+            private const val TAG = "MCP:UpdateViewModel"
             private const val STOP_TIMEOUT_MS = 5_000L
         }
     }

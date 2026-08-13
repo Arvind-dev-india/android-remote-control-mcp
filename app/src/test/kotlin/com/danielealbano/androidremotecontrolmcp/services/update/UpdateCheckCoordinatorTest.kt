@@ -45,7 +45,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             every { settings.autoUpdateCheckEnabled } returns flowOf(false)
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.Disabled, outcome)
             coVerify(exactly = 0) { checker.fetchLatestRelease() }
@@ -67,7 +67,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             every { versionProvider.versionName } returns "1.10.0-dev.7+abc1234"
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.DevBuild, outcome)
             coVerify(exactly = 0) { checker.fetchLatestRelease() }
@@ -78,7 +78,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             every { versionProvider.versionName } returns "unknown"
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.DevBuild, outcome)
             coVerify(exactly = 0) { checker.fetchLatestRelease() }
@@ -89,7 +89,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             coEvery { checker.fetchLatestRelease() } returns null
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.Failed, outcome)
             coVerify(exactly = 0) { settings.setAvailableUpdate(any()) }
@@ -100,7 +100,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             coEvery { checker.fetchLatestRelease() } returns LatestRelease("garbage", releaseUrl)
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.Failed, outcome)
             coVerify(exactly = 0) { settings.setAvailableUpdate(any()) }
@@ -112,7 +112,7 @@ class UpdateCheckCoordinatorTest {
             every { versionProvider.versionName } returns "1.11.0"
             coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.UpToDate, outcome)
             coVerify(exactly = 1) { settings.setAvailableUpdate(null) }
@@ -125,7 +125,7 @@ class UpdateCheckCoordinatorTest {
             every { versionProvider.versionName } returns "1.12.0"
             coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
 
-            assertEquals(UpdateCheckOutcome.UpToDate, coordinator.check(UpdateCheckTrigger.AUTOMATIC))
+            assertEquals(UpdateCheckOutcome.UpToDate, coordinator.check(UpdateCheckTrigger.PERIODIC))
         }
 
     @Test
@@ -133,7 +133,7 @@ class UpdateCheckCoordinatorTest {
         runTest {
             coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
 
-            val outcome = coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             assertEquals(UpdateCheckOutcome.UpdateAvailable(AvailableUpdate("1.11.0", releaseUrl)), outcome)
             coVerify(exactly = 1) { settings.setAvailableUpdate(AvailableUpdate("1.11.0", releaseUrl)) }
@@ -147,7 +147,7 @@ class UpdateCheckCoordinatorTest {
             coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
             coEvery { settings.getNotifiedUpdateVersion() } returns "1.11.0"
 
-            coordinator.check(UpdateCheckTrigger.AUTOMATIC)
+            coordinator.check(UpdateCheckTrigger.PERIODIC)
 
             coVerify(exactly = 1) { settings.setAvailableUpdate(AvailableUpdate("1.11.0", releaseUrl)) }
             verify(exactly = 0) { notifier.notifyUpdateAvailable(any(), any()) }
@@ -164,5 +164,57 @@ class UpdateCheckCoordinatorTest {
             verify(exactly = 0) { notifier.notifyUpdateAvailable(any(), any()) }
             // Recorded as seen so the next automatic check does not re-surface it as a notification.
             coVerify(exactly = 1) { settings.setNotifiedUpdateVersion("1.11.0") }
+        }
+
+    @Test
+    fun `on-open check is skipped when an automatic check ran recently`() =
+        runTest {
+            val now = 10_000_000L
+            coordinator.nowMillis = { now }
+            // Last check 10 minutes ago (< the 1h on-open throttle window).
+            coEvery { settings.getLastAutoCheckAtMillis() } returns now - 10L * 60L * 1000L
+
+            val outcome = coordinator.check(UpdateCheckTrigger.ON_OPEN)
+
+            assertEquals(UpdateCheckOutcome.Skipped, outcome)
+            coVerify(exactly = 0) { checker.fetchLatestRelease() }
+        }
+
+    @Test
+    fun `on-open check proceeds when the last check is old and records the time`() =
+        runTest {
+            val now = 10_000_000L
+            coordinator.nowMillis = { now }
+            // Last check 2 hours ago (> the 1h on-open throttle window).
+            coEvery { settings.getLastAutoCheckAtMillis() } returns now - 2L * 60L * 60L * 1000L
+            coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
+
+            val outcome = coordinator.check(UpdateCheckTrigger.ON_OPEN)
+
+            assertInstanceOf(UpdateCheckOutcome.UpdateAvailable::class.java, outcome)
+            coVerify(exactly = 1) { settings.setLastAutoCheckAtMillis(now) }
+        }
+
+    @Test
+    fun `on-open check proceeds when no automatic check has ever run`() =
+        runTest {
+            coEvery { settings.getLastAutoCheckAtMillis() } returns 0L
+            coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
+
+            val outcome = coordinator.check(UpdateCheckTrigger.ON_OPEN)
+
+            assertInstanceOf(UpdateCheckOutcome.UpdateAvailable::class.java, outcome)
+            coVerify(exactly = 1) { checker.fetchLatestRelease() }
+        }
+
+    @Test
+    fun `an installed pre-release is offered the matching stable release`() =
+        runTest {
+            every { versionProvider.versionName } returns "1.11.0-beta"
+            coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.11.0", releaseUrl)
+
+            val outcome = coordinator.check(UpdateCheckTrigger.PERIODIC)
+
+            assertEquals(UpdateCheckOutcome.UpdateAvailable(AvailableUpdate("1.11.0", releaseUrl)), outcome)
         }
 }

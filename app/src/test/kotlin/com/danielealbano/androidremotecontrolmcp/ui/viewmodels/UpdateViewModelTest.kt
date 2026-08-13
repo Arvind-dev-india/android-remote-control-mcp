@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.ui.viewmodels
 
+import app.cash.turbine.test
 import com.danielealbano.androidremotecontrolmcp.data.model.AvailableUpdate
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.update.AppVersionProvider
@@ -10,10 +11,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -85,6 +89,43 @@ class UpdateViewModelTest {
             coEvery { coordinator.check(UpdateCheckTrigger.MANUAL) } returns UpdateCheckOutcome.UpdateAvailable(update)
             viewModel.checkNow()
             assertEquals(UpdateCheckUiState.UpdateFound(update), viewModel.checkState.value)
+        }
+
+    @Test
+    fun `checkNow maps a coordinator failure to Failed instead of crashing`() =
+        runTest {
+            coEvery { coordinator.check(UpdateCheckTrigger.MANUAL) } throws RuntimeException("disk full")
+            viewModel.checkNow()
+            assertEquals(UpdateCheckUiState.Failed, viewModel.checkState.value)
+        }
+
+    @Test
+    fun `checkNow exposes the Checking state while the check is in progress`() =
+        runTest {
+            val gate = CompletableDeferred<UpdateCheckOutcome>()
+            coEvery { coordinator.check(UpdateCheckTrigger.MANUAL) } coAnswers { gate.await() }
+
+            viewModel.checkNow()
+            assertEquals(UpdateCheckUiState.Checking, viewModel.checkState.value)
+
+            gate.complete(UpdateCheckOutcome.UpToDate)
+            advanceUntilIdle()
+            assertEquals(UpdateCheckUiState.UpToDate, viewModel.checkState.value)
+        }
+
+    @Test
+    fun `availableUpdate reflects the repository value`() =
+        runTest {
+            val update = AvailableUpdate("1.11.0", releaseUrl)
+            every { settings.availableUpdate } returns MutableStateFlow(update)
+            val vm = UpdateViewModel(settings, coordinator, versionProvider)
+
+            vm.availableUpdate.test {
+                // stateIn starts at its null initial value, then adopts the stored update.
+                val value = awaitItem() ?: awaitItem()
+                assertEquals(update, value)
+                cancelAndIgnoreRemainingEvents()
+            }
         }
 
     @Test
