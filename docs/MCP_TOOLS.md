@@ -2835,6 +2835,22 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
 }
 ```
 
+**Example Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Intent sent successfully: type=activity, action=android.settings.WIFI_SETTINGS"
+      }
+    ]
+  }
+}
+```
+
 **Example Request** (broadcast scoped to a specific app's manifest receiver):
 ```json
 {
@@ -2861,7 +2877,7 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
     "content": [
       {
         "type": "text",
-        "text": "Intent sent successfully: type=activity, action=android.settings.WIFI_SETTINGS"
+        "text": "Intent sent successfully: type=broadcast, action=com.example.app.ACTION_REFRESH"
       }
     ]
   }
