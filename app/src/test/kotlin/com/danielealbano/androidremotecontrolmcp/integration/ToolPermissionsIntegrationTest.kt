@@ -320,6 +320,8 @@ class ToolPermissionsIntegrationTest {
                 "notification_reply",
                 "get_screen_state",
                 "get_location",
+                "get_shared_content",
+                "share_file_via_web",
             )
     }
 }
