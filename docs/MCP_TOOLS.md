@@ -2776,6 +2776,7 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
 | `action` | string | No | Intent action (e.g., `"android.intent.action.VIEW"`) |
 | `data` | string | No | Data URI for the intent |
 | `component` | string | No | Target component as `"package/class"` (e.g., `"com.example.app/com.example.app.MyActivity"`) |
+| `package` | string | No | Target package scoping delivery (maps to `Intent.setPackage()`, equivalent to `am ... -p`). For broadcasts this reaches a manifest-declared receiver in that app without needing the receiver's class name (e.g., `"com.example.app"`) |
 | `extras` | object | No | Key-value extras. Values auto-typed: string→String, integer→Int/Long, decimal→Double, boolean→Boolean, string array→StringArrayList |
 | `extras_types` | object | No | Type overrides for extras keys. Supported: `"string"`, `"int"`, `"long"`, `"float"`, `"double"`, `"boolean"` |
 | `flags` | array | No | Intent flag names (e.g., `"FLAG_ACTIVITY_CLEAR_TOP"`). `FLAG_ACTIVITY_NEW_TASK` auto-added for activity type |
@@ -2789,6 +2790,7 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
     "action": { "type": "string", "description": "The intent action (e.g., 'android.intent.action.VIEW')" },
     "data": { "type": "string", "description": "Data URI for the intent" },
     "component": { "type": "string", "description": "Target component as 'package/class'" },
+    "package": { "type": "string", "description": "Target package scoping delivery (maps to Intent.setPackage())" },
     "extras": { "type": "object", "description": "Key-value extras with auto type inference" },
     "extras_types": { "type": "object", "description": "Type overrides for extras keys" },
     "flags": { "type": "array", "items": { "type": "string" }, "description": "Intent flag names" }
@@ -2828,6 +2830,23 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
       "extras": { "referrer": "mcp", "count": 42 },
       "extras_types": { "count": "long" },
       "flags": ["FLAG_ACTIVITY_CLEAR_TOP"]
+    }
+  }
+}
+```
+
+**Example Request** (broadcast scoped to a specific app's manifest receiver):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_send_intent",
+    "arguments": {
+      "type": "broadcast",
+      "action": "com.example.app.ACTION_REFRESH",
+      "package": "com.example.app"
     }
   }
 }
