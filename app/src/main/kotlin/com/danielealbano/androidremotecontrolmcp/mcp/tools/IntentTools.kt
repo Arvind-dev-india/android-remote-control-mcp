@@ -45,19 +45,19 @@ class SendIntentHandler
             val action =
                 McpToolUtils
                     .optionalString(arguments, "action", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
             val data =
                 McpToolUtils
                     .optionalString(arguments, "data", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
             val component =
                 McpToolUtils
                     .optionalString(arguments, "component", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
             val packageName =
                 McpToolUtils
                     .optionalString(arguments, "package", "")
-                    .ifEmpty { null }
+                    .ifBlank { null }
 
             val extras = extractExtras(arguments)
             val extrasTypes = extractExtrasTypes(arguments)
@@ -194,22 +194,6 @@ class SendIntentHandler
                 required = listOf("type"),
             )
 
-        private fun JsonObjectBuilder.putStringProperty(
-            name: String,
-            description: String,
-        ) = putJsonObject(name) {
-            put("type", "string")
-            put("description", description)
-        }
-
-        private fun JsonObjectBuilder.putObjectProperty(
-            name: String,
-            description: String,
-        ) = putJsonObject(name) {
-            put("type", "object")
-            put("description", description)
-        }
-
         companion object {
             const val TOOL_NAME = "send_intent"
             private const val TAG = "MCP:SendIntentTool"
@@ -238,6 +222,22 @@ class SendIntentHandler
                     "FLAG_ACTIVITY_NEW_TASK auto-added for activity type."
         }
     }
+
+private fun JsonObjectBuilder.putStringProperty(
+    name: String,
+    description: String,
+) = putJsonObject(name) {
+    put("type", "string")
+    put("description", description)
+}
+
+private fun JsonObjectBuilder.putObjectProperty(
+    name: String,
+    description: String,
+) = putJsonObject(name) {
+    put("type", "object")
+    put("description", description)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // open_uri

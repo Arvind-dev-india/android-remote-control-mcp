@@ -324,6 +324,29 @@ class IntentToolsTest {
             }
 
         @Test
+        fun `send_intent with blank string params normalizes them to null`() =
+            runTest {
+                coEvery {
+                    mockIntentDispatcher.sendIntent(SendIntentRequest(type = "activity"))
+                } returns Result.success(Unit)
+
+                val params =
+                    buildJsonObject {
+                        put("type", "activity")
+                        put("action", "   ")
+                        put("data", "")
+                        put("component", " ")
+                        put("package", "  ")
+                    }
+                val result = handler.execute(params)
+
+                assertEquals(1, result.content.size)
+                coVerify {
+                    mockIntentDispatcher.sendIntent(SendIntentRequest(type = "activity"))
+                }
+            }
+
+        @Test
         fun `send_intent dispatcher failure returns error result`() =
             runTest {
                 coEvery {
