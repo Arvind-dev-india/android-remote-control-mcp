@@ -155,8 +155,13 @@ object PermissionUtils {
 
     /**
      * Returns `true` when [flattenedComponent] (a single `package/class` entry) resolves
-     * to [expectedPackage] and [expectedClass], expanding the leading-dot short form the
-     * same way [android.content.ComponentName.unflattenFromString] does.
+     * to [expectedPackage] and [expectedClass].
+     *
+     * The separator validation and leading-dot expansion mirror
+     * [android.content.ComponentName.unflattenFromString]: an entry with no `/`, or with
+     * an empty class part, is rejected; a class part beginning with `.` is prefixed with
+     * its own package part. An empty package part is parsed like AOSP but can never equal
+     * [expectedPackage] (`context.packageName` is never empty), so such entries never match.
      */
     private fun componentMatches(
         flattenedComponent: String,
@@ -164,7 +169,7 @@ object PermissionUtils {
         expectedClass: String,
     ): Boolean {
         val separatorIndex = flattenedComponent.indexOf(COMPONENT_SEPARATOR)
-        if (separatorIndex <= 0 || separatorIndex >= flattenedComponent.length - 1) {
+        if (separatorIndex < 0 || separatorIndex >= flattenedComponent.length - 1) {
             return false
         }
 
