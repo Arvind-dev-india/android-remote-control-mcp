@@ -180,6 +180,56 @@ class PermissionUtilsTest {
         }
 
         @Test
+        fun `returns false for entry with a duplicated component separator`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp//" +
+                "services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    Class.forName(
+                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
+                    ),
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for entry with a component separator inside the class part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "services/accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    Class.forName(
+                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
+                    ),
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for short-form entry with an empty package part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "/.services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    Class.forName(
+                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
+                    ),
+                ),
+            )
+        }
+
+        @Test
         fun `returns true when short-form service follows an empty leading entry`() {
             every {
                 Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
@@ -309,11 +359,14 @@ class PermissionUtilsTest {
         }
 
         @Test
-        fun `returns true when short-form service precedes a trailing empty entry`() {
+        fun `returns true when short-form service follows a non-matching and an empty entry`() {
+            // The non-matching entry and the empty entry precede the match, so `any`
+            // must evaluate both (including componentMatches("")) before matching.
             every {
                 Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
-            } returns "com.danielealbano.androidremotecontrolmcp/" +
-                ".services.notifications.McpNotificationListenerService:"
+            } returns "com.other.package/com.other.Service::" +
+                "com.danielealbano.androidremotecontrolmcp/" +
+                ".services.notifications.McpNotificationListenerService"
 
             val serviceClass =
                 Class.forName(

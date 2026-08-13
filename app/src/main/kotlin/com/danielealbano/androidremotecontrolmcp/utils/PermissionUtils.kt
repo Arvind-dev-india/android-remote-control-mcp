@@ -133,8 +133,9 @@ object PermissionUtils {
      * (`package/.path.ServiceClass`), expanding the short form against the package
      * internally. This matcher mirrors `ComponentName.unflattenFromString`: a class
      * part beginning with `.` is resolved against its own package part before the
-     * comparison, so both encodings of the same component match. Malformed entries
-     * (missing separator, empty package, or empty class) never match.
+     * comparison, so both encodings of the same component match. Entries with no
+     * separator or an empty class part are rejected; an entry with an empty package
+     * part is parsed but can never equal a non-empty package, so none of these match.
      *
      * @param enabledEntries Raw colon-separated setting value.
      * @param expectedPackage The package the service belongs to (`context.packageName`).
