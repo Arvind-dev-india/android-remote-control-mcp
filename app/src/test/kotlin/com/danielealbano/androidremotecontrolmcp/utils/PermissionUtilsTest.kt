@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
+import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -51,9 +53,7 @@ class PermissionUtilsTest {
             assertTrue(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -90,9 +90,7 @@ class PermissionUtilsTest {
             assertTrue(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -108,9 +106,7 @@ class PermissionUtilsTest {
             assertTrue(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -124,9 +120,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -140,9 +134,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -156,9 +148,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -172,9 +162,22 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false when the class name casing differs`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "com.danielealbano.androidremotecontrolmcp.services.accessibility.MCPAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -189,9 +192,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -206,9 +207,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -222,9 +221,7 @@ class PermissionUtilsTest {
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -239,9 +236,7 @@ class PermissionUtilsTest {
             assertTrue(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -313,13 +308,11 @@ class PermissionUtilsTest {
                 Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
             } returns serviceName
 
-            val serviceClass =
-                Class.forName(
-                    "com.danielealbano.androidremotecontrolmcp" +
-                        ".services.notifications.McpNotificationListenerService",
-                )
             assertTrue(
-                PermissionUtils.isNotificationListenerEnabled(mockContext, serviceClass),
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
             )
         }
 
@@ -330,13 +323,11 @@ class PermissionUtilsTest {
             } returns "com.danielealbano.androidremotecontrolmcp/" +
                 ".services.notifications.McpNotificationListenerService"
 
-            val serviceClass =
-                Class.forName(
-                    "com.danielealbano.androidremotecontrolmcp" +
-                        ".services.notifications.McpNotificationListenerService",
-                )
             assertTrue(
-                PermissionUtils.isNotificationListenerEnabled(mockContext, serviceClass),
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
             )
         }
 
@@ -350,13 +341,26 @@ class PermissionUtilsTest {
                 "com.danielealbano.androidremotecontrolmcp/" +
                 ".services.notifications.McpNotificationListenerService"
 
-            val serviceClass =
-                Class.forName(
-                    "com.danielealbano.androidremotecontrolmcp" +
-                        ".services.notifications.McpNotificationListenerService",
-                )
             assertTrue(
-                PermissionUtils.isNotificationListenerEnabled(mockContext, serviceClass),
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false when the class name casing differs`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "com.danielealbano.androidremotecontrolmcp.services.notifications.MCPNotificationListenerService"
+
+            assertFalse(
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
             )
         }
 
