@@ -169,6 +169,19 @@
             android:exported="false"
             android:label="@string/approval_title" />
 
+        <!-- Remove WorkManager's default on-startup initializer: McpApplication implements
+             Configuration.Provider for on-demand initialization with the Hilt worker factory. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
     </application>
 
 </manifest>

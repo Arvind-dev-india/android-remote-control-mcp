@@ -47,6 +47,10 @@ kotlinx-coroutines = "1.10.2"
 # Dependency Injection
 hilt = "2.60.1"
 hilt-navigation-compose = "1.3.0"
+androidx-hilt = "1.4.0"
+
+# Background work (in-app update check)
+work = "2.11.2"
 
 # Material Components (XML themes)
 material = "1.13.0"
@@ -162,6 +166,11 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
+androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "androidx-hilt" }
+androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "androidx-hilt" }
+
+# WorkManager (in-app update check background scheduling)
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 
 # Material Components (XML themes)
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }

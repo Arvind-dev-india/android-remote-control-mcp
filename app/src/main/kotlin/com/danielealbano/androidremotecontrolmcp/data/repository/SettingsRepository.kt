@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.data.repository
 
+import com.danielealbano.androidremotecontrolmcp.data.model.AvailableUpdate
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
@@ -261,6 +262,33 @@ interface SettingsRepository : EventChannelSettings {
 
     /** Emits whether the home-screen Privacy Mode callout card was dismissed (default false). */
     val privacyModeCardDismissed: Flow<Boolean>
+
+    /** Emits whether automatic GitHub update checks are enabled (default true). */
+    val autoUpdateCheckEnabled: Flow<Boolean>
+
+    /** Enables or disables automatic GitHub update checks. */
+    suspend fun updateAutoUpdateCheckEnabled(enabled: Boolean)
+
+    /**
+     * Emits the currently-known available update (a release newer than the installed build), or null
+     * when none is known. Drives the in-app "update available" banner.
+     */
+    val availableUpdate: Flow<AvailableUpdate?>
+
+    /** Persists the detected available update, or clears it when [update] is null. */
+    suspend fun setAvailableUpdate(update: AvailableUpdate?)
+
+    /** Returns the version for which an update notification was last posted (empty if none). Used for de-dup. */
+    suspend fun getNotifiedUpdateVersion(): String
+
+    /** Records the version for which an update notification has now been posted. */
+    suspend fun setNotifiedUpdateVersion(version: String)
+
+    /** Returns the epoch-millis of the last automatic update check, or 0 if none has run. */
+    suspend fun getLastAutoCheckAtMillis(): Long
+
+    /** Records the epoch-millis of the most recent automatic update check (for on-open throttling). */
+    suspend fun setLastAutoCheckAtMillis(millis: Long)
 
     /**
      * Data class representing a stored storage location record.

@@ -63,6 +63,12 @@ import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocatio
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.AndroidCloudflareBinaryResolver
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.CloudflaredBinaryResolver
+import com.danielealbano.androidremotecontrolmcp.services.update.AppVersionProvider
+import com.danielealbano.androidremotecontrolmcp.services.update.BuildConfigAppVersionProvider
+import com.danielealbano.androidremotecontrolmcp.services.update.GithubReleaseChecker
+import com.danielealbano.androidremotecontrolmcp.services.update.GithubReleaseCheckerImpl
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateNotifier
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateNotifierImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -270,4 +276,16 @@ abstract class ServiceModule {
     @Binds
     @Singleton
     abstract fun bindPiiModelInference(impl: OrtPiiModelRunner): PiiModelInference
+
+    @Binds
+    @Singleton
+    abstract fun bindGithubReleaseChecker(impl: GithubReleaseCheckerImpl): GithubReleaseChecker
+
+    @Binds
+    @Singleton
+    abstract fun bindAppVersionProvider(impl: BuildConfigAppVersionProvider): AppVersionProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindUpdateNotifier(impl: UpdateNotifierImpl): UpdateNotifier
 }

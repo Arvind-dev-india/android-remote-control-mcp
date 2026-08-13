@@ -4,8 +4,10 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.util.Log
+import androidx.hilt.work.HiltWorkerFactory
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.apps.AppIconCache
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckScheduler
 import com.danielealbano.androidremotecontrolmcp.startup.runFlavorStartupMigrations
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -13,14 +15,30 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import javax.inject.Inject
+import androidx.work.Configuration as WorkConfiguration
 
 @HiltAndroidApp
-class McpApplication : Application() {
+class McpApplication :
+    Application(),
+    WorkConfiguration.Provider {
     @Inject
     lateinit var appIconCache: AppIconCache
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    // On-demand WorkManager initialization (the default initializer is removed in the manifest) so the
+    // Hilt-provided worker factory is used for @HiltWorker construction. Built once (lazy): workerFactory
+    // is injected in super.onCreate(), before schedulePeriodic() first touches WorkManager.
+    override val workManagerConfiguration: WorkConfiguration by lazy {
+        WorkConfiguration
+            .Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -33,6 +51,7 @@ class McpApplication : Application() {
         // Apply the one-time auth-model migration eagerly so the UI Flow reflects the migrated model
         // promptly at startup (idempotent; the server start path also guarantees it via getServerConfig()).
         CoroutineScope(Dispatchers.IO).launch { settingsRepository.ensureAuthModelMigrated() }
+        UpdateCheckScheduler.schedulePeriodic(this)
         Log.i(TAG, "Application initialized, notification channels created")
     }
 
@@ -64,13 +83,24 @@ class McpApplication : Application() {
                 description = "Heads-up notification for pending OAuth connection approvals"
             }
 
+        val updateChannel =
+            NotificationChannel(
+                UPDATE_CHANNEL_ID,
+                getString(R.string.notification_channel_update_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Notification when a newer app version is available"
+            }
+
         notificationManager.createNotificationChannel(mcpServerChannel)
         notificationManager.createNotificationChannel(oauthApprovalChannel)
+        notificationManager.createNotificationChannel(updateChannel)
     }
 
     companion object {
         private const val TAG = "MCP:Application"
         const val MCP_SERVER_CHANNEL_ID = "mcp_server_channel"
         const val OAUTH_APPROVAL_CHANNEL_ID = "oauth_approval_channel"
+        const val UPDATE_CHANNEL_ID = "update_channel"
     }
 }

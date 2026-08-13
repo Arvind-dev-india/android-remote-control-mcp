@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.danielealbano.androidremotecontrolmcp.data.model.AvailableUpdate
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
@@ -66,6 +68,11 @@ private val EVENT_CHANNEL_CONFIG_KEY = stringPreferencesKey("event_channel_confi
 private val PRIVACY_MODE_CONFIG_KEY = stringPreferencesKey("privacy_mode_config")
 private val PRIVACY_BENCHMARK_SECONDS_KEY = stringPreferencesKey("privacy_benchmark_estimate_seconds")
 private val PRIVACY_CARD_DISMISSED_KEY = booleanPreferencesKey("privacy_mode_card_home_dismissed")
+private val AUTO_UPDATE_CHECK_ENABLED_KEY = booleanPreferencesKey("auto_update_check_enabled")
+private val AVAILABLE_UPDATE_VERSION_KEY = stringPreferencesKey("available_update_version")
+private val AVAILABLE_UPDATE_URL_KEY = stringPreferencesKey("available_update_url")
+private val NOTIFIED_UPDATE_VERSION_KEY = stringPreferencesKey("notified_update_version")
+private val LAST_AUTO_CHECK_AT_KEY = longPreferencesKey("last_auto_update_check_at_millis")
 
 /**
  * Regex pattern for valid hostnames.
@@ -593,6 +600,62 @@ class SettingsRepositoryImpl
 
         override val privacyModeCardDismissed: Flow<Boolean> =
             dataStore.data.map { prefs -> prefs[PRIVACY_CARD_DISMISSED_KEY] ?: false }
+
+        override val autoUpdateCheckEnabled: Flow<Boolean> =
+            dataStore.data.map { prefs -> prefs[AUTO_UPDATE_CHECK_ENABLED_KEY] ?: true }
+
+        override suspend fun updateAutoUpdateCheckEnabled(enabled: Boolean) {
+            dataStore.edit { prefs -> prefs[AUTO_UPDATE_CHECK_ENABLED_KEY] = enabled }
+        }
+
+        override val availableUpdate: Flow<AvailableUpdate?> =
+            dataStore.data.map { prefs ->
+                val version = prefs[AVAILABLE_UPDATE_VERSION_KEY]
+                val url = prefs[AVAILABLE_UPDATE_URL_KEY]
+                if (!version.isNullOrEmpty() && !url.isNullOrEmpty()) {
+                    AvailableUpdate(version, url)
+                } else {
+                    null
+                }
+            }
+
+        override suspend fun setAvailableUpdate(update: AvailableUpdate?) {
+            if (update == null) {
+                // Skip the write entirely when nothing is stored — avoids a redundant DataStore commit
+                // (and a spurious dataStore.data emission) on every up-to-date check.
+                val current = dataStore.data.first()
+                if (!current.contains(AVAILABLE_UPDATE_VERSION_KEY) && !current.contains(AVAILABLE_UPDATE_URL_KEY)) {
+                    return
+                }
+            }
+            dataStore.edit { prefs ->
+                if (update == null) {
+                    prefs.remove(AVAILABLE_UPDATE_VERSION_KEY)
+                    prefs.remove(AVAILABLE_UPDATE_URL_KEY)
+                } else {
+                    prefs[AVAILABLE_UPDATE_VERSION_KEY] = update.versionName
+                    prefs[AVAILABLE_UPDATE_URL_KEY] = update.releaseUrl
+                }
+            }
+        }
+
+        override suspend fun getNotifiedUpdateVersion(): String {
+            val prefs = dataStore.data.first()
+            return prefs[NOTIFIED_UPDATE_VERSION_KEY] ?: ""
+        }
+
+        override suspend fun setNotifiedUpdateVersion(version: String) {
+            dataStore.edit { prefs -> prefs[NOTIFIED_UPDATE_VERSION_KEY] = version }
+        }
+
+        override suspend fun getLastAutoCheckAtMillis(): Long {
+            val prefs = dataStore.data.first()
+            return prefs[LAST_AUTO_CHECK_AT_KEY] ?: 0L
+        }
+
+        override suspend fun setLastAutoCheckAtMillis(millis: Long) {
+            dataStore.edit { prefs -> prefs[LAST_AUTO_CHECK_AT_KEY] = millis }
+        }
 
         override fun validateDownloadTimeout(seconds: Int): Result<Int> =
             if (seconds in ServerConfig.MIN_DOWNLOAD_TIMEOUT_SECONDS..ServerConfig.MAX_DOWNLOAD_TIMEOUT_SECONDS) {
