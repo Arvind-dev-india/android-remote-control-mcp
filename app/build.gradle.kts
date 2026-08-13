@@ -421,6 +421,11 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
+    // WorkManager + Hilt integration (periodic in-app update check)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     // Accompanist
     implementation(libs.accompanist.permissions)
 
@@ -529,6 +534,11 @@ val jacocoExcludes =
         "**/services/mcp/BootCompletedReceiver*",
         "**/services/screencapture/ScreenCaptureService*",
         "**/services/accessibility/McpAccessibilityService*",
+        // Update check: WorkManager worker, scheduler, and notifier require Android framework
+        "**/services/update/UpdateCheckWorker*",
+        "**/services/update/UpdateCheckScheduler*",
+        "**/services/update/UpdateNotifierImpl*",
+        "**/services/update/BuildConfigAppVersionProvider*",
         // UI layer (requires instrumented/Compose tests)
         "**/ui/**",
         // Dependency injection configuration
