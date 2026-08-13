@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat
  */
 object PermissionUtils {
     private const val ENABLED_SERVICES_SEPARATOR = ':'
+    private const val COMPONENT_SEPARATOR = '/'
+    private const val SHORT_FORM_CLASS_PREFIX = '.'
 
     /**
      * Checks whether a specific accessibility service is currently enabled.
@@ -27,18 +29,13 @@ object PermissionUtils {
         context: Context,
         serviceClass: Class<*>,
     ): Boolean {
-        val expectedComponentName =
-            "${context.packageName}/${serviceClass.canonicalName}"
-
         val enabledServices =
             Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
             ) ?: return false
 
-        return enabledServices
-            .split(ENABLED_SERVICES_SEPARATOR)
-            .any { it.equals(expectedComponentName, ignoreCase = true) }
+        return isServiceListed(enabledServices, context.packageName, serviceClass)
     }
 
     /**
@@ -117,18 +114,70 @@ object PermissionUtils {
         context: Context,
         serviceClass: Class<*>,
     ): Boolean {
-        val expectedComponentName =
-            "${context.packageName}/${serviceClass.canonicalName}"
-
         val enabledListeners =
             Settings.Secure.getString(
                 context.contentResolver,
                 "enabled_notification_listeners",
             ) ?: return false
 
-        return enabledListeners
+        return isServiceListed(enabledListeners, context.packageName, serviceClass)
+    }
+
+    /**
+     * Checks whether [serviceClass] appears in a colon-separated list of flattened
+     * component names ([Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES] or
+     * `enabled_notification_listeners`).
+     *
+     * Android stores component names in either the fully-qualified form
+     * (`package/package.path.ServiceClass`) or the leading-dot short form
+     * (`package/.path.ServiceClass`), expanding the short form against the package
+     * internally. This matcher mirrors `ComponentName.unflattenFromString`: a class
+     * part beginning with `.` is resolved against its own package part before the
+     * comparison, so both encodings of the same component match. Malformed entries
+     * (missing separator, empty package, or empty class) never match.
+     *
+     * @param enabledEntries Raw colon-separated setting value.
+     * @param expectedPackage The package the service belongs to (`context.packageName`).
+     * @param serviceClass The service class to look for.
+     * @return `true` if any entry resolves to [expectedPackage] + [serviceClass], `false` otherwise.
+     */
+    private fun isServiceListed(
+        enabledEntries: String,
+        expectedPackage: String,
+        serviceClass: Class<*>,
+    ): Boolean {
+        val expectedClass = serviceClass.name
+
+        return enabledEntries
             .split(ENABLED_SERVICES_SEPARATOR)
-            .any { it.equals(expectedComponentName, ignoreCase = true) }
+            .any { entry -> componentMatches(entry, expectedPackage, expectedClass) }
+    }
+
+    /**
+     * Returns `true` when [flattenedComponent] (a single `package/class` entry) resolves
+     * to [expectedPackage] and [expectedClass], expanding the leading-dot short form the
+     * same way [android.content.ComponentName.unflattenFromString] does.
+     */
+    private fun componentMatches(
+        flattenedComponent: String,
+        expectedPackage: String,
+        expectedClass: String,
+    ): Boolean {
+        val separatorIndex = flattenedComponent.indexOf(COMPONENT_SEPARATOR)
+        if (separatorIndex <= 0 || separatorIndex >= flattenedComponent.length - 1) {
+            return false
+        }
+
+        val packagePart = flattenedComponent.substring(0, separatorIndex)
+        val classPart = flattenedComponent.substring(separatorIndex + 1)
+        val resolvedClass =
+            if (classPart[0] == SHORT_FORM_CLASS_PREFIX) {
+                packagePart + classPart
+            } else {
+                classPart
+            }
+
+        return packagePart == expectedPackage && resolvedClass == expectedClass
     }
 
     /**
