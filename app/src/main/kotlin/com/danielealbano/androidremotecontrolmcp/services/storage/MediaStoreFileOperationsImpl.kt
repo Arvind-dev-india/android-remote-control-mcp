@@ -19,7 +19,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import javax.inject.Inject
 
-@Suppress("TooGenericExceptionCaught", "SwallowedException")
+@Suppress("SwallowedException")
 class MediaStoreFileOperationsImpl
     @Inject
     constructor(
