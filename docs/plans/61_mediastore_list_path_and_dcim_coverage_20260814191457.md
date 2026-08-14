@@ -495,11 +495,11 @@ Definition of Done (US3):
 Why: the tool docs describe only user-added locations and don't state builtin scope or MIME acceptance.
 
 Acceptance criteria:
-- [ ] Built-in locations documented with directory scope, content types, and permissions; MIME-rejection error cases documented for the affected tools.
+- [x] Built-in locations documented with directory scope, content types, and permissions; MIME-rejection error cases documented for the affected tools.
 
 ### Task 4.1 — Update tool documentation
 
-- [ ] **Action 4.1.1** — `android_list_storage_locations` section: replace the description paragraph with:
+- [x] **Action 4.1.1** — `android_list_storage_locations` section: replace the description paragraph with:
 
 > Lists all available storage locations: built-in MediaStore locations (always present, no setup required) and user-added locations granted via the app settings. Use the location ID from this list for all file operations. The `name` of a built-in location reflects the current read-access level per media type, e.g. `"Pictures - All files"`, `"Pictures - Only owned files"`, or `"Pictures - All images, owned videos"` when permissions are partially granted.
 
@@ -516,12 +516,12 @@ and add below it:
 | `builtin:dcim` | `DCIM/` | images, videos (camera roll) | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
 ```
 
-- [ ] **Action 4.1.2** — Add to the **Error Cases** lists of `android_write_file`, `android_download_from_url`, `android_save_camera_photo`, and `android_save_camera_video`:
+- [x] **Action 4.1.2** — Add to the **Error Cases** lists of `android_write_file`, `android_download_from_url`, `android_save_camera_photo`, and `android_save_camera_video`:
 
 > - **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 
 Definition of Done:
-- [ ] Both actions applied; no Mermaid charts involved; no other doc sections touched.
+- [x] Both actions applied; no Mermaid charts involved; no other doc sections touched.
 
 ---
 

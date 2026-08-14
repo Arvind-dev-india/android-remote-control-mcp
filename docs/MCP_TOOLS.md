@@ -1798,7 +1798,16 @@ File operations on user-added storage locations. Storage locations must be added
 
 ### `android_list_storage_locations`
 
-Lists user-added storage locations with their metadata. Each location represents a directory the user granted access to via the app settings. Use the location ID from this list for all file operations.
+Lists all available storage locations: built-in MediaStore locations (always present, no setup required) and user-added locations granted via the app settings. Use the location ID from this list for all file operations. The `name` of a built-in location reflects the current read-access level per media type, e.g. `"Pictures - All files"`, `"Pictures - Only owned files"`, or `"Pictures - All images, owned videos"` when permissions are partially granted.
+
+**Built-in locations**:
+| ID | Directory | Content types | "All files" permission(s) |
+|----|-----------|---------------|---------------------------|
+| `builtin:downloads` | `Download/` | any (owned files only) | — |
+| `builtin:pictures` | `Pictures/` | images, videos | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
+| `builtin:movies` | `Movies/` | videos | `READ_MEDIA_VIDEO` |
+| `builtin:music` | `Music/` | audio | `READ_MEDIA_AUDIO` |
+| `builtin:dcim` | `DCIM/` | images, videos (camera roll) | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
 
 **Input Schema**:
 ```json
@@ -2018,6 +2027,7 @@ Writes text content to a file. Creates the file if it doesn't exist, creates par
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `location_id`, `path`, or `content`
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: Write not allowed
 - **Action failed**: Storage location not found, content exceeds file size limit, write operation failed
 
@@ -2190,6 +2200,7 @@ Downloads a file from a URL and saves it to a storage location.
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `location_id`, `path`, or `url`; invalid URL format
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: Write not allowed
 - **Action failed**: Storage location not found, download failed (network error, timeout, HTTP error status), file exceeds size limit, HTTP not allowed, unverified HTTPS not allowed
 
@@ -2682,6 +2693,7 @@ Captures a photo from the specified camera and saves it to a storage location. R
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, or `path`; invalid resolution format; quality out of range; invalid flash mode
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; storage location not authorized; write not permitted
 - **Action failed**: Camera not found, capture failed
 
@@ -2757,6 +2769,7 @@ Records a video from the specified camera and saves it to a storage location. Ma
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, `path`, or `duration`; duration out of range (1-30); invalid resolution format; invalid flash mode
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; RECORD_AUDIO permission not granted (when audio=true); storage location not authorized; write not permitted
 - **Action failed**: Camera not found, recording failed
 
