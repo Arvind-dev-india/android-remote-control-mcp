@@ -62,6 +62,9 @@ class ListStorageLocationsHandler
                                     put("allow_read", true)
                                     put("allow_write", location.allowWrite)
                                     put("allow_delete", location.allowDelete)
+                                    location.accessLevel?.let { level ->
+                                        put("access_level", level.jsonValue)
+                                    }
                                 },
                             )
                         }
@@ -85,7 +88,9 @@ class ListStorageLocationsHandler
                 description =
                     "Lists available storage locations. Includes built-in locations " +
                         "(always available, no setup required) and user-added locations. " +
-                        "Use the location ID from this list for all file operations.",
+                        "Use the location ID from this list for all file operations. " +
+                        "Built-in locations report access_level: full, partial (user granted a " +
+                        "limited photo/video selection or a per-type subset), or owned_only.",
                 inputSchema =
                     ToolSchema(
                         properties = buildJsonObject {},
