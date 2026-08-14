@@ -539,3 +539,10 @@ Acceptance criteria:
 ### Task 5.2 — Double check everything implemented, from the ground up (LAST ITEM)
 
 - [x] **Action 5.2.1** — Re-read the FULL diff (`git diff main...HEAD`) file by file and verify, from first principles: every action of this plan applied exactly as written; every acceptance criterion holds; each symptom from issues #154 and #155 is resolved by the code as written (path filtering per segment, LIKE escaping, DCIM reachable for photos AND videos, Pictures shows videos, MIME-routed writes, per-collection all-files, three-state naming, UI multi-permission grant); NO file outside this plan's scope was touched; no TODOs/placeholders/suppressions introduced; all plan checkboxes are `[x]`.
+
+---
+
+## Review Findings (post-implementation code review)
+
+- [x] **WARNING — `MediaStoreDownloader` had no unit tests for its core logic** (HTTP status validation, Content-Length pre-check, mid-stream limit enforcement, IS_PENDING clearing, delete-on-failure cleanup). Resolved: added `MediaStoreDownloaderTest` covering successful stream + IS_PENDING clear, non-2xx status, oversized reported Content-Length, mid-stream limit breach, unopenable destination, and generic-failure wrapping with cause propagation — each verifying the pending-entry cleanup and disconnect behavior. The new test exposed and led to fixing a connection leak introduced by the decomposition (connect() moved back to the orchestrator so a failing connect is still disconnected).
+- [x] **INFO — broad suppression cluster on `downloadToPendingUri`**. Resolved: decomposed into `prepareConnection`/`validateResponse`/`streamToDestination`/`markDownloadComplete`; only the justified `TooGenericExceptionCaught` suppression remains (cleanup-on-any-failure of the pending MediaStore entry). Also removed the stale class-level `TooGenericExceptionCaught` on `MediaStoreFileOperationsImpl` and corrected the camera-tool MIME-rejection doc examples in `MCP_TOOLS.md` to scenarios reachable by those tools.

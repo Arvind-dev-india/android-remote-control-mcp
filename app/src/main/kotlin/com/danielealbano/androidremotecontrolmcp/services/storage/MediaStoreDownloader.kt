@@ -18,7 +18,7 @@ import javax.net.ssl.HttpsURLConnection
 internal class MediaStoreDownloader(
     private val context: Context,
 ) {
-    @Suppress("LongMethod", "CyclomaticComplexMethod", "ThrowsCount", "NestedBlockDepth", "TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught")
     fun downloadToPendingUri(
         insertUri: Uri,
         parsedUrl: URL,
@@ -26,63 +26,13 @@ internal class MediaStoreDownloader(
         config: ServerConfig,
         logContext: String,
     ): Long {
-        val timeoutMs = (config.downloadTimeoutSeconds * MILLIS_PER_SECOND).toInt()
-        val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
         var connection: HttpURLConnection? = null
         try {
-            connection = parsedUrl.openConnection() as HttpURLConnection
-            connection.connectTimeout = timeoutMs
-            connection.readTimeout = timeoutMs
-            connection.instanceFollowRedirects = true
-
-            if (config.allowUnverifiedHttpsCerts && connection is HttpsURLConnection) {
-                SslUtils.configurePermissiveSsl(connection)
-            }
-
+            connection = prepareConnection(parsedUrl, config)
             connection.connect()
-
-            val responseCode = connection.responseCode
-            if (responseCode !in HTTP_SUCCESS_RANGE) {
-                throw McpToolException.ActionFailed(
-                    "Download failed with HTTP status $responseCode for URL: $url",
-                )
-            }
-
-            val contentLength = connection.contentLengthLong
-            if (contentLength > 0 && contentLength > limitBytes) {
-                throw McpToolException.ActionFailed(
-                    "Server reports file size of $contentLength bytes, exceeds limit of " +
-                        "${config.fileSizeLimitMb} MB.",
-                )
-            }
-
-            var totalBytesWritten = 0L
-            context.contentResolver.openOutputStream(insertUri, "wt")?.use { outputStream ->
-                connection.inputStream.use { inputStream ->
-                    val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
-                    var bytesRead: Int
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        totalBytesWritten += bytesRead
-                        if (totalBytesWritten > limitBytes) {
-                            throw McpToolException.ActionFailed(
-                                "Download exceeds the configured file size limit of " +
-                                    "${config.fileSizeLimitMb} MB.",
-                            )
-                        }
-                        outputStream.write(buffer, 0, bytesRead)
-                    }
-                }
-            } ?: throw McpToolException.ActionFailed(
-                "Failed to open download destination for writing",
-            )
-
-            // Clear IS_PENDING on success
-            val updateValues =
-                ContentValues().apply {
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
-                }
-            context.contentResolver.update(insertUri, updateValues, null, null)
-
+            validateResponse(connection, url, config)
+            val totalBytesWritten = streamToDestination(connection, insertUri, config)
+            markDownloadComplete(insertUri)
             Log.i(TAG, "Downloaded $totalBytesWritten bytes from $url to $logContext")
             return totalBytesWritten
         } catch (e: McpToolException) {
@@ -97,6 +47,83 @@ internal class MediaStoreDownloader(
         } finally {
             connection?.disconnect()
         }
+    }
+
+    /** Configures (but does not connect) so a failing connect() can still be disconnected. */
+    private fun prepareConnection(
+        parsedUrl: URL,
+        config: ServerConfig,
+    ): HttpURLConnection {
+        val timeoutMs = (config.downloadTimeoutSeconds * MILLIS_PER_SECOND).toInt()
+        val connection = parsedUrl.openConnection() as HttpURLConnection
+        connection.connectTimeout = timeoutMs
+        connection.readTimeout = timeoutMs
+        connection.instanceFollowRedirects = true
+
+        if (config.allowUnverifiedHttpsCerts && connection is HttpsURLConnection) {
+            SslUtils.configurePermissiveSsl(connection)
+        }
+
+        return connection
+    }
+
+    private fun validateResponse(
+        connection: HttpURLConnection,
+        url: String,
+        config: ServerConfig,
+    ) {
+        val responseCode = connection.responseCode
+        if (responseCode !in HTTP_SUCCESS_RANGE) {
+            throw McpToolException.ActionFailed(
+                "Download failed with HTTP status $responseCode for URL: $url",
+            )
+        }
+
+        val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
+        val contentLength = connection.contentLengthLong
+        if (contentLength > 0 && contentLength > limitBytes) {
+            throw McpToolException.ActionFailed(
+                "Server reports file size of $contentLength bytes, exceeds limit of " +
+                    "${config.fileSizeLimitMb} MB.",
+            )
+        }
+    }
+
+    private fun streamToDestination(
+        connection: HttpURLConnection,
+        insertUri: Uri,
+        config: ServerConfig,
+    ): Long {
+        val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
+        var totalBytesWritten = 0L
+        context.contentResolver.openOutputStream(insertUri, "wt")?.use { outputStream ->
+            connection.inputStream.use { inputStream ->
+                val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    totalBytesWritten += bytesRead
+                    if (totalBytesWritten > limitBytes) {
+                        throw McpToolException.ActionFailed(
+                            "Download exceeds the configured file size limit of " +
+                                "${config.fileSizeLimitMb} MB.",
+                        )
+                    }
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+            }
+        } ?: throw McpToolException.ActionFailed(
+            "Failed to open download destination for writing",
+        )
+        return totalBytesWritten
+    }
+
+    private fun markDownloadComplete(insertUri: Uri) {
+        // Clear IS_PENDING on success
+        val updateValues =
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+            }
+        context.contentResolver.update(insertUri, updateValues, null, null)
     }
 
     companion object {
