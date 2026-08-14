@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinStorageLocation
+import com.danielealbano.androidremotecontrolmcp.data.model.MediaCollection
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
@@ -52,10 +53,15 @@ class MediaStoreFileOperationsTest {
     @MockK
     private lateinit var mockSettingsRepository: SettingsRepository
 
+    @MockK
+    private lateinit var mockPermissionChecker: PermissionChecker
+
     private lateinit var operations: MediaStoreFileOperationsImpl
 
     private val fakeCollectionUri: Uri = mockk(relaxed = true)
     private val fakeFileUri: Uri = mockk(relaxed = true)
+    private val fakeImagesUri: Uri = mockk(relaxed = true)
+    private val fakeVideoUri: Uri = mockk(relaxed = true)
 
     @BeforeEach
     fun setUp() {
@@ -74,22 +80,56 @@ class MediaStoreFileOperationsTest {
         every { mockContext.contentResolver } returns mockContentResolver
         every { mockContext.packageName } returns "com.test.app"
 
-        coEvery { mockStorageLocationProvider.isAllFilesMode(any()) } returns false
         coEvery { mockStorageLocationProvider.isWriteAllowed(any()) } returns true
         coEvery { mockStorageLocationProvider.isDeleteAllowed(any()) } returns true
         coEvery { mockSettingsRepository.getServerConfig() } returns ServerConfig()
+        every { mockPermissionChecker.hasPermission(any()) } returns false
 
         mockkObject(BuiltinStorageLocation.DOWNLOADS)
-        every { BuiltinStorageLocation.DOWNLOADS.collectionUri } returns fakeCollectionUri
+        every { BuiltinStorageLocation.DOWNLOADS.collections } returns listOf(testCollection(fakeCollectionUri))
 
-        operations = MediaStoreFileOperationsImpl(mockContext, mockStorageLocationProvider, mockSettingsRepository)
+        operations =
+            MediaStoreFileOperationsImpl(
+                mockContext,
+                mockStorageLocationProvider,
+                mockSettingsRepository,
+                mockPermissionChecker,
+            )
     }
 
     @AfterEach
     fun tearDown() {
         unmockkObject(BuiltinStorageLocation.DOWNLOADS)
+        unmockkObject(BuiltinStorageLocation.PICTURES)
+        unmockkObject(BuiltinStorageLocation.MUSIC)
         unmockkStatic(Log::class)
         unmockkStatic(Uri::class)
+    }
+
+    private fun testCollection(
+        uri: Uri,
+        permission: String? = null,
+        mimePrefix: String? = null,
+        label: String = "files",
+    ) = MediaCollection({ uri }, permission, mimePrefix, label)
+
+    private fun stubPicturesCollections() {
+        mockkObject(BuiltinStorageLocation.PICTURES)
+        every { BuiltinStorageLocation.PICTURES.collections } returns
+            listOf(
+                testCollection(
+                    fakeImagesUri,
+                    permission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                    mimePrefix = "image/",
+                    label = "images",
+                ),
+                testCollection(
+                    fakeVideoUri,
+                    permission = android.Manifest.permission.READ_MEDIA_VIDEO,
+                    mimePrefix = "video/",
+                    label = "videos",
+                ),
+            )
     }
 
     private fun createMockCursor(rows: List<Map<String, Any?>>): Cursor {
@@ -267,7 +307,16 @@ class MediaStoreFileOperationsTest {
         @Test
         fun `listFiles returns all files in all-files mode`() =
             runTest {
-                coEvery { mockStorageLocationProvider.isAllFilesMode("builtin:downloads") } returns true
+                every { BuiltinStorageLocation.DOWNLOADS.collections } returns
+                    listOf(
+                        testCollection(
+                            fakeCollectionUri,
+                            permission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                        ),
+                    )
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
 
                 val rows =
                     listOf(
@@ -303,6 +352,234 @@ class MediaStoreFileOperationsTest {
                         operations.listFiles("builtin:nonexistent", "", 0, 50)
                     }
                 assertTrue(exception.message!!.contains("not found"))
+            }
+
+        @Test
+        fun `listFiles filters by single-segment path`() =
+            runTest {
+                var capturedArgs: Array<String>? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedArgs = arg(3)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:downloads", "subdir", 0, 50)
+
+                assertEquals("Download/subdir/%", capturedArgs!![0])
+            }
+
+        @Test
+        fun `listFiles filters by nested path`() =
+            runTest {
+                var capturedArgs: Array<String>? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedArgs = arg(3)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:downloads", "a/b", 0, 50)
+
+                assertEquals("Download/a/b/%", capturedArgs!![0])
+            }
+
+        @Test
+        fun `listFiles returns empty for non-matching directory`() =
+            runTest {
+                val rows =
+                    listOf(
+                        mapOf(
+                            "id" to 1L,
+                            "name" to "root.txt",
+                            "relPath" to "Download/",
+                            "size" to 1L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "text/plain",
+                        ),
+                        mapOf(
+                            "id" to 2L,
+                            "name" to "other.txt",
+                            "relPath" to "Download/other/",
+                            "size" to 1L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "text/plain",
+                        ),
+                    )
+                stubQueryReturning(createMockCursor(rows))
+
+                val result = operations.listFiles("builtin:downloads", "subdir", 0, 50)
+
+                assertEquals(0, result.totalCount)
+                assertTrue(result.files.isEmpty())
+            }
+
+        @Test
+        fun `listFiles synthesizes directories under non-root path`() =
+            runTest {
+                val rows =
+                    listOf(
+                        mapOf(
+                            "id" to 1L,
+                            "name" to "x.jpg",
+                            "relPath" to "Download/a/b/",
+                            "size" to 10L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "image/jpeg",
+                        ),
+                    )
+                stubQueryReturning(createMockCursor(rows))
+
+                val result = operations.listFiles("builtin:downloads", "a", 0, 50)
+
+                assertEquals(1, result.totalCount)
+                assertTrue(result.files[0].isDirectory)
+                assertEquals("b", result.files[0].name)
+                assertEquals("builtin:downloads/a/b", result.files[0].path)
+            }
+
+        @Test
+        fun `listFiles escapes LIKE wildcards in path`() =
+            runTest {
+                var capturedSelection: String? = null
+                var capturedArgs: Array<String>? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedSelection = arg(2)
+                    capturedArgs = arg(3)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:downloads", "My_Files", 0, 50)
+
+                assertEquals("Download/My\\_Files/%", capturedArgs!![0])
+                assertTrue(capturedSelection!!.contains("ESCAPE '\\'"))
+            }
+
+        @Test
+        fun `listFiles escapes percent in path`() =
+            runTest {
+                var capturedArgs: Array<String>? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedArgs = arg(3)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:downloads", "100%", 0, 50)
+
+                assertEquals("Download/100\\%/%", capturedArgs!![0])
+            }
+
+        @Test
+        fun `listFiles merges rows from all collections`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    when (arg<Uri>(0)) {
+                        fakeImagesUri -> {
+                            createMockCursor(
+                                listOf(
+                                    mapOf(
+                                        "id" to 1L,
+                                        "name" to "photo.jpg",
+                                        "relPath" to "Pictures/",
+                                        "size" to 10L,
+                                        "dateModified" to 1700000000L,
+                                        "mimeType" to "image/jpeg",
+                                    ),
+                                ),
+                            )
+                        }
+
+                        fakeVideoUri -> {
+                            createMockCursor(
+                                listOf(
+                                    mapOf(
+                                        "id" to 2L,
+                                        "name" to "clip.mp4",
+                                        "relPath" to "Pictures/",
+                                        "size" to 20L,
+                                        "dateModified" to 1700000001L,
+                                        "mimeType" to "video/mp4",
+                                    ),
+                                ),
+                            )
+                        }
+
+                        else -> {
+                            createMockCursor(emptyList())
+                        }
+                    }
+                }
+
+                val result = operations.listFiles("builtin:pictures", "", 0, 50)
+
+                assertEquals(2, result.totalCount)
+                assertEquals(listOf("clip.mp4", "photo.jpg"), result.files.map { it.name })
+            }
+
+        @Test
+        fun `listFiles dedupes synthesized dirs across collections`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    when (arg<Uri>(0)) {
+                        fakeImagesUri, fakeVideoUri -> {
+                            createMockCursor(
+                                listOf(
+                                    mapOf(
+                                        "id" to 1L,
+                                        "name" to "media.bin",
+                                        "relPath" to "Pictures/sub/",
+                                        "size" to 10L,
+                                        "dateModified" to 1700000000L,
+                                        "mimeType" to "application/octet-stream",
+                                    ),
+                                ),
+                            )
+                        }
+
+                        else -> {
+                            createMockCursor(emptyList())
+                        }
+                    }
+                }
+
+                val result = operations.listFiles("builtin:pictures", "", 0, 50)
+
+                assertEquals(1, result.totalCount)
+                assertTrue(result.files[0].isDirectory)
+                assertEquals("sub", result.files[0].name)
+            }
+
+        @Test
+        fun `listFiles applies owner filter per collection`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
+                val selections = mutableMapOf<Uri, String>()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    selections[arg(0)] = arg(2)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:pictures", "", 0, 50)
+
+                assertFalse(selections[fakeImagesUri]!!.contains(MediaStore.MediaColumns.OWNER_PACKAGE_NAME))
+                assertTrue(selections[fakeVideoUri]!!.contains(MediaStore.MediaColumns.OWNER_PACKAGE_NAME))
             }
     }
 
@@ -364,7 +641,16 @@ class MediaStoreFileOperationsTest {
         @Test
         fun `readFile works in all-files mode for non-owned file`() =
             runTest {
-                coEvery { mockStorageLocationProvider.isAllFilesMode("builtin:downloads") } returns true
+                every { BuiltinStorageLocation.DOWNLOADS.collections } returns
+                    listOf(
+                        testCollection(
+                            fakeCollectionUri,
+                            permission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                        ),
+                    )
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
 
                 val findCursor = createMockCursor(listOf(mapOf("id" to 1L)))
                 every {
@@ -381,6 +667,29 @@ class MediaStoreFileOperationsTest {
                 val result = operations.readFile("builtin:downloads", "other.txt", 1, 200)
 
                 assertEquals("Non-owned content", result.content)
+            }
+
+        @Test
+        fun `readFile resolves file from second collection`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    when (arg<Uri>(0)) {
+                        fakeImagesUri -> createMockCursor(emptyList())
+                        fakeVideoUri -> createMockCursor(listOf(mapOf("id" to 5L)))
+                        else -> createMockCursor(listOf(mapOf("size" to 20L)))
+                    }
+                }
+                every {
+                    mockContentResolver.openInputStream(any())
+                } returns ByteArrayInputStream("video content".toByteArray())
+
+                val result = operations.readFile("builtin:pictures", "clip.mp4", 1, 200)
+
+                assertEquals("video content", result.content)
+                verify { mockContentResolver.query(eq(fakeVideoUri), any(), any(), any(), any()) }
             }
     }
 
@@ -502,6 +811,91 @@ class MediaStoreFileOperationsTest {
                     }
                 assertTrue(exception.message!!.contains("file size limit"))
             }
+
+        @Test
+        fun `writeFile routes image mime to images collection`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers { createMockCursor(emptyList()) }
+                val insertedUri = mockk<Uri>(relaxed = true)
+                every { mockContentResolver.insert(any(), any()) } returns insertedUri
+                val outputStream = ByteArrayOutputStream()
+                every { mockContentResolver.openOutputStream(eq(insertedUri), eq("wt")) } returns outputStream
+
+                operations.writeFile("builtin:pictures", "x.jpg", "img")
+
+                verify { mockContentResolver.insert(eq(fakeImagesUri), any()) }
+            }
+
+        @Test
+        fun `writeFile routes video mime to video collection`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers { createMockCursor(emptyList()) }
+                val insertedUri = mockk<Uri>(relaxed = true)
+                every { mockContentResolver.insert(any(), any()) } returns insertedUri
+                val outputStream = ByteArrayOutputStream()
+                every { mockContentResolver.openOutputStream(eq(insertedUri), eq("wt")) } returns outputStream
+
+                operations.writeFile("builtin:pictures", "x.mp4", "vid")
+
+                verify { mockContentResolver.insert(eq(fakeVideoUri), any()) }
+            }
+
+        @Test
+        fun `writeFile rejects unsupported mime with InvalidParams`() =
+            runTest {
+                stubPicturesCollections()
+
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        operations.writeFile("builtin:pictures", "x.txt", "text")
+                    }
+
+                assertTrue(exception.message!!.contains("images, videos"))
+                verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
+            }
+
+        @Test
+        fun `writeFile rejects non-audio on music`() =
+            runTest {
+                mockkObject(BuiltinStorageLocation.MUSIC)
+                every { BuiltinStorageLocation.MUSIC.collections } returns
+                    listOf(
+                        testCollection(
+                            fakeCollectionUri,
+                            permission = android.Manifest.permission.READ_MEDIA_AUDIO,
+                            mimePrefix = "audio/",
+                            label = "audio",
+                        ),
+                    )
+
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        operations.writeFile("builtin:music", "x.txt", "text")
+                    }
+
+                assertTrue(exception.message!!.contains("audio"))
+                verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
+            }
+
+        @Test
+        fun `writeFile accepts any mime on downloads`() =
+            runTest {
+                stubFindOwnedFile(found = false)
+                val insertedUri = mockk<Uri>(relaxed = true)
+                every { mockContentResolver.insert(any(), any()) } returns insertedUri
+                val outputStream = ByteArrayOutputStream()
+                every { mockContentResolver.openOutputStream(eq(insertedUri), eq("wt")) } returns outputStream
+
+                operations.writeFile("builtin:downloads", "x.txt", "text")
+
+                verify { mockContentResolver.insert(eq(fakeCollectionUri), any()) }
+            }
     }
 
     // ─── appendFile ─────────────────────────────────────────────────────
@@ -618,6 +1012,26 @@ class MediaStoreFileOperationsTest {
                     }
                 assertTrue(exception.message!!.contains("Delete not allowed"))
             }
+
+        @Test
+        fun `deleteFile resolves owned file across collections`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    when (arg<Uri>(0)) {
+                        fakeImagesUri -> createMockCursor(emptyList())
+                        fakeVideoUri -> createMockCursor(listOf(mapOf("id" to 3L)))
+                        else -> createMockCursor(emptyList())
+                    }
+                }
+                every { mockContentResolver.delete(any(), any(), any()) } returns 1
+
+                operations.deleteFile("builtin:pictures", "clip.mp4")
+
+                verify { mockContentResolver.delete(eq(fakeFileUri), any(), any()) }
+            }
     }
 
     // ─── createFileUri ──────────────────────────────────────────────────
@@ -649,6 +1063,46 @@ class MediaStoreFileOperationsTest {
                     operations.createFileUri("builtin:downloads", "existing.jpg", "image/jpeg")
 
                 assertEquals(fakeFileUri, result)
+                verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
+            }
+
+        @Test
+        fun `createFileUri routes by explicit mime type`() =
+            runTest {
+                stubPicturesCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers { createMockCursor(emptyList()) }
+                val insertedUri = mockk<Uri>(relaxed = true)
+                every { mockContentResolver.insert(any(), any()) } returns insertedUri
+
+                val result = operations.createFileUri("builtin:pictures", "clip.mp4", "video/mp4")
+
+                assertEquals(insertedUri, result)
+                verify { mockContentResolver.insert(eq(fakeVideoUri), any()) }
+            }
+    }
+
+    // ─── downloadFromUrl ────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("downloadFromUrl")
+    inner class DownloadFromUrl {
+        @Test
+        fun `downloadFromUrl rejects unsupported mime before insert`() =
+            runTest {
+                stubPicturesCollections()
+
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        operations.downloadFromUrl(
+                            "builtin:pictures",
+                            "notes.txt",
+                            "https://example.com/f",
+                        )
+                    }
+
+                assertTrue(exception.message!!.contains("Accepted types"))
                 verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
             }
     }
