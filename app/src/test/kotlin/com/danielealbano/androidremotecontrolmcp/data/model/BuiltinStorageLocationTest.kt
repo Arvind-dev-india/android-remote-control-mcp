@@ -138,6 +138,18 @@ class BuiltinStorageLocationTest {
             assertEquals("audio/", BuiltinStorageLocation.RECORDINGS.collections[0].mimeTypePrefix)
             assertEquals("audio", BuiltinStorageLocation.RECORDINGS.collections[0].typeLabel)
         }
+
+        @Test
+        fun `isVisual is true for images and video collections`() {
+            assertTrue(BuiltinStorageLocation.PICTURES.collections[0].isVisual)
+            assertTrue(BuiltinStorageLocation.PICTURES.collections[1].isVisual)
+        }
+
+        @Test
+        fun `isVisual is false for audio and permissionless collections`() {
+            assertFalse(BuiltinStorageLocation.MUSIC.collections[0].isVisual)
+            assertFalse(BuiltinStorageLocation.DOWNLOADS.collections[0].isVisual)
+        }
     }
 
     @Nested
