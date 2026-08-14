@@ -23,13 +23,13 @@
 Why: `listFiles` reuses `buildRelativePathForDir` (a file-path helper that drops the last segment), so the `path` parameter is ignored for single-segment paths and off-by-one for deeper paths. The `LIKE` argument is also unescaped (`%`/`_` act as wildcards).
 
 Acceptance criteria:
-- [ ] `listFiles` queries `RELATIVE_PATH LIKE '<base><full path>/%' ESCAPE '\'` with all path segments kept.
-- [ ] `%`, `_`, and `\` in the target path are escaped in the `LIKE` argument; the trailing `%` wildcard is NOT escaped.
-- [ ] `buildRelativePathForDir` is unchanged (still correct for its file-path callers).
+- [x] `listFiles` queries `RELATIVE_PATH LIKE '<base><full path>/%' ESCAPE '\'` with all path segments kept.
+- [x] `%`, `_`, and `\` in the target path are escaped in the `LIKE` argument; the trailing `%` wildcard is NOT escaped.
+- [x] `buildRelativePathForDir` is unchanged (still correct for its file-path callers).
 
 ### Task 1.1 — Listing path builder and LIKE escaping
 
-- [ ] **Action 1.1.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/MediaStoreFileOperationsImpl.kt`: add the two helpers next to `buildRelativePathForDir`:
+- [x] **Action 1.1.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/MediaStoreFileOperationsImpl.kt`: add the two helpers next to `buildRelativePathForDir`:
 
 ```kotlin
 /**
@@ -54,9 +54,9 @@ private fun escapeLikePattern(value: String): String =
         .replace("_", "\\_")
 ```
 
-- [ ] **Action 1.1.2** — Modify same file, `listFiles`: replace `val targetRelativePath = buildRelativePathForDir(builtin, path)` with `val targetRelativePath = buildRelativePathForListing(builtin, path)`.
+- [x] **Action 1.1.2** — Modify same file, `listFiles`: replace `val targetRelativePath = buildRelativePathForDir(builtin, path)` with `val targetRelativePath = buildRelativePathForListing(builtin, path)`.
 
-- [ ] **Action 1.1.3** — Modify same file, `buildListSelection` and `buildListSelectionArgs`:
+- [x] **Action 1.1.3** — Modify same file, `buildListSelection` and `buildListSelectionArgs`:
 
 ```kotlin
 private fun buildListSelection(isAllFiles: Boolean): String {
@@ -79,7 +79,7 @@ private fun buildListSelectionArgs(
 ```
 
 Definition of Done:
-- [ ] All three actions applied; no other behavior of `listFiles` changed in this task.
+- [x] All three actions applied; no other behavior of `listFiles` changed in this task.
 
 ---
 

@@ -39,7 +39,7 @@ class MediaStoreFileOperationsImpl
             withContext(Dispatchers.IO) {
                 val builtin = resolveBuiltin(locationId)
                 BuiltinStorageLocation.validatePath(path)
-                val targetRelativePath = buildRelativePathForDir(builtin, path)
+                val targetRelativePath = buildRelativePathForListing(builtin, path)
                 val isAllFiles = storageLocationProvider.isAllFilesMode(locationId)
                 val cappedLimit = limit.coerceAtMost(FileOperationProvider.MAX_LIST_ENTRIES)
 
@@ -160,7 +160,7 @@ class MediaStoreFileOperationsImpl
         }
 
         private fun buildListSelection(isAllFiles: Boolean): String {
-            val pathFilter = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+            val pathFilter = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? ESCAPE '\\'"
             return if (isAllFiles) {
                 pathFilter
             } else {
@@ -172,8 +172,8 @@ class MediaStoreFileOperationsImpl
             targetRelativePath: String,
             isAllFiles: Boolean,
         ): Array<String> {
-            // LIKE pattern: match exact dir and all children
-            val pattern = "$targetRelativePath%"
+            // LIKE pattern: match exact dir and all children; escape the literal prefix only
+            val pattern = "${escapeLikePattern(targetRelativePath)}%"
             return if (isAllFiles) arrayOf(pattern) else arrayOf(pattern, context.packageName)
         }
 
@@ -556,6 +556,27 @@ class MediaStoreFileOperationsImpl
                 "${builtin.baseRelativePath}${parentSegments.joinToString("/")}/"
             }
         }
+
+        /**
+         * Builds the MediaStore RELATIVE_PATH for a directory itself (all segments kept).
+         * E.g., builtin=PICTURES, path="DCIM/Camera" → "Pictures/DCIM/Camera/"
+         * E.g., builtin=PICTURES, path="" → "Pictures/"
+         */
+        private fun buildRelativePathForListing(
+            builtin: BuiltinStorageLocation,
+            path: String,
+        ): String {
+            if (path.isEmpty()) return builtin.baseRelativePath
+            val segments = path.split("/").filter { it.isNotEmpty() }
+            return "${builtin.baseRelativePath}${segments.joinToString("/")}/"
+        }
+
+        /** Escapes LIKE wildcards so the target path matches literally ('\' MUST be replaced first). */
+        private fun escapeLikePattern(value: String): String =
+            value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
 
         /**
          * Extracts the file name (last segment) from a relative path.
