@@ -144,8 +144,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — 5 builtins + 1 SAF location
-                assertEquals(6, result.size)
+                // Assert — 6 builtins + 1 SAF location
+                assertEquals(7, result.size)
                 val location = result.last()
                 assertEquals("com.test.provider/primary:Documents", location.id)
                 assertEquals("Documents", location.name)
@@ -169,8 +169,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — only 5 builtins, no SAF locations
-                assertEquals(5, result.size)
+                // Assert — only 6 builtins, no SAF locations
+                assertEquals(6, result.size)
                 assertTrue(result.all { it.isBuiltin })
             }
 
@@ -210,8 +210,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — 5 builtins + 1 SAF location
-                assertEquals(6, result.size)
+                // Assert — 6 builtins + 1 SAF location
+                assertEquals(7, result.size)
                 val location = result.last()
                 assertEquals("com.test.provider/primary:Documents", location.id)
                 assertEquals("Documents", location.name)
@@ -1189,20 +1189,21 @@ class StorageLocationProviderTest {
                 val result = provider.getAllLocations()
 
                 // Assert — builtins come first
-                assertEquals(6, result.size)
+                assertEquals(7, result.size)
                 assertTrue(result[0].isBuiltin)
                 assertTrue(result[1].isBuiltin)
                 assertTrue(result[2].isBuiltin)
                 assertTrue(result[3].isBuiltin)
                 assertTrue(result[4].isBuiltin)
-                assertFalse(result[5].isBuiltin)
-                assertEquals("com.test.provider/primary:Documents", result[5].id)
+                assertTrue(result[5].isBuiltin)
+                assertFalse(result[6].isBuiltin)
+                assertEquals("com.test.provider/primary:Documents", result[6].id)
 
                 unmockkStatic(Uri::class)
             }
 
         @Test
-        fun `getAllLocations returns five builtin locations`() =
+        fun `getAllLocations returns six builtin locations`() =
             runTest {
                 // Arrange
                 coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
@@ -1211,13 +1212,14 @@ class StorageLocationProviderTest {
                 val result = provider.getAllLocations()
 
                 // Assert
-                assertEquals(5, result.size)
+                assertEquals(6, result.size)
                 assertTrue(result.all { it.isBuiltin })
                 assertEquals("builtin:downloads", result[0].id)
                 assertEquals("builtin:pictures", result[1].id)
                 assertEquals("builtin:movies", result[2].id)
                 assertEquals("builtin:music", result[3].id)
                 assertEquals("builtin:dcim", result[4].id)
+                assertEquals("builtin:recordings", result[5].id)
             }
 
         @Test
@@ -1397,6 +1399,55 @@ class StorageLocationProviderTest {
                 assertNotNull(dcim)
                 assertTrue(dcim!!.name.startsWith("Camera (DCIM)"))
                 assertEquals("/DCIM", dcim.path)
+            }
+
+        @Test
+        fun `recordings name is Only owned files when audio not granted`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every { mockPermissionChecker.hasPermission(any()) } returns false
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("Recordings - Only owned files", recordings!!.name)
+            }
+
+        @Test
+        fun `recordings name is All files when audio granted`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("Recordings - All files", recordings!!.name)
+            }
+
+        @Test
+        fun `recordings location present with Recordings path`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("/Recordings", recordings!!.path)
             }
 
         @Test

@@ -1808,6 +1808,7 @@ Lists all available storage locations: built-in MediaStore locations (always pre
 | `builtin:movies` | `Movies/` | videos | `READ_MEDIA_VIDEO` |
 | `builtin:music` | `Music/` | audio | `READ_MEDIA_AUDIO` |
 | `builtin:dcim` | `DCIM/` | images, videos (camera roll) | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
+| `builtin:recordings` | `Recordings/` | audio | `READ_MEDIA_AUDIO` |
 
 **Input Schema**:
 ```json

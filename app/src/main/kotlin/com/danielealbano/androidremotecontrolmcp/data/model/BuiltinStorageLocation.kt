@@ -131,6 +131,20 @@ enum class BuiltinStorageLocation(
                 ),
             ),
     ),
+    RECORDINGS(
+        locationId = "builtin:recordings",
+        displayBaseName = "Recordings",
+        baseRelativePath = "Recordings/",
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Audio.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_AUDIO,
+                    mimeTypePrefix = "audio/",
+                    typeLabel = "audio",
+                ),
+            ),
+    ),
     ;
 
     companion object {
