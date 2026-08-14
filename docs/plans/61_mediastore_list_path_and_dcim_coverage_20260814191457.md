@@ -404,7 +404,7 @@ Definition of Done:
 Why: #154 escaped because no listing test used a non-empty path; #155 needs coverage for merge, routing, and per-collection permissions.
 
 Acceptance criteria:
-- [ ] Every new/changed behavior in US1–US2 has a unit test; all existing tests updated to the new model, none deleted without replacement.
+- [x] Every new/changed behavior in US1–US2 has a unit test; all existing tests updated to the new model, none deleted without replacement.
 
 ### Task 3.1 — `BuiltinStorageLocationTest`
 
@@ -412,7 +412,7 @@ Acceptance criteria:
 
 **Setup**: update existing assertions from removed properties (`displayNameOwned`/`displayNameAll`/`readMediaPermission`) to `displayBaseName`/`collections`.
 
-- [ ] | Test | Verifies |
+- [x] | Test | Verifies |
       |------|----------|
       | `fromLocationId returns DCIM for builtin:dcim` | New entry resolvable |
       | `DCIM entry has DCIM base path and Camera display name` | `baseRelativePath == "DCIM/"`, `displayBaseName == "Camera (DCIM)"` |
@@ -431,7 +431,7 @@ Acceptance criteria:
 - `getAllLocations returns builtins before SAF locations`: size 5 → 6; builtin/SAF boundary index 4 → 5 (`result[4]` is now the DCIM builtin, `result[5]` is SAF).
 - `builtin name shows All files when permission granted`: grant BOTH `READ_MEDIA_IMAGES` and `READ_MEDIA_VIDEO` so the PICTURES name is `"Pictures - All files"` (single-permission grant is covered by the new partial-grant test below).
 
-- [ ] | Test | Verifies |
+- [x] | Test | Verifies |
       |------|----------|
       | `builtin name is All files when all permissions granted` | PICTURES with both perms granted → `"Pictures - All files"` |
       | `builtin name is Only owned files when no permission granted` | PICTURES with none → `"Pictures - Only owned files"` |
@@ -457,8 +457,8 @@ private fun testCollection(
 
 For multi-collection cases, `mockkObject(BuiltinStorageLocation.PICTURES)` with `every { BuiltinStorageLocation.PICTURES.collections } returns listOf(imagesCollection, videoCollection)` (two distinct fake URIs); capture `query(...)` selection/args per URI. Every additionally mocked enum entry (PICTURES, MUSIC) MUST be released with `unmockkObject` in `tearDown`. The existing tests `listFiles returns all files in all-files mode` AND `readFile works in all-files mode for non-owned file` (both previously driven by `isAllFilesMode` returning true) MUST be adapted to stub a collection with a `readMediaPermission` and `permissionChecker.hasPermission` returning true for it, so they keep exercising non-owned resolution (with the stub merely removed they would silently stop testing the all-files path).
 
-- [ ] Existing `listFiles`/read/write/append/replace/delete/`createFileUri`/`downloadFromUrl` tests: adapt setup only (same assertions).
-- [ ] | Test | Verifies |
+- [x] Existing `listFiles`/read/write/append/replace/delete/`createFileUri`/`downloadFromUrl` tests: adapt setup only (same assertions).
+- [x] | Test | Verifies |
       |------|----------|
       | `listFiles filters by single-segment path` | Captured LIKE arg == `"Download/subdir/%"` for `path="subdir"` (#154 core) |
       | `listFiles filters by nested path` | `path="a/b"` → LIKE arg `"Download/a/b/%"` |
@@ -483,10 +483,10 @@ For multi-collection cases, `mockkObject(BuiltinStorageLocation.PICTURES)` with 
 
 **File**: `app/src/test/kotlin/com/danielealbano/androidremotecontrolmcp/integration/FileToolsIntegrationTest.kt`
 
-- [ ] Verify (and only if needed, adapt) the builtin-location tests: they mock `FileOperationProvider`/`StorageLocationProvider` interfaces directly, so no change is expected; run confirms.
+- [x] Verify (and only if needed, adapt) the builtin-location tests: they mock `FileOperationProvider`/`StorageLocationProvider` interfaces directly, so no change is expected; run confirms.
 
 Definition of Done (US3):
-- [ ] All tables implemented; `FileOperationProviderTest` (routing-only, interface mocks) requires no changes — confirmed by the full suite run in US5.
+- [x] All tables implemented; `FileOperationProviderTest` (routing-only, interface mocks) requires no changes — confirmed by the full suite run in US5.
 
 ---
 
