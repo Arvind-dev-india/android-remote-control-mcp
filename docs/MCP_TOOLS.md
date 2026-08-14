@@ -2693,7 +2693,7 @@ Captures a photo from the specified camera and saves it to a storage location. R
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, or `path`; invalid resolution format; quality out of range; invalid flash mode
-- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. saving a photo to `builtin:music`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; storage location not authorized; write not permitted
 - **Action failed**: Camera not found, capture failed
 
@@ -2769,7 +2769,7 @@ Records a video from the specified camera and saves it to a storage location. Ma
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, `path`, or `duration`; duration out of range (1-30); invalid resolution format; invalid flash mode
-- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. saving a video to `builtin:music`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; RECORD_AUDIO permission not granted (when audio=true); storage location not authorized; write not permitted
 - **Action failed**: Camera not found, recording failed
 
