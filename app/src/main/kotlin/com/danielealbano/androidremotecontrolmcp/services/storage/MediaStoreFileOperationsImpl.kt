@@ -17,9 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
 import javax.inject.Inject
-import javax.net.ssl.HttpsURLConnection
 
 @Suppress("TooGenericExceptionCaught", "SwallowedException")
 class MediaStoreFileOperationsImpl
@@ -30,6 +28,8 @@ class MediaStoreFileOperationsImpl
         private val settingsRepository: SettingsRepository,
         private val permissionChecker: PermissionChecker,
     ) : MediaStoreFileOperations {
+        private val downloader = MediaStoreDownloader(context)
+
         // ─── listFiles ──────────────────────────────────────────────────────
 
         override suspend fun listFiles(
@@ -381,7 +381,6 @@ class MediaStoreFileOperationsImpl
 
         // ─── downloadFromUrl ────────────────────────────────────────────────
 
-        @Suppress("LongMethod", "CyclomaticComplexMethod", "ThrowsCount", "NestedBlockDepth")
         override suspend fun downloadFromUrl(
             locationId: String,
             path: String,
@@ -398,8 +397,6 @@ class MediaStoreFileOperationsImpl
                 val displayName = extractDisplayName(path)
                 val mimeType = MimeTypeUtils.guessMimeType(displayName)
                 val collection = selectCollectionForMimeType(builtin, mimeType)
-                val timeoutMs = (config.downloadTimeoutSeconds * MILLIS_PER_SECOND).toInt()
-                val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
 
                 // Create MediaStore entry with IS_PENDING = 1
                 val values =
@@ -413,74 +410,7 @@ class MediaStoreFileOperationsImpl
                     context.contentResolver.insert(collection.uri, values)
                         ?: throw McpToolException.ActionFailed("Failed to create download destination: $path")
 
-                var connection: HttpURLConnection? = null
-                try {
-                    connection = parsedUrl.openConnection() as HttpURLConnection
-                    connection.connectTimeout = timeoutMs
-                    connection.readTimeout = timeoutMs
-                    connection.instanceFollowRedirects = true
-
-                    if (config.allowUnverifiedHttpsCerts && connection is HttpsURLConnection) {
-                        SslUtils.configurePermissiveSsl(connection)
-                    }
-
-                    connection.connect()
-
-                    val responseCode = connection.responseCode
-                    if (responseCode !in HTTP_SUCCESS_RANGE) {
-                        throw McpToolException.ActionFailed(
-                            "Download failed with HTTP status $responseCode for URL: $url",
-                        )
-                    }
-
-                    val contentLength = connection.contentLengthLong
-                    if (contentLength > 0 && contentLength > limitBytes) {
-                        throw McpToolException.ActionFailed(
-                            "Server reports file size of $contentLength bytes, exceeds limit of " +
-                                "${config.fileSizeLimitMb} MB.",
-                        )
-                    }
-
-                    var totalBytesWritten = 0L
-                    context.contentResolver.openOutputStream(insertUri, "wt")?.use { outputStream ->
-                        connection.inputStream.use { inputStream ->
-                            val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
-                            var bytesRead: Int
-                            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                                totalBytesWritten += bytesRead
-                                if (totalBytesWritten > limitBytes) {
-                                    throw McpToolException.ActionFailed(
-                                        "Download exceeds the configured file size limit of " +
-                                            "${config.fileSizeLimitMb} MB.",
-                                    )
-                                }
-                                outputStream.write(buffer, 0, bytesRead)
-                            }
-                        }
-                    } ?: throw McpToolException.ActionFailed(
-                        "Failed to open download destination for writing",
-                    )
-
-                    // Clear IS_PENDING on success
-                    val updateValues =
-                        ContentValues().apply {
-                            put(MediaStore.MediaColumns.IS_PENDING, 0)
-                        }
-                    context.contentResolver.update(insertUri, updateValues, null, null)
-
-                    Log.i(TAG, "Downloaded $totalBytesWritten bytes from $url to $locationId/$path")
-                    totalBytesWritten
-                } catch (e: McpToolException) {
-                    context.contentResolver.delete(insertUri, null, null)
-                    throw e
-                } catch (e: Exception) {
-                    context.contentResolver.delete(insertUri, null, null)
-                    throw McpToolException.ActionFailed(
-                        "Download failed: ${e.message ?: "Unknown error"}",
-                    )
-                } finally {
-                    connection?.disconnect()
-                }
+                downloader.downloadToPendingUri(insertUri, parsedUrl, url, config, "$locationId/$path")
             }
 
         // ─── deleteFile ─────────────────────────────────────────────────────
@@ -767,7 +697,5 @@ class MediaStoreFileOperationsImpl
             private const val TAG = "MCP:MediaStoreFileOps"
             private const val BYTES_PER_MB = 1024L * 1024L
             private const val MILLIS_PER_SECOND = 1000L
-            private const val DOWNLOAD_BUFFER_SIZE = 8192
-            private val HTTP_SUCCESS_RANGE = 200..299
         }
     }

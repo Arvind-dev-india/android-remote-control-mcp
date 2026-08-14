@@ -253,8 +253,14 @@ class StorageLocationProviderImpl
                     collection.readMediaPermission?.let(permissionChecker::hasPermission) == true
                 }
             return when {
-                granted.size == permissioned.size -> "${entry.displayBaseName} - All files"
-                granted.isEmpty() -> "${entry.displayBaseName} - Only owned files"
+                granted.size == permissioned.size -> {
+                    "${entry.displayBaseName} - All files"
+                }
+
+                granted.isEmpty() -> {
+                    "${entry.displayBaseName} - Only owned files"
+                }
+
                 else -> {
                     val grantedLabels = granted.joinToString(", ") { it.typeLabel }
                     val ownedLabels = (permissioned - granted.toSet()).joinToString(", ") { it.typeLabel }

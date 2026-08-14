@@ -483,7 +483,7 @@ class MediaStoreFileOperationsTest {
                     mockContentResolver.query(any(), any(), any(), any(), any())
                 } answers {
                     when (arg<Uri>(0)) {
-                        fakeImagesUri ->
+                        fakeImagesUri -> {
                             createMockCursor(
                                 listOf(
                                     mapOf(
@@ -496,8 +496,9 @@ class MediaStoreFileOperationsTest {
                                     ),
                                 ),
                             )
+                        }
 
-                        fakeVideoUri ->
+                        fakeVideoUri -> {
                             createMockCursor(
                                 listOf(
                                     mapOf(
@@ -510,8 +511,11 @@ class MediaStoreFileOperationsTest {
                                     ),
                                 ),
                             )
+                        }
 
-                        else -> createMockCursor(emptyList())
+                        else -> {
+                            createMockCursor(emptyList())
+                        }
                     }
                 }
 
@@ -529,7 +533,7 @@ class MediaStoreFileOperationsTest {
                     mockContentResolver.query(any(), any(), any(), any(), any())
                 } answers {
                     when (arg<Uri>(0)) {
-                        fakeImagesUri, fakeVideoUri ->
+                        fakeImagesUri, fakeVideoUri -> {
                             createMockCursor(
                                 listOf(
                                     mapOf(
@@ -542,8 +546,11 @@ class MediaStoreFileOperationsTest {
                                     ),
                                 ),
                             )
+                        }
 
-                        else -> createMockCursor(emptyList())
+                        else -> {
+                            createMockCursor(emptyList())
+                        }
                     }
                 }
 

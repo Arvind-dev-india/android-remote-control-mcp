@@ -532,9 +532,9 @@ Acceptance criteria:
 
 ### Task 5.1 — Quality gates
 
-- [ ] **Action 5.1.1** — `make lint 2>&1 | tee /tmp/p61-lint.log | tail -20`; fix ALL findings (no suppressions).
-- [ ] **Action 5.1.2** — `make test-unit 2>&1 | tee /tmp/p61-test-unit.log | tail -20` and `make test-integration 2>&1 | tee /tmp/p61-test-integration.log | tail -20`; fix ALL failures (including pre-existing unrelated ones per project rules). Inspect the captured logs, never re-run to grep.
-- [ ] **Action 5.1.3** — `./gradlew build 2>&1 | tee /tmp/p61-build.log | tail -30`; zero errors and zero warnings.
+- [x] **Action 5.1.1** — `make lint 2>&1 | tee /tmp/p61-lint.log | tail -20`; fix ALL findings (no suppressions).
+- [x] **Action 5.1.2** — `make test-unit 2>&1 | tee /tmp/p61-test-unit.log | tail -20` and `make test-integration 2>&1 | tee /tmp/p61-test-integration.log | tail -20`; fix ALL failures (including pre-existing unrelated ones per project rules). Inspect the captured logs, never re-run to grep.
+- [x] **Action 5.1.3** — `./gradlew build 2>&1 | tee /tmp/p61-build.log | tail -30`; zero errors and zero warnings.
 
 ### Task 5.2 — Double check everything implemented, from the ground up (LAST ITEM)
 

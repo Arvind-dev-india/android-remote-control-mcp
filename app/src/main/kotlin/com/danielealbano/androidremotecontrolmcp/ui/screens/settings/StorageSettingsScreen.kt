@@ -166,7 +166,11 @@ fun StorageSettingsScreen(
                 builtinLocations.forEach { location ->
                     val builtin = BuiltinStorageLocation.fromLocationId(location.id)
                     val readMediaPermissions =
-                        builtin?.collections?.mapNotNull { it.readMediaPermission }?.distinct().orEmpty()
+                        builtin
+                            ?.collections
+                            ?.mapNotNull { it.readMediaPermission }
+                            ?.distinct()
+                            .orEmpty()
                     val hasAllFiles =
                         readMediaPermissions.isNotEmpty() &&
                             readMediaPermissions.all {

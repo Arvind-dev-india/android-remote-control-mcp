@@ -37,7 +37,7 @@ class BuiltinStorageLocationTest {
         }
 
         @Test
-        fun `fromLocationId returns DCIM for builtin:dcim`() {
+        fun `fromLocationId returns DCIM for dcim builtin id`() {
             assertEquals(
                 BuiltinStorageLocation.DCIM,
                 BuiltinStorageLocation.fromLocationId("builtin:dcim"),
