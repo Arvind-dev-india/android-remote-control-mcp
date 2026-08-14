@@ -21,6 +21,12 @@ class MediaCollection(
 ) {
     /** MediaStore collection content URI for queries/inserts. Resolved lazily. */
     val uri: Uri by lazy { collectionUriProvider() }
+
+    /** True when this collection is covered by Android's visual-media selection (partial access). */
+    val isVisual: Boolean
+        get() =
+            readMediaPermission == android.Manifest.permission.READ_MEDIA_IMAGES ||
+                readMediaPermission == android.Manifest.permission.READ_MEDIA_VIDEO
 }
 
 /**

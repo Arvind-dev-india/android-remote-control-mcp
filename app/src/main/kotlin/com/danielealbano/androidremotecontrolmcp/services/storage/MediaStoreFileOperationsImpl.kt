@@ -59,9 +59,9 @@ class MediaStoreFileOperationsImpl
                 val seenDirs = mutableSetOf<String>()
 
                 for (collection in builtin.collections) {
-                    val isAllFiles = hasAllFilesAccess(collection)
-                    val selection = buildListSelection(isAllFiles)
-                    val selectionArgs = buildListSelectionArgs(targetRelativePath, isAllFiles)
+                    val includeNonOwned = hasNonOwnedReadAccess(collection)
+                    val selection = buildListSelection(includeNonOwned)
+                    val selectionArgs = buildListSelectionArgs(targetRelativePath, includeNonOwned)
                     context.contentResolver
                         .query(
                             collection.uri,
@@ -162,9 +162,9 @@ class MediaStoreFileOperationsImpl
             }
         }
 
-        private fun buildListSelection(isAllFiles: Boolean): String {
+        private fun buildListSelection(includeNonOwned: Boolean): String {
             val pathFilter = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? ESCAPE '\\'"
-            return if (isAllFiles) {
+            return if (includeNonOwned) {
                 pathFilter
             } else {
                 "$pathFilter AND ${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?"
@@ -173,11 +173,11 @@ class MediaStoreFileOperationsImpl
 
         private fun buildListSelectionArgs(
             targetRelativePath: String,
-            isAllFiles: Boolean,
+            includeNonOwned: Boolean,
         ): Array<String> {
             // LIKE pattern: match exact dir and all children; escape the literal prefix only
             val pattern = "${escapeLikePattern(targetRelativePath)}%"
-            return if (isAllFiles) arrayOf(pattern) else arrayOf(pattern, context.packageName)
+            return if (includeNonOwned) arrayOf(pattern) else arrayOf(pattern, context.packageName)
         }
 
         // ─── readFile ───────────────────────────────────────────────────────
@@ -476,8 +476,22 @@ class MediaStoreFileOperationsImpl
                     "Storage location '$locationId' not found.",
                 )
 
-        private fun hasAllFilesAccess(collection: MediaCollection): Boolean =
-            collection.readMediaPermission?.let { permissionChecker.hasPermission(it) } == true
+        /**
+         * True when MediaStore itself scopes what this app can read in [collection]:
+         * either the full read permission is granted, or the user granted a visual-media
+         * selection (READ_MEDIA_VISUAL_USER_SELECTED). In both cases the app-side owner
+         * filter must be dropped so provider-visible non-owned rows are returned.
+         */
+        private fun hasNonOwnedReadAccess(collection: MediaCollection): Boolean =
+            collection.readMediaPermission?.let { permission ->
+                permissionChecker.hasPermission(permission) ||
+                    (
+                        collection.isVisual &&
+                            permissionChecker.hasPermission(
+                                android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                            )
+                    )
+            } == true
 
         private fun selectCollectionForMimeType(
             builtin: BuiltinStorageLocation,
@@ -583,7 +597,7 @@ class MediaStoreFileOperationsImpl
                     collection,
                     relativePath,
                     displayName,
-                    ownedOnly = !hasAllFilesAccess(collection),
+                    ownedOnly = !hasNonOwnedReadAccess(collection),
                 )
             }
 

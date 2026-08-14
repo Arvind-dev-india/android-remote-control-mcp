@@ -1798,7 +1798,7 @@ File operations on user-added storage locations. Storage locations must be added
 
 ### `android_list_storage_locations`
 
-Lists all available storage locations: built-in MediaStore locations (always present, no setup required) and user-added locations granted via the app settings. Use the location ID from this list for all file operations. The `name` of a built-in location reflects the current read-access level per media type, e.g. `"Pictures - All files"`, `"Pictures - Only owned files"`, or `"Pictures - All images, owned videos"` when permissions are partially granted.
+Lists all available storage locations: built-in MediaStore locations (always present, no setup required) and user-added locations granted via the app settings. Use the location ID from this list for all file operations. The `name` of a built-in location reflects the current read-access level per media type, e.g. `"Pictures - All files"`, `"Pictures - Only owned files"`, `"Pictures - Selected files only"`, or `"Pictures - All images, owned videos"` when permissions are partially granted. Partial access (Android 14+ "Allow limited access") means only the user-selected photos/videos plus app-created files are visible.
 
 **Built-in locations**:
 | ID | Directory | Content types | "All files" permission(s) |
@@ -1859,6 +1859,7 @@ Lists all available storage locations: built-in MediaStore locations (always pre
 | `allow_read` | boolean | Always `true` — read access is always permitted |
 | `allow_write` | boolean | Whether write operations are permitted (write_file, append_file, file_replace, download_from_url) |
 | `allow_delete` | boolean | Whether delete operations are permitted (delete_file) |
+| `access_level` | string | Built-in locations only: `"full"`, `"partial"` (limited photo/video selection, or a per-type subset of permissions), or `"owned_only"`. Absent on user-added locations. |
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Action failed**: Failed to query storage locations

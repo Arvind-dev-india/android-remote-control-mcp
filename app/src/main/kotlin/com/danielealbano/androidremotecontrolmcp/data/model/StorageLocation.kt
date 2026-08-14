@@ -21,6 +21,7 @@ package com.danielealbano.androidremotecontrolmcp.data.model
  *   Not exposed to MCP clients.
  * @property isBuiltin True for built-in MediaStore locations that are always available.
  *   Built-in locations cannot be removed or renamed.
+ * @property accessLevel Read-access level for built-in MediaStore locations; null for SAF locations.
  */
 data class StorageLocation(
     val id: String,
@@ -33,4 +34,5 @@ data class StorageLocation(
     val allowDelete: Boolean = false,
     val backend: StorageBackend = StorageBackend.SAF,
     val isBuiltin: Boolean = false,
+    val accessLevel: BuiltinAccessLevel? = null,
 )

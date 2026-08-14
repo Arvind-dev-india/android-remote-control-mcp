@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.integration
 
+import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinAccessLevel
 import com.danielealbano.androidremotecontrolmcp.data.model.FileInfo
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageBackend
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
@@ -798,6 +799,19 @@ class FileToolsIntegrationTest {
                         allowDelete = false,
                         backend = StorageBackend.MEDIA_STORE,
                         isBuiltin = true,
+                        accessLevel = BuiltinAccessLevel.OWNED_ONLY,
+                    ),
+                    StorageLocation(
+                        id = "com.test.provider/primary:Documents",
+                        name = "Documents",
+                        path = "/Documents",
+                        description = "My documents",
+                        treeUri = "content://com.test.provider/tree/primary%3ADocuments",
+                        availableBytes = null,
+                        allowWrite = true,
+                        allowDelete = false,
+                        backend = StorageBackend.SAF,
+                        isBuiltin = false,
                     ),
                 )
 
@@ -807,6 +821,13 @@ class FileToolsIntegrationTest {
                 val text = (result.content[0] as TextContent).text
                 assertTrue(text.contains("builtin:downloads"))
                 assertTrue(text.contains("Downloads"))
+                // access_level appears exactly once (on the builtin entry only)
+                assertEquals(1, Regex("\"access_level\"").findAll(text).count())
+                assertTrue(text.contains("\"access_level\":\"owned_only\""))
+                // The SAF entry's JSON object has no access_level key
+                val safStart = text.lastIndexOf("{", text.indexOf("com.test.provider/primary:Documents"))
+                val safObject = text.substring(safStart, text.indexOf("}", safStart) + 1)
+                assertFalse(safObject.contains("access_level"))
             }
         }
 
