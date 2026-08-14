@@ -528,7 +528,7 @@ Definition of Done:
 ## User Story 5 — Quality gates and ground-up verification
 
 Acceptance criteria:
-- [ ] Lint, full unit+integration test suite, and build pass with zero warnings/errors; entire implementation re-verified against this plan and issues #154/#155.
+- [x] Lint, full unit+integration test suite, and build pass with zero warnings/errors; entire implementation re-verified against this plan and issues #154/#155.
 
 ### Task 5.1 — Quality gates
 
@@ -538,4 +538,4 @@ Acceptance criteria:
 
 ### Task 5.2 — Double check everything implemented, from the ground up (LAST ITEM)
 
-- [ ] **Action 5.2.1** — Re-read the FULL diff (`git diff main...HEAD`) file by file and verify, from first principles: every action of this plan applied exactly as written; every acceptance criterion holds; each symptom from issues #154 and #155 is resolved by the code as written (path filtering per segment, LIKE escaping, DCIM reachable for photos AND videos, Pictures shows videos, MIME-routed writes, per-collection all-files, three-state naming, UI multi-permission grant); NO file outside this plan's scope was touched; no TODOs/placeholders/suppressions introduced; all plan checkboxes are `[x]`.
+- [x] **Action 5.2.1** — Re-read the FULL diff (`git diff main...HEAD`) file by file and verify, from first principles: every action of this plan applied exactly as written; every acceptance criterion holds; each symptom from issues #154 and #155 is resolved by the code as written (path filtering per segment, LIKE escaping, DCIM reachable for photos AND videos, Pictures shows videos, MIME-routed writes, per-collection all-files, three-state naming, UI multi-permission grant); NO file outside this plan's scope was touched; no TODOs/placeholders/suppressions introduced; all plan checkboxes are `[x]`.
