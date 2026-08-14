@@ -102,6 +102,7 @@ class MediaStoreFileOperationsTest {
         unmockkObject(BuiltinStorageLocation.DOWNLOADS)
         unmockkObject(BuiltinStorageLocation.PICTURES)
         unmockkObject(BuiltinStorageLocation.MUSIC)
+        unmockkObject(BuiltinStorageLocation.RECORDINGS)
         unmockkStatic(Log::class)
         unmockkStatic(Uri::class)
     }
@@ -128,6 +129,19 @@ class MediaStoreFileOperationsTest {
                     permission = android.Manifest.permission.READ_MEDIA_VIDEO,
                     mimePrefix = "video/",
                     label = "videos",
+                ),
+            )
+    }
+
+    private fun stubRecordingsCollections() {
+        mockkObject(BuiltinStorageLocation.RECORDINGS)
+        every { BuiltinStorageLocation.RECORDINGS.collections } returns
+            listOf(
+                testCollection(
+                    fakeCollectionUri,
+                    permission = android.Manifest.permission.READ_MEDIA_AUDIO,
+                    mimePrefix = "audio/",
+                    label = "audio",
                 ),
             )
     }
@@ -339,6 +353,74 @@ class MediaStoreFileOperationsTest {
                 }
 
                 val result = operations.listFiles("builtin:downloads", "", 0, 50)
+
+                assertEquals(1, result.totalCount)
+                assertFalse(capturedSelection.orEmpty().contains("OWNER_PACKAGE_NAME"))
+            }
+
+        @Test
+        fun `listFiles lists recordings root`() =
+            runTest {
+                stubRecordingsCollections()
+                val rows =
+                    listOf(
+                        mapOf(
+                            "id" to 1L,
+                            "name" to "memo.mp3",
+                            "relPath" to "Recordings/",
+                            "size" to 4096L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "audio/mpeg",
+                        ),
+                    )
+
+                var capturedUri: Uri? = null
+                var capturedArgs: Array<String>? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedUri = arg(0)
+                    capturedArgs = arg(3)
+                    createMockCursor(rows)
+                }
+
+                val result = operations.listFiles("builtin:recordings", "", 0, 200)
+
+                assertEquals(1, result.totalCount)
+                assertEquals("memo.mp3", result.files[0].name)
+                assertEquals(fakeCollectionUri, capturedUri)
+                assertEquals("Recordings/%", capturedArgs!![0])
+            }
+
+        @Test
+        fun `listFiles returns all recordings in all-files mode`() =
+            runTest {
+                stubRecordingsCollections()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
+                } returns true
+
+                val rows =
+                    listOf(
+                        mapOf(
+                            "id" to 1L,
+                            "name" to "other.mp3",
+                            "relPath" to "Recordings/",
+                            "size" to 100L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "audio/mpeg",
+                        ),
+                    )
+
+                var capturedSelection: String? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedSelection = arg(2)
+                    createMockCursor(rows)
+                }
+
+                val result = operations.listFiles("builtin:recordings", "", 0, 200)
 
                 assertEquals(1, result.totalCount)
                 assertFalse(capturedSelection.orEmpty().contains("OWNER_PACKAGE_NAME"))
@@ -602,6 +684,25 @@ class MediaStoreFileOperationsTest {
                 val result = operations.readFile("builtin:downloads", "test.txt", 1, 200)
 
                 assertEquals("Hello, World!\nSecond line", result.content)
+                assertEquals(2, result.totalLines)
+                assertFalse(result.hasMore)
+            }
+
+        @Test
+        fun `readFile reads owned recording content`() =
+            runTest {
+                stubRecordingsCollections()
+                stubFindOwnedFile(id = 1L, found = true)
+                stubFileSizeQuery(size = 100L)
+
+                val content = "Voice memo line one\nline two"
+                every {
+                    mockContentResolver.openInputStream(any())
+                } returns ByteArrayInputStream(content.toByteArray())
+
+                val result = operations.readFile("builtin:recordings", "memo.txt", 1, 200)
+
+                assertEquals("Voice memo line one\nline two", result.content)
                 assertEquals(2, result.totalLines)
                 assertFalse(result.hasMore)
             }
@@ -881,6 +982,37 @@ class MediaStoreFileOperationsTest {
 
                 assertTrue(exception.message!!.contains("audio"))
                 verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
+            }
+
+        @Test
+        fun `writeFile rejects non-audio on recordings`() =
+            runTest {
+                stubRecordingsCollections()
+
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        operations.writeFile("builtin:recordings", "x.txt", "text")
+                    }
+
+                assertTrue(exception.message!!.contains("audio"))
+                verify(exactly = 0) { mockContentResolver.insert(any(), any()) }
+            }
+
+        @Test
+        fun `writeFile accepts audio mime on recordings`() =
+            runTest {
+                stubRecordingsCollections()
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers { createMockCursor(emptyList()) }
+                val insertedUri = mockk<Uri>(relaxed = true)
+                every { mockContentResolver.insert(any(), any()) } returns insertedUri
+                val outputStream = ByteArrayOutputStream()
+                every { mockContentResolver.openOutputStream(eq(insertedUri), eq("wt")) } returns outputStream
+
+                operations.writeFile("builtin:recordings", "memo.mp3", "aud")
+
+                verify { mockContentResolver.insert(eq(fakeCollectionUri), any()) }
             }
 
         @Test
