@@ -427,6 +427,75 @@ class MediaStoreFileOperationsTest {
             }
 
         @Test
+        fun `listFiles drops owner filter under partial visual access`() =
+            runTest {
+                every { BuiltinStorageLocation.DOWNLOADS.collections } returns
+                    listOf(
+                        testCollection(
+                            fakeCollectionUri,
+                            permission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                        ),
+                    )
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                val rows =
+                    listOf(
+                        mapOf(
+                            "id" to 1L,
+                            "name" to "selected.jpg",
+                            "relPath" to "Download/",
+                            "size" to 100L,
+                            "dateModified" to 1700000000L,
+                            "mimeType" to "image/jpeg",
+                        ),
+                    )
+
+                var capturedSelection: String? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedSelection = arg(2)
+                    createMockCursor(rows)
+                }
+
+                val result = operations.listFiles("builtin:downloads", "", 0, 50)
+
+                assertEquals(1, result.totalCount)
+                assertFalse(
+                    capturedSelection.orEmpty().contains(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
+                )
+            }
+
+        @Test
+        fun `listFiles keeps owner filter for audio under partial visual access`() =
+            runTest {
+                stubRecordingsCollections()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                var capturedSelection: String? = null
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } answers {
+                    capturedSelection = arg(2)
+                    createMockCursor(emptyList())
+                }
+
+                operations.listFiles("builtin:recordings", "", 0, 200)
+
+                assertTrue(
+                    capturedSelection.orEmpty().contains(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
+                )
+            }
+
+        @Test
         fun `listFiles throws for unknown builtin ID`() =
             runTest {
                 val exception =
@@ -768,6 +837,39 @@ class MediaStoreFileOperationsTest {
                 val result = operations.readFile("builtin:downloads", "other.txt", 1, 200)
 
                 assertEquals("Non-owned content", result.content)
+            }
+
+        @Test
+        fun `readFile resolves non-owned file under partial visual access`() =
+            runTest {
+                every { BuiltinStorageLocation.DOWNLOADS.collections } returns
+                    listOf(
+                        testCollection(
+                            fakeCollectionUri,
+                            permission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                        ),
+                    )
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                val findCursor = createMockCursor(listOf(mapOf("id" to 1L)))
+                every {
+                    mockContentResolver.query(any(), any(), any(), any(), any())
+                } returns findCursor
+
+                stubFileSizeQuery(size = 50L)
+
+                val content = "Selected content"
+                every {
+                    mockContentResolver.openInputStream(any())
+                } returns ByteArrayInputStream(content.toByteArray())
+
+                val result = operations.readFile("builtin:downloads", "selected.txt", 1, 200)
+
+                assertEquals("Selected content", result.content)
             }
 
         @Test
