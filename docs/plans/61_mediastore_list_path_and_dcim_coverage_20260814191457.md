@@ -88,17 +88,17 @@ Definition of Done:
 Why: each MediaStore collection spans multiple top-level directories and each directory (DCIM, Pictures) can hold multiple media types. One location per directory, each backed by the collections whose content can live there, makes the camera roll reachable and keeps writes routable.
 
 Acceptance criteria:
-- [ ] `builtin:dcim` exists (base `DCIM/`, Images + Video, display base `"Camera (DCIM)"`).
-- [ ] `builtin:pictures` covers Images + Video; `builtin:downloads`/`builtin:movies`/`builtin:music` behavior preserved via single-entry collection lists.
-- [ ] Listing merges rows from all collections of the location; owner filter applied per collection based on its own permission.
-- [ ] Read/bytes/delete/append/replace resolve across collections in declaration order.
-- [ ] Write/create/download route by MIME with uniform validation (`InvalidParams` on mismatch, before any network I/O for downloads).
-- [ ] Display names follow the agreed three-state enumerated scheme.
-- [ ] Settings UI grant button requests all missing `READ_MEDIA_*` permissions of the location.
+- [x] `builtin:dcim` exists (base `DCIM/`, Images + Video, display base `"Camera (DCIM)"`).
+- [x] `builtin:pictures` covers Images + Video; `builtin:downloads`/`builtin:movies`/`builtin:music` behavior preserved via single-entry collection lists.
+- [x] Listing merges rows from all collections of the location; owner filter applied per collection based on its own permission.
+- [x] Read/bytes/delete/append/replace resolve across collections in declaration order.
+- [x] Write/create/download route by MIME with uniform validation (`InvalidParams` on mismatch, before any network I/O for downloads).
+- [x] Display names follow the agreed three-state enumerated scheme.
+- [x] Settings UI grant button requests all missing `READ_MEDIA_*` permissions of the location.
 
 ### Task 2.1 — Model: `MediaCollection` + `BuiltinStorageLocation` refactor
 
-- [ ] **Action 2.1.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/BuiltinStorageLocation.kt`: add `MediaCollection` (same file, above the enum) and replace the enum's `displayNameOwned`/`displayNameAll`/`collectionUriProvider`/`readMediaPermission` properties with `displayBaseName` and `collections`. The companion object (`ID_PREFIX`, `fromLocationId`, `isBuiltinId`, `validatePath`, `findPathValidationError`, `CONTROL_CHAR_REGEX`) is unchanged. Remove the now-unused `collectionUri` lazy val.
+- [x] **Action 2.1.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/data/model/BuiltinStorageLocation.kt`: add `MediaCollection` (same file, above the enum) and replace the enum's `displayNameOwned`/`displayNameAll`/`collectionUriProvider`/`readMediaPermission` properties with `displayBaseName` and `collections`. The companion object (`ID_PREFIX`, `fromLocationId`, `isBuiltinId`, `validatePath`, `findPathValidationError`, `CONTROL_CHAR_REGEX`) is unchanged. Remove the now-unused `collectionUri` lazy val.
 
 ```kotlin
 /**
@@ -209,13 +209,13 @@ DCIM(
 ```
 
 Definition of Done:
-- [ ] Enum has 5 entries; `collectionUri`, `displayNameOwned`, `displayNameAll`, `readMediaPermission` no longer exist on the enum; KDoc updated to describe the new properties.
+- [x] Enum has 5 entries; `collectionUri`, `displayNameOwned`, `displayNameAll`, `readMediaPermission` no longer exist on the enum; KDoc updated to describe the new properties.
 
 ### Task 2.2 — `MediaStoreFileOperationsImpl`: multi-collection queries and MIME routing
 
-- [ ] **Action 2.2.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/MediaStoreFileOperationsImpl.kt`, constructor: add `private val permissionChecker: PermissionChecker` parameter (Hilt constructor injection; binding already exists in `AppModule`). Keep `storageLocationProvider` (still used for `isWriteAllowed`/`isDeleteAllowed`). Add `import com.danielealbano.androidremotecontrolmcp.data.model.MediaCollection` to the file's imports.
+- [x] **Action 2.2.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/MediaStoreFileOperationsImpl.kt`, constructor: add `private val permissionChecker: PermissionChecker` parameter (Hilt constructor injection; binding already exists in `AppModule`). Keep `storageLocationProvider` (still used for `isWriteAllowed`/`isDeleteAllowed`). Add `import com.danielealbano.androidremotecontrolmcp.data.model.MediaCollection` to the file's imports.
 
-- [ ] **Action 2.2.2** — Add per-collection helpers:
+- [x] **Action 2.2.2** — Add per-collection helpers:
 
 ```kotlin
 private fun hasAllFilesAccess(collection: MediaCollection): Boolean =
@@ -254,7 +254,7 @@ private fun findFileInCollection(
 }
 ```
 
-- [ ] **Action 2.2.3** — Rework `listFiles`: remove the `isAllFiles = storageLocationProvider.isAllFilesMode(...)` line; wrap the query in a loop over `builtin.collections`, sharing `entries`/`seenDirs` across iterations (sort/pagination unchanged):
+- [x] **Action 2.2.3** — Rework `listFiles`: remove the `isAllFiles = storageLocationProvider.isAllFilesMode(...)` line; wrap the query in a loop over `builtin.collections`, sharing `entries`/`seenDirs` across iterations (sort/pagination unchanged):
 
 ```kotlin
 for (collection in builtin.collections) {
@@ -269,7 +269,7 @@ for (collection in builtin.collections) {
 }
 ```
 
-- [ ] **Action 2.2.4** — Replace the file-resolution helpers `findOwnedFile`/`findAnyFile`/`findFile`/`findFileOrThrow` with cross-collection versions (`processCursorRow`, `queryForUri`, `queryFileSize` unchanged):
+- [x] **Action 2.2.4** — Replace the file-resolution helpers `findOwnedFile`/`findAnyFile`/`findFile`/`findFileOrThrow` with cross-collection versions (`processCursorRow`, `queryForUri`, `queryFileSize` unchanged):
 
 ```kotlin
 private fun findOwnedFile(
@@ -310,7 +310,7 @@ private fun findFileOrThrow(
 
 `findFile`/`findFileOrThrow` lose the `locationId` parameter and the `suspend` modifier (no repository call remains) — update call sites in `readFile` and `readFileBytes` to `findFileOrThrow(builtin, path)`. `findOwnedFileOrThrow` keeps its signature.
 
-- [ ] **Action 2.2.5** — `writeFile`: after computing `relativePath`/`displayName`, route and use the matched collection for both the existing-file lookup and the insert:
+- [x] **Action 2.2.5** — `writeFile`: after computing `relativePath`/`displayName`, route and use the matched collection for both the existing-file lookup and the insert:
 
 ```kotlin
 val mimeType = MimeTypeUtils.guessMimeType(displayName)
@@ -320,20 +320,20 @@ val existingUri = findFileInCollection(collection, relativePath, displayName, ow
 
 Insert path: `MIME_TYPE` value is `mimeType`; `context.contentResolver.insert(collection.uri, values)`.
 
-- [ ] **Action 2.2.6** — `createFileUri`: route by the explicit `mimeType` parameter: `val collection = selectCollectionForMimeType(builtin, mimeType)`; existing-file lookup via `findFileInCollection(collection, relativePath, displayName, ownedOnly = true)`; insert into `collection.uri`.
+- [x] **Action 2.2.6** — `createFileUri`: route by the explicit `mimeType` parameter: `val collection = selectCollectionForMimeType(builtin, mimeType)`; existing-file lookup via `findFileInCollection(collection, relativePath, displayName, ownedOnly = true)`; insert into `collection.uri`.
 
-- [ ] **Action 2.2.7** — `downloadFromUrl`: immediately after `checkWritePermission(locationId)` and computing `relativePath`/`displayName`, add `val collection = selectCollectionForMimeType(builtin, MimeTypeUtils.guessMimeType(displayName))` (validation fails BEFORE any MediaStore insert or network connection); insert into `collection.uri`; `MIME_TYPE` value from the same guessed type.
+- [x] **Action 2.2.7** — `downloadFromUrl`: immediately after `checkWritePermission(locationId)` and computing `relativePath`/`displayName`, add `val collection = selectCollectionForMimeType(builtin, MimeTypeUtils.guessMimeType(displayName))` (validation fails BEFORE any MediaStore insert or network connection); insert into `collection.uri`; `MIME_TYPE` value from the same guessed type.
 
-- [ ] **Action 2.2.8** — `appendFile`, `replaceInFile`, `deleteFile`: no signature changes; they keep using `findOwnedFileOrThrow`, which now resolves across collections via Action 2.2.4.
+- [x] **Action 2.2.8** — `appendFile`, `replaceInFile`, `deleteFile`: no signature changes; they keep using `findOwnedFileOrThrow`, which now resolves across collections via Action 2.2.4.
 
 Definition of Done:
-- [ ] No reference to `builtin.collectionUri` or `storageLocationProvider.isAllFilesMode` remains in `MediaStoreFileOperationsImpl`; every operation uses the multi-collection model; behavior for single-collection locations is identical except uniform MIME validation.
+- [x] No reference to `builtin.collectionUri` or `storageLocationProvider.isAllFilesMode` remains in `MediaStoreFileOperationsImpl`; every operation uses the multi-collection model; behavior for single-collection locations is identical except uniform MIME validation.
 
 ### Task 2.3 — `StorageLocationProvider`: display naming, remove `isAllFilesMode`
 
-- [ ] **Action 2.3.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/StorageLocationProvider.kt`: delete the `isAllFilesMode(locationId: String): Boolean` declaration and its KDoc (its only caller was removed in Task 2.2).
+- [x] **Action 2.3.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/StorageLocationProvider.kt`: delete the `isAllFilesMode(locationId: String): Boolean` declaration and its KDoc (its only caller was removed in Task 2.2).
 
-- [ ] **Action 2.3.2** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/StorageLocationProviderImpl.kt`: delete the `isAllFilesMode` override; in `buildBuiltinLocations`, replace the `allFilesMode`/`displayName` computation with `name = buildBuiltinDisplayName(entry)` and add:
+- [x] **Action 2.3.2** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/services/storage/StorageLocationProviderImpl.kt`: delete the `isAllFilesMode` override; in `buildBuiltinLocations`, replace the `allFilesMode`/`displayName` computation with `name = buildBuiltinDisplayName(entry)` and add:
 
 ```kotlin
 private fun buildBuiltinDisplayName(entry: BuiltinStorageLocation): String {
@@ -356,13 +356,13 @@ private fun buildBuiltinDisplayName(entry: BuiltinStorageLocation): String {
 ```
 
 Definition of Done:
-- [ ] No `isAllFilesMode` anywhere in `main` sources; naming produces the three agreed states.
+- [x] No `isAllFilesMode` anywhere in `main` sources; naming produces the three agreed states.
 
 ### Task 2.4 — Settings UI: multi-permission grant button
 
-- [ ] **Action 2.4.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/settings/StorageSettingsScreen.kt`, `permissionLauncher`: change contract to `ActivityResultContracts.RequestMultiplePermissions()` (callback body unchanged: `{ _ -> viewModel.refreshStorageLocations() }`).
+- [x] **Action 2.4.1** — Modify `app/src/main/kotlin/com/danielealbano/androidremotecontrolmcp/ui/screens/settings/StorageSettingsScreen.kt`, `permissionLauncher`: change contract to `ActivityResultContracts.RequestMultiplePermissions()` (callback body unchanged: `{ _ -> viewModel.refreshStorageLocations() }`).
 
-- [ ] **Action 2.4.2** — Same file, builtin rows loop: replace the single-permission computation with:
+- [x] **Action 2.4.2** — Same file, builtin rows loop: replace the single-permission computation with:
 
 ```kotlin
 builtinLocations.forEach { location ->
@@ -392,10 +392,10 @@ builtinLocations.forEach { location ->
 }
 ```
 
-- [ ] **Action 2.4.3** — Same file, `BuiltinStorageLocationRow`: change parameters `readMediaPermission: String?` → `readMediaPermissions: List<String>` and `onRequestPermission: (String) -> Unit` → `onRequestPermission: (List<String>) -> Unit`; button block becomes `if (readMediaPermissions.isNotEmpty())` with `onClick = { onRequestPermission(readMediaPermissions) }` (enabled/label logic unchanged — the button remains enabled until ALL permissions are granted, so partial grants can be completed).
+- [x] **Action 2.4.3** — Same file, `BuiltinStorageLocationRow`: change parameters `readMediaPermission: String?` → `readMediaPermissions: List<String>` and `onRequestPermission: (String) -> Unit` → `onRequestPermission: (List<String>) -> Unit`; button block becomes `if (readMediaPermissions.isNotEmpty())` with `onClick = { onRequestPermission(readMediaPermissions) }` (enabled/label logic unchanged — the button remains enabled until ALL permissions are granted, so partial grants can be completed).
 
 Definition of Done:
-- [ ] Grant button requests every missing `READ_MEDIA_*` permission of the location in one launch; single-permission locations behave as before; `builtin:dcim` row appears automatically (read-only defaults from `BuiltinPermissions()`).
+- [x] Grant button requests every missing `READ_MEDIA_*` permission of the location in one launch; single-permission locations behave as before; `builtin:dcim` row appears automatically (read-only defaults from `BuiltinPermissions()`).
 
 ---
 

@@ -109,7 +109,7 @@ fun StorageSettingsScreen(
 
     val permissionLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission(),
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { _ -> viewModel.refreshStorageLocations() }
 
     val documentTreeLauncher =
@@ -165,23 +165,26 @@ fun StorageSettingsScreen(
 
                 builtinLocations.forEach { location ->
                     val builtin = BuiltinStorageLocation.fromLocationId(location.id)
+                    val readMediaPermissions =
+                        builtin?.collections?.mapNotNull { it.readMediaPermission }?.distinct().orEmpty()
                     val hasAllFiles =
-                        builtin?.readMediaPermission?.let {
-                            ContextCompat.checkSelfPermission(context, it) ==
-                                PackageManager.PERMISSION_GRANTED
-                        } ?: false
+                        readMediaPermissions.isNotEmpty() &&
+                            readMediaPermissions.all {
+                                ContextCompat.checkSelfPermission(context, it) ==
+                                    PackageManager.PERMISSION_GRANTED
+                            }
                     BuiltinStorageLocationRow(
                         location = location,
                         hasAllFilesPermission = hasAllFiles,
-                        readMediaPermission = builtin?.readMediaPermission,
+                        readMediaPermissions = readMediaPermissions,
                         onAllowWriteChange = { enabled ->
                             viewModel.updateLocationAllowWrite(location.id, enabled)
                         },
                         onAllowDeleteChange = { enabled ->
                             viewModel.updateLocationAllowDelete(location.id, enabled)
                         },
-                        onRequestPermission = { permission ->
-                            permissionLauncher.launch(permission)
+                        onRequestPermission = { permissions ->
+                            permissionLauncher.launch(permissions.toTypedArray())
                         },
                     )
                 }
@@ -607,10 +610,10 @@ private fun StorageLocationRow(
 private fun BuiltinStorageLocationRow(
     location: StorageLocation,
     hasAllFilesPermission: Boolean,
-    readMediaPermission: String?,
+    readMediaPermissions: List<String>,
     onAllowWriteChange: (Boolean) -> Unit,
     onAllowDeleteChange: (Boolean) -> Unit,
-    onRequestPermission: (String) -> Unit,
+    onRequestPermission: (List<String>) -> Unit,
 ) {
     Column(
         modifier =
@@ -677,9 +680,9 @@ private fun BuiltinStorageLocationRow(
                 )
             }
         }
-        if (readMediaPermission != null) {
+        if (readMediaPermissions.isNotEmpty()) {
             OutlinedButton(
-                onClick = { onRequestPermission(readMediaPermission) },
+                onClick = { onRequestPermission(readMediaPermissions) },
                 enabled = !hasAllFilesPermission,
                 modifier = Modifier.fillMaxWidth(),
             ) {

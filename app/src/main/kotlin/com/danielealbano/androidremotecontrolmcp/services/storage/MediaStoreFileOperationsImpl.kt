@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinStorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.FileInfo
+import com.danielealbano.androidremotecontrolmcp.data.model.MediaCollection
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,6 +28,7 @@ class MediaStoreFileOperationsImpl
         @param:ApplicationContext private val context: Context,
         private val storageLocationProvider: StorageLocationProvider,
         private val settingsRepository: SettingsRepository,
+        private val permissionChecker: PermissionChecker,
     ) : MediaStoreFileOperations {
         // ─── listFiles ──────────────────────────────────────────────────────
 
@@ -40,7 +42,6 @@ class MediaStoreFileOperationsImpl
                 val builtin = resolveBuiltin(locationId)
                 BuiltinStorageLocation.validatePath(path)
                 val targetRelativePath = buildRelativePathForListing(builtin, path)
-                val isAllFiles = storageLocationProvider.isAllFilesMode(locationId)
                 val cappedLimit = limit.coerceAtMost(FileOperationProvider.MAX_LIST_ENTRIES)
 
                 // Query files in the target directory and children (for directory synthesis)
@@ -54,42 +55,44 @@ class MediaStoreFileOperationsImpl
                         MediaStore.MediaColumns.MIME_TYPE,
                     )
 
-                val selection = buildListSelection(isAllFiles)
-                val selectionArgs = buildListSelectionArgs(targetRelativePath, isAllFiles)
-
                 val entries = mutableListOf<FileInfo>()
                 val seenDirs = mutableSetOf<String>()
 
-                context.contentResolver
-                    .query(
-                        builtin.collectionUri,
-                        projection,
-                        selection,
-                        selectionArgs,
-                        null,
-                    )?.use { cursor ->
-                        val nameIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                        val relPathIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
-                        val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                        val dateIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
-                        val mimeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                for (collection in builtin.collections) {
+                    val isAllFiles = hasAllFilesAccess(collection)
+                    val selection = buildListSelection(isAllFiles)
+                    val selectionArgs = buildListSelectionArgs(targetRelativePath, isAllFiles)
+                    context.contentResolver
+                        .query(
+                            collection.uri,
+                            projection,
+                            selection,
+                            selectionArgs,
+                            null,
+                        )?.use { cursor ->
+                            val nameIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                            val relPathIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
+                            val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                            val dateIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                            val mimeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
 
-                        while (cursor.moveToNext()) {
-                            processCursorRow(
-                                cursor,
-                                nameIdx,
-                                relPathIdx,
-                                sizeIdx,
-                                dateIdx,
-                                mimeIdx,
-                                targetRelativePath,
-                                locationId,
-                                path,
-                                entries,
-                                seenDirs,
-                            )
+                            while (cursor.moveToNext()) {
+                                processCursorRow(
+                                    cursor,
+                                    nameIdx,
+                                    relPathIdx,
+                                    sizeIdx,
+                                    dateIdx,
+                                    mimeIdx,
+                                    targetRelativePath,
+                                    locationId,
+                                    path,
+                                    entries,
+                                    seenDirs,
+                                )
+                            }
                         }
-                    }
+                }
 
                 // Sort: directories first, then by name
                 val sorted =
@@ -193,7 +196,7 @@ class MediaStoreFileOperationsImpl
                 val builtin = resolveBuiltin(locationId)
                 BuiltinStorageLocation.validatePath(path)
 
-                val uri = findFileOrThrow(locationId, builtin, path)
+                val uri = findFileOrThrow(builtin, path)
                 checkFileSizeByUri(uri)
 
                 val cappedLimit = limit.coerceAtMost(FileOperationProvider.MAX_READ_LINES)
@@ -236,7 +239,7 @@ class MediaStoreFileOperationsImpl
             withContext(Dispatchers.IO) {
                 val builtin = resolveBuiltin(locationId)
                 BuiltinStorageLocation.validatePath(path)
-                val uri = findFileOrThrow(locationId, builtin, path)
+                val uri = findFileOrThrow(builtin, path)
                 readFileBytesFromUri(
                     context.contentResolver,
                     uri,
@@ -268,7 +271,9 @@ class MediaStoreFileOperationsImpl
 
             val relativePath = buildRelativePathForDir(builtin, path)
             val displayName = extractDisplayName(path)
-            val existingUri = findOwnedFile(builtin, relativePath, displayName)
+            val mimeType = MimeTypeUtils.guessMimeType(displayName)
+            val collection = selectCollectionForMimeType(builtin, mimeType)
+            val existingUri = findFileInCollection(collection, relativePath, displayName, ownedOnly = true)
 
             if (existingUri != null) {
                 context.contentResolver.openOutputStream(existingUri, "wt")?.use { it.write(contentBytes) }
@@ -278,10 +283,10 @@ class MediaStoreFileOperationsImpl
                     ContentValues().apply {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                         put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
-                        put(MediaStore.MediaColumns.MIME_TYPE, MimeTypeUtils.guessMimeType(displayName))
+                        put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     }
                 val insertUri =
-                    context.contentResolver.insert(builtin.collectionUri, values)
+                    context.contentResolver.insert(collection.uri, values)
                         ?: throw McpToolException.ActionFailed("Failed to create file: $path")
                 context.contentResolver.openOutputStream(insertUri, "wt")?.use { it.write(contentBytes) }
                     ?: throw McpToolException.ActionFailed("Failed to write to new file: $path")
@@ -391,6 +396,8 @@ class MediaStoreFileOperationsImpl
                 val parsedUrl = parseAndValidateDownloadUrl(url, config)
                 val relativePath = buildRelativePathForDir(builtin, path)
                 val displayName = extractDisplayName(path)
+                val mimeType = MimeTypeUtils.guessMimeType(displayName)
+                val collection = selectCollectionForMimeType(builtin, mimeType)
                 val timeoutMs = (config.downloadTimeoutSeconds * MILLIS_PER_SECOND).toInt()
                 val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
 
@@ -399,11 +406,11 @@ class MediaStoreFileOperationsImpl
                     ContentValues().apply {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                         put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
-                        put(MediaStore.MediaColumns.MIME_TYPE, MimeTypeUtils.guessMimeType(displayName))
+                        put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                         put(MediaStore.MediaColumns.IS_PENDING, 1)
                     }
                 val insertUri =
-                    context.contentResolver.insert(builtin.collectionUri, values)
+                    context.contentResolver.insert(collection.uri, values)
                         ?: throw McpToolException.ActionFailed("Failed to create download destination: $path")
 
                 var connection: HttpURLConnection? = null
@@ -512,9 +519,11 @@ class MediaStoreFileOperationsImpl
 
                 val relativePath = buildRelativePathForDir(builtin, path)
                 val displayName = extractDisplayName(path)
+                val collection = selectCollectionForMimeType(builtin, mimeType)
 
                 // Return existing if found
-                findOwnedFile(builtin, relativePath, displayName)?.let { return@withContext it }
+                findFileInCollection(collection, relativePath, displayName, ownedOnly = true)
+                    ?.let { return@withContext it }
 
                 val values =
                     ContentValues().apply {
@@ -522,7 +531,7 @@ class MediaStoreFileOperationsImpl
                         put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                         put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     }
-                context.contentResolver.insert(builtin.collectionUri, values)
+                context.contentResolver.insert(collection.uri, values)
                     ?: throw McpToolException.ActionFailed("Failed to create file: $path")
             }
 
@@ -536,6 +545,41 @@ class MediaStoreFileOperationsImpl
                 ?: throw McpToolException.PermissionDenied(
                     "Storage location '$locationId' not found.",
                 )
+
+        private fun hasAllFilesAccess(collection: MediaCollection): Boolean =
+            collection.readMediaPermission?.let { permissionChecker.hasPermission(it) } == true
+
+        private fun selectCollectionForMimeType(
+            builtin: BuiltinStorageLocation,
+            mimeType: String,
+        ): MediaCollection =
+            builtin.collections.firstOrNull { collection ->
+                collection.mimeTypePrefix == null || mimeType.startsWith(collection.mimeTypePrefix)
+            } ?: throw McpToolException.InvalidParams(
+                "File type '$mimeType' is not supported by location '${builtin.locationId}'. " +
+                    "Accepted types: ${builtin.collections.joinToString(", ") { it.typeLabel }}.",
+            )
+
+        private fun findFileInCollection(
+            collection: MediaCollection,
+            relativePath: String,
+            displayName: String,
+            ownedOnly: Boolean,
+        ): Uri? {
+            val selection =
+                buildString {
+                    append("${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ")
+                    append("${MediaStore.MediaColumns.DISPLAY_NAME} = ?")
+                    if (ownedOnly) append(" AND ${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?")
+                }
+            val args =
+                if (ownedOnly) {
+                    arrayOf(relativePath, displayName, context.packageName)
+                } else {
+                    arrayOf(relativePath, displayName)
+                }
+            return queryForUri(collection.uri, selection, args)
+        }
 
         /**
          * Builds the MediaStore RELATIVE_PATH for the directory containing the file.
@@ -594,49 +638,34 @@ class MediaStoreFileOperationsImpl
             builtin: BuiltinStorageLocation,
             relativePath: String,
             displayName: String,
-        ): Uri? {
-            val selection =
-                "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
-                    "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND " +
-                    "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?"
-            val args = arrayOf(relativePath, displayName, context.packageName)
-            return queryForUri(builtin.collectionUri, selection, args)
-        }
+        ): Uri? =
+            builtin.collections.firstNotNullOfOrNull { collection ->
+                findFileInCollection(collection, relativePath, displayName, ownedOnly = true)
+            }
 
-        private fun findAnyFile(
-            builtin: BuiltinStorageLocation,
-            relativePath: String,
-            displayName: String,
-        ): Uri? {
-            val selection =
-                "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
-                    "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
-            val args = arrayOf(relativePath, displayName)
-            return queryForUri(builtin.collectionUri, selection, args)
-        }
-
-        private suspend fun findFile(
-            locationId: String,
+        private fun findFile(
             builtin: BuiltinStorageLocation,
             relativePath: String,
             displayName: String,
         ): Uri? =
-            if (storageLocationProvider.isAllFilesMode(locationId)) {
-                findAnyFile(builtin, relativePath, displayName)
-            } else {
-                findOwnedFile(builtin, relativePath, displayName)
+            builtin.collections.firstNotNullOfOrNull { collection ->
+                findFileInCollection(
+                    collection,
+                    relativePath,
+                    displayName,
+                    ownedOnly = !hasAllFilesAccess(collection),
+                )
             }
 
-        private suspend fun findFileOrThrow(
-            locationId: String,
+        private fun findFileOrThrow(
             builtin: BuiltinStorageLocation,
             path: String,
         ): Uri {
             val relativePath = buildRelativePathForDir(builtin, path)
             val displayName = extractDisplayName(path)
-            return findFile(locationId, builtin, relativePath, displayName)
+            return findFile(builtin, relativePath, displayName)
                 ?: throw McpToolException.ActionFailed(
-                    "File not found: $path in location '$locationId'",
+                    "File not found: $path in location '${builtin.locationId}'",
                 )
         }
 

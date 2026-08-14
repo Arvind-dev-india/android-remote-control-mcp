@@ -5,65 +5,133 @@ import android.provider.MediaStore
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 
 /**
+ * A MediaStore collection backing (part of) a built-in storage location.
+ *
+ * @property readMediaPermission Runtime permission for "all files" access to this
+ *   collection's rows, or null if unavailable (owned files only).
+ * @property mimeTypePrefix MIME prefix accepted for writes routed to this collection
+ *   (e.g. "image/"), or null to accept any MIME type.
+ * @property typeLabel Human-readable plural label used in display names and error messages.
+ */
+class MediaCollection(
+    private val collectionUriProvider: () -> Uri,
+    val readMediaPermission: String?,
+    val mimeTypePrefix: String?,
+    val typeLabel: String,
+) {
+    /** MediaStore collection content URI for queries/inserts. Resolved lazily. */
+    val uri: Uri by lazy { collectionUriProvider() }
+}
+
+/**
  * Defines the built-in storage locations backed by MediaStore.
  *
  * These are always available without user setup (no SAF picker needed).
  * The app can write to these locations without any runtime permissions.
- * Reading non-owned files requires the corresponding [readMediaPermission].
+ * Reading non-owned files requires the corresponding per-collection
+ * [MediaCollection.readMediaPermission].
  *
- * The [collectionUri] is resolved lazily to avoid loading Android framework
- * classes during enum initialization (which would fail in JVM unit tests).
+ * Each location maps to one physical top-level directory and is backed by the
+ * MediaStore collections whose content can live there (e.g. `DCIM/` holds both
+ * images and videos). Collection URIs are resolved lazily to avoid loading
+ * Android framework classes during enum initialization (which would fail in
+ * JVM unit tests).
  *
  * @property locationId Stable identifier used in MCP tool calls.
- * @property displayNameOwned Display name when only owned files are visible.
- * @property displayNameAll Display name when all files are visible (READ_MEDIA_* granted).
+ * @property displayBaseName Base display name; access-level suffix is appended at runtime.
  * @property baseRelativePath The MediaStore RELATIVE_PATH prefix (e.g., "Download/").
- * @property readMediaPermission Runtime permission for "all files" access, or null if unavailable.
+ * @property collections Backing MediaStore collections, in read-resolution and
+ *   MIME-routing order.
  */
 enum class BuiltinStorageLocation(
     val locationId: String,
-    val displayNameOwned: String,
-    val displayNameAll: String,
-    private val collectionUriProvider: () -> Uri,
+    val displayBaseName: String,
     val baseRelativePath: String,
-    val readMediaPermission: String?,
+    val collections: List<MediaCollection>,
 ) {
     DOWNLOADS(
         locationId = "builtin:downloads",
-        displayNameOwned = "Downloads - Only owned files",
-        displayNameAll = "Downloads - Only owned files",
-        collectionUriProvider = { MediaStore.Downloads.EXTERNAL_CONTENT_URI },
+        displayBaseName = "Downloads",
         baseRelativePath = "Download/",
-        readMediaPermission = null,
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Downloads.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = null,
+                    mimeTypePrefix = null,
+                    typeLabel = "files",
+                ),
+            ),
     ),
     PICTURES(
         locationId = "builtin:pictures",
-        displayNameOwned = "Pictures - Only owned files",
-        displayNameAll = "Pictures - All files",
-        collectionUriProvider = { MediaStore.Images.Media.EXTERNAL_CONTENT_URI },
+        displayBaseName = "Pictures",
         baseRelativePath = "Pictures/",
-        readMediaPermission = android.Manifest.permission.READ_MEDIA_IMAGES,
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Images.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                    mimeTypePrefix = "image/",
+                    typeLabel = "images",
+                ),
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Video.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_VIDEO,
+                    mimeTypePrefix = "video/",
+                    typeLabel = "videos",
+                ),
+            ),
     ),
     MOVIES(
         locationId = "builtin:movies",
-        displayNameOwned = "Movies - Only owned files",
-        displayNameAll = "Movies - All files",
-        collectionUriProvider = { MediaStore.Video.Media.EXTERNAL_CONTENT_URI },
+        displayBaseName = "Movies",
         baseRelativePath = "Movies/",
-        readMediaPermission = android.Manifest.permission.READ_MEDIA_VIDEO,
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Video.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_VIDEO,
+                    mimeTypePrefix = "video/",
+                    typeLabel = "videos",
+                ),
+            ),
     ),
     MUSIC(
         locationId = "builtin:music",
-        displayNameOwned = "Music - Only owned files",
-        displayNameAll = "Music - All files",
-        collectionUriProvider = { MediaStore.Audio.Media.EXTERNAL_CONTENT_URI },
+        displayBaseName = "Music",
         baseRelativePath = "Music/",
-        readMediaPermission = android.Manifest.permission.READ_MEDIA_AUDIO,
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Audio.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_AUDIO,
+                    mimeTypePrefix = "audio/",
+                    typeLabel = "audio",
+                ),
+            ),
+    ),
+    DCIM(
+        locationId = "builtin:dcim",
+        displayBaseName = "Camera (DCIM)",
+        baseRelativePath = "DCIM/",
+        collections =
+            listOf(
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Images.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_IMAGES,
+                    mimeTypePrefix = "image/",
+                    typeLabel = "images",
+                ),
+                MediaCollection(
+                    collectionUriProvider = { MediaStore.Video.Media.EXTERNAL_CONTENT_URI },
+                    readMediaPermission = android.Manifest.permission.READ_MEDIA_VIDEO,
+                    mimeTypePrefix = "video/",
+                    typeLabel = "videos",
+                ),
+            ),
     ),
     ;
-
-    /** MediaStore collection content URI for queries/inserts. Resolved lazily. */
-    val collectionUri: Uri by lazy { collectionUriProvider() }
 
     companion object {
         /** Prefix for all built-in location IDs. */
