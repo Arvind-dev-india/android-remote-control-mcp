@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
+import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
 import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
@@ -23,6 +24,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -834,7 +836,12 @@ fun registerUtilityTools(
     substitutor: PlaceholderSubstitutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
+    settingsRepository: SettingsRepository? = null,
+    toolCallIndicator: ToolCallIndicator = ToolCallIndicator.NONE,
 ) {
+    if (settingsRepository != null) {
+        SetToolCallIndicatorTool(settingsRepository, toolCallIndicator).register(registrar, toolNamePrefix)
+    }
     if (perms.isToolEnabled(GetClipboardTool.TOOL_NAME)) {
         GetClipboardTool(accessibilityServiceProvider, privacyToolGate).register(registrar, toolNamePrefix)
     }
@@ -858,5 +865,48 @@ fun registerUtilityTools(
     if (perms.isToolEnabled(GetNodeDetailsTool.TOOL_NAME)) {
         GetNodeDetailsTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache, privacyToolGate)
             .register(registrar, toolNamePrefix)
+    }
+}
+
+/** Lets an MCP client explicitly control whether subsequent tool calls are surfaced on-device. */
+class SetToolCallIndicatorTool(
+    private val settingsRepository: SettingsRepository,
+    private val toolCallIndicator: ToolCallIndicator,
+) {
+    suspend fun execute(arguments: JsonObject?): CallToolResult {
+        val enabled =
+            arguments?.get("enabled")?.jsonPrimitive?.booleanOrNull
+                ?: throw McpToolException.InvalidParams("Missing required boolean parameter 'enabled'")
+        settingsRepository.updateToolCallIndicatorEnabled(enabled)
+        toolCallIndicator.setEnabled(enabled)
+        return McpToolUtils.textResult("Tool-call indicator ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun register(
+        registrar: LoggedToolRegistrar,
+        toolNamePrefix: String,
+    ) {
+        registrar.addTool(
+            toolName = TOOL_NAME,
+            name = "$toolNamePrefix$TOOL_NAME",
+            description =
+                "Enable or disable the privacy-safe on-device overlay shown during MCP tool calls. " +
+                    "Use this to make phone control visible when useful; the preference persists.",
+            inputSchema =
+                ToolSchema(
+                    properties =
+                        buildJsonObject {
+                            putJsonObject("enabled") {
+                                put("type", "boolean")
+                                put("description", "True to show the overlay, false to hide it")
+                            }
+                        },
+                    required = listOf("enabled"),
+                ),
+        ) { request -> execute(request.arguments) }
+    }
+
+    companion object {
+        const val TOOL_NAME = "set_tool_call_indicator"
     }
 }

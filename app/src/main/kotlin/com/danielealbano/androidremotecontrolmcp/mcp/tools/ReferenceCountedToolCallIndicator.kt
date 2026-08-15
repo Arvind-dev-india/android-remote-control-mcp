@@ -7,6 +7,9 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 class ReferenceCountedToolCallIndicator(
     private val delegate: ToolCallIndicator,
 ) : ToolCallIndicator {
+    override fun setEnabled(enabled: Boolean) {
+        delegate.setEnabled(enabled)
+    }
     private val lock = Any()
     private val activeTools = mutableListOf<String>()
 

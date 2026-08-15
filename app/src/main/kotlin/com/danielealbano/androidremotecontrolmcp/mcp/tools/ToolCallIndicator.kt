@@ -9,6 +9,8 @@ interface ToolCallIndicator {
 
     fun onToolCallFinished(toolName: String)
 
+    fun setEnabled(enabled: Boolean) = Unit
+
     companion object {
         val NONE: ToolCallIndicator =
             object : ToolCallIndicator {

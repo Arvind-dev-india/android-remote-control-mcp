@@ -29,6 +29,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.ReferenceCountedToolCallIndicator
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.ToolCallIndicator
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerFileTools
@@ -306,7 +307,13 @@ class McpServerService : Service() {
                 )
             val effectivePerms =
                 OptionalToolPermissions.effectivePermissions(config.toolPermissionsConfig, grantedOptionalPermissions)
-            registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimitMb)
+            registerAllTools(
+                sdkServer,
+                toolNamePrefix,
+                effectivePerms,
+                config.fileSizeLimitMb,
+                config.toolCallIndicatorEnabled,
+            )
 
             // Create and start the Ktor server
             mcpServer =
@@ -437,14 +444,17 @@ class McpServerService : Service() {
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
+        toolCallIndicatorEnabled: Boolean,
     ) {
+        val toolCallIndicator = ReferenceCountedToolCallIndicator(AccessibilityToolCallIndicator())
+        toolCallIndicator.setEnabled(toolCallIndicatorEnabled)
         val registrar =
             LoggedToolRegistrar(
                 server,
                 serverLogRepository,
-                ReferenceCountedToolCallIndicator(AccessibilityToolCallIndicator()),
+                toolCallIndicator,
             )
-        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms)
+        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms, toolCallIndicator)
         registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
         registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
         registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
@@ -465,6 +475,7 @@ class McpServerService : Service() {
         registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
+        toolCallIndicator: ToolCallIndicator,
     ) {
         registerScreenIntrospectionTools(
             registrar,
@@ -519,6 +530,8 @@ class McpServerService : Service() {
             placeholderSubstitutor,
             toolNamePrefix,
             perms,
+            settingsRepository,
+            toolCallIndicator,
         )
     }
 

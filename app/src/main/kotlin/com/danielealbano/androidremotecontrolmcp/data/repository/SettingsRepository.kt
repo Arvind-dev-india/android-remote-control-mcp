@@ -105,6 +105,9 @@ interface SettingsRepository : EventChannelSettings {
     /** Updates the auto-start-on-boot preference. */
     suspend fun updateAutoStartOnBoot(enabled: Boolean)
 
+    /** Enables or disables the on-device MCP tool-call activity indicator. */
+    suspend fun updateToolCallIndicatorEnabled(enabled: Boolean)
+
     /**
      * Observes the persisted server-running intent flag (`true` after ACTION_START, `false` after
      * ACTION_STOP). Used by restart triggers to decide whether to bring the MCP server back up.
