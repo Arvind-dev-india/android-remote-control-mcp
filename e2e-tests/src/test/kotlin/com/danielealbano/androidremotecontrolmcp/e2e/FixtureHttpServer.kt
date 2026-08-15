@@ -52,7 +52,7 @@ class FixtureHttpServer {
     /**
      * Base URL as reachable FROM INSIDE the container.
      *
-     * Verified mechanism on redroid 13 (plan empirical procedure 2): the primary
+     * Verified mechanism on redroid 13 and 14 (plan empirical procedure 2): the primary
      * `host.testcontainers.internal` name is NOT resolvable inside redroid's Android
      * runtime (Android's resolver does not see the Testcontainers hosts entry), so the
      * container's default-gateway IP — the host on podman's bridge — is used instead.

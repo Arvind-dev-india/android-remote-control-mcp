@@ -554,7 +554,7 @@ HomeScreen contains a TopAppBar, then a scrollable layout with: ServerStatusCard
 
 ### E2E Tests
 
-- **Framework**: Testcontainers Kotlin (`redroid/redroid:13.0.0-latest`), JUnit 5, MCP Kotlin SDK Client
+- **Framework**: Testcontainers Kotlin (`redroid/redroid:14.0.0-latest`), JUnit 5, MCP Kotlin SDK Client
 - **Scope**: Full MCP client → server → Android → action flow, Calculator app test (7 + 3 = 10), screenshot capture validation, error handling (auth, unknown tool, invalid params, node not found)
 - **Infrastructure**: `SharedAndroidContainer` singleton shares one container across all test classes (avoids ~2-4 min boot per class); `McpClient` test utility wraps SDK `Client` + `StreamableHttpClientTransport` with trust-all TLS for self-signed certs; `E2EConfigReceiver` debug-only BroadcastReceiver injects test settings via `adb shell am broadcast`
 - **Run**: `make test-e2e` or `./gradlew :e2e-tests:test`

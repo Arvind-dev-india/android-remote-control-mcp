@@ -527,7 +527,7 @@ fun `tap with valid coordinates calls actionExecutor and returns success`() = ru
 
 ### E2E testing (Redroid + Podman + Testcontainers)
 - Use **Testcontainers Kotlin** for container orchestration via rootful podman.
-- Use **redroid/redroid:13.0.0-latest** container image (native Android in container via kernel modules).
+- Use **redroid/redroid:14.0.0-latest** container image (native Android in container via kernel modules).
 - Use **JUnit 5** for test framework.
 - Use **MCP Kotlin SDK client** with `StreamableHttpClientTransport` for MCP requests.
 - Organize tests in `e2e-tests/src/test/kotlin/` directory (separate Gradle module).
