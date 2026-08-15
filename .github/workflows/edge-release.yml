@@ -19,11 +19,13 @@ name: Edge Release
 #   publish; checks not green but main has moved on -> the build/publish job is
 #   SKIPPED (neutral, the newer run publishes instead); checks not green while the
 #   commit is still main HEAD -> the gate fails loudly (broken main must be visible).
-# - Runs QUEUE (no cancel-in-progress): a publish is never interrupted mid-upload,
-#   which could leave the release serving APKs from two different commits. The
-#   freshness guard before publishing keeps queued stale runs from overwriting a
-#   newer run's publish, so the newest commit always wins and publishes stay atomic
-#   and in order.
+# - Runs QUEUE (no cancel-in-progress): a publish is never cancelled mid-upload,
+#   and the freshness guard before publishing keeps queued stale runs from
+#   overwriting a newer run's publish, so publishes happen in order and the newest
+#   commit always wins. NOTE: the four-asset replacement itself is four independent
+#   REST calls, not a transaction — during the seconds-long replacement window a
+#   downloader can still observe assets from two adjacent commits (or a transient
+#   404); harmless for single-APK installs, unavoidable with the releases API.
 #
 # workflow_dispatch allows re-publishing the current main HEAD manually (first-run
 # testing, asset refresh) without waiting for a merge.
@@ -51,10 +53,13 @@ jobs:
       publish: ${{ steps.decide.outputs.publish }}
     steps:
       # ── 1. Wait for the CI checks on this commit to COMPLETE (not necessarily pass:
-      #      every terminal conclusion is tolerated here — a superseded commit's checks
-      #      may end 'cancelled' OR keep an already-recorded 'failure'/'timed_out' — so
-      #      the wait can never turn this workflow red by itself; the actual conclusions
-      #      are verified exclusively in the next step) ──
+      #      every terminal conclusion is tolerated, so a completed check — even a
+      #      superseded commit's 'cancelled'/'failure'/'timed_out' one — can never fail
+      #      this step; conclusions are judged in the next step. The one case this step
+      #      does fail on its own: no matching check run appears within the discovery
+      #      timeout (raised from the 60s default to tolerate Checks-API registration
+      #      lag), which means CI never started for this commit — failing loudly is
+      #      correct there, since publishing would be ungated. ──
       - name: Wait for CI to complete
         uses: lewagon/wait-on-check-action@v1.8.1
         with:
@@ -63,6 +68,7 @@ jobs:
           check-regexp: '^(Build Release - (GMS|FOSS)|E2E Tests|Unit & Integration Tests|Lint)$'
           wait-interval: 30
           allowed-conclusions: success,failure,cancelled,timed_out,skipped,neutral,action_required,stale
+          checks-discovery-timeout: 600
           running-workflow-name: 'Gate on CI'
 
       # ── 2. Decide whether to publish from the real check conclusions ──
