@@ -164,7 +164,7 @@ class E2EStorageEdgeCasesTest {
     fun `ascii case pair listing`() {
         val upper = fileNames(callListFiles(PICTURES, "edge/Case"))
         val lower = fileNames(callListFiles(PICTURES, "edge/case"))
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // although SQLite LIKE is ASCII case-insensitive, the listing's exact relative-path
         // comparison keeps case-distinct sibling directories separate — no bleed between them.
         assertEquals(listOf("x.jpg"), upper)
@@ -182,7 +182,7 @@ class E2EStorageEdgeCasesTest {
     @Order(6)
     fun `hidden dotfile listing`() {
         val names = fileNames(callListFiles(PICTURES, "edge"))
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // the media scanner skips dotfiles entirely, so .hidden.jpg is never indexed or listed.
         assertFalse(names.contains(".hidden.jpg"), "names=$names")
     }
@@ -206,7 +206,7 @@ class E2EStorageEdgeCasesTest {
         val entry = listing["files"]!!.jsonArray
             .map { it.jsonObject }
             .find { it["name"]!!.jsonPrimitive.content == "empty.jpg" }
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // zero-byte files ARE indexed (size=0, mime derived from the extension) and read back empty.
         assertTrue(entry != null, "empty.jpg must be listed")
         assertEquals(0, entry!!["size"]!!.jsonPrimitive.int)
@@ -217,7 +217,7 @@ class E2EStorageEdgeCasesTest {
     @Order(9)
     fun `duplicate display name resolution`() {
         StorageE2E.insertDuplicateRow("f1.jpg", "Pictures/edge/a_b/")
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // MediaProvider auto-renames the conflicting insert to "f1 (1).jpg" — true duplicate
         // display names are not creatable; the original row still resolves with its content.
         assertEquals("underscore-dir", readFileContent(PICTURES, "edge/a_b/f1.jpg"))
@@ -302,7 +302,7 @@ class E2EStorageEdgeCasesTest {
             "${TOOL_PREFIX}list_files",
             mapOf("location_id" to PICTURES, "path" to "edge", "limit" to 0),
         )
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // a negative offset fails cleanly ("Requested element count -1 is less than zero");
         // limit=0 succeeds and returns an empty page with has_more=true.
         assertEquals(true, negOffset.isError)
@@ -332,7 +332,7 @@ class E2EStorageEdgeCasesTest {
             }
             val resultA = a.await()
             val resultB = b.await()
-            // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+            // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
             // both writers succeed without transport errors; depending on interleaving the second
             // writer either overwrites the first's owned row (1 file) or MediaStore auto-renames
             // its insert (2 files) — never a crash or corrupted listing.

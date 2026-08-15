@@ -279,7 +279,7 @@ jobs:
           curl -s --unix-socket /run/podman/podman.sock http://localhost/_ping
 
       - name: Pre-pull redroid image
-        run: sudo podman pull redroid/redroid:13.0.0-latest
+        run: sudo podman pull redroid/redroid:14.0.0-latest
 
       - name: Run E2E tests
         env:

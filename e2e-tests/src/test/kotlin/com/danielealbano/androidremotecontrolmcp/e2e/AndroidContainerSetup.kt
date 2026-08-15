@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  */
 object AndroidContainerSetup {
 
-    private const val DOCKER_IMAGE = "redroid/redroid:13.0.0-latest"
+    private const val DOCKER_IMAGE = "redroid/redroid:14.0.0-latest"
     private const val ADB_PORT = 5555
     private const val MCP_DEFAULT_PORT = 8080
     private const val PROCESS_TIMEOUT_SECONDS = 30L

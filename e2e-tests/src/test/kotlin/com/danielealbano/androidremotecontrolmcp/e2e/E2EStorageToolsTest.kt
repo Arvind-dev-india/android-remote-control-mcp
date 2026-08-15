@@ -378,7 +378,7 @@ class E2EStorageToolsTest {
             "${TOOL_PREFIX}write_file",
             mapOf("location_id" to PICTURES, "path" to "readable.jpg", "content" to "overwrite-attempt"),
         )
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // the write succeeds and MediaStore auto-renames the new row to "readable (1).jpg";
         // the non-owned original row and its content are untouched.
         assertNotEquals(true, result.isError, toolText(result))
@@ -454,7 +454,7 @@ class E2EStorageToolsTest {
                 "url" to "$fixtureBaseUrl/truncated.txt",
             ),
         )
-        // Observed redroid 13 (API 33) behavior — documents the platform, revisit on image upgrade:
+        // Observed redroid 13 (API 33) and 14 (API 34) behavior — documents the platform, revisit on image upgrade:
         // the mid-stream cut fails cleanly ("unexpected end of stream") and the pending
         // MediaStore row is deleted — no partial file remains in the listing.
         assertEquals(true, result.isError)
