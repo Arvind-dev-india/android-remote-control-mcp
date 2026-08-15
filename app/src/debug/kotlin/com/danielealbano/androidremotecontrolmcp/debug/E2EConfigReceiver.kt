@@ -114,6 +114,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
                 Log.i(TAG, "Auto-start on boot updated to $autoStart")
             }
             applyAuthFlags(intent)
+            applyDownloadSettings(intent)
             val storageLocationId = intent.getStringExtra(EXTRA_STORAGE_LOCATION_ID)
             if (!storageLocationId.isNullOrEmpty()) {
                 if (storageLocationProvider.isLocationAuthorized(storageLocationId)) {
@@ -148,6 +149,21 @@ class E2EConfigReceiver : BroadcastReceiver() {
         }
     }
 
+    private suspend fun applyDownloadSettings(intent: Intent) {
+        val downloadTimeout = intent.getIntExtra(EXTRA_DOWNLOAD_TIMEOUT_SECONDS, -1)
+        if (downloadTimeout in
+            ServerConfig.MIN_DOWNLOAD_TIMEOUT_SECONDS..ServerConfig.MAX_DOWNLOAD_TIMEOUT_SECONDS
+        ) {
+            settingsRepository.updateDownloadTimeout(downloadTimeout)
+            Log.i(TAG, "Download timeout updated to $downloadTimeout s")
+        }
+        if (intent.hasExtra(EXTRA_ALLOW_HTTP_DOWNLOADS)) {
+            val allowHttp = intent.getBooleanExtra(EXTRA_ALLOW_HTTP_DOWNLOADS, false)
+            settingsRepository.updateAllowHttpDownloads(allowHttp)
+            Log.i(TAG, "Allow HTTP downloads updated to $allowHttp")
+        }
+    }
+
     private fun handleStartServer(context: Context) {
         Log.i(TAG, "Received E2E start server broadcast")
         val intent =
@@ -171,5 +187,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
         private const val EXTRA_STORAGE_LOCATION_ID = "storage_location_id"
         private const val EXTRA_STORAGE_ALLOW_WRITE = "storage_allow_write"
         private const val EXTRA_STORAGE_ALLOW_DELETE = "storage_allow_delete"
+        private const val EXTRA_DOWNLOAD_TIMEOUT_SECONDS = "download_timeout_seconds"
+        private const val EXTRA_ALLOW_HTTP_DOWNLOADS = "allow_http_downloads"
     }
 }
