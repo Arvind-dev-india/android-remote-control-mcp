@@ -737,7 +737,7 @@ object AndroidContainerSetup {
      * Execute an adb command on the host targeting the redroid container.
      * Returns stdout on success. Uses [PROCESS_TIMEOUT_SECONDS] timeout.
      */
-    private fun execAdb(vararg args: String): String {
+    internal fun execAdb(vararg args: String): String {
         val command = arrayOf("adb", "-s", adbSerial) + args
         return runProcess(*command)
     }
