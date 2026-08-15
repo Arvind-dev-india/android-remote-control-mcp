@@ -12,12 +12,13 @@ name: Edge Release
 #   Gradle's `git describe --match v*` version derivation, so it interferes with
 #   neither the stable release workflow nor version names/codes.
 # - Publishing is gated on the full CI suite for the commit (lint, unit/integration,
-#   E2E, both release builds). ci.yml cancels a superseded commit's CI run when a
-#   newer merge lands, so the gate job tolerates 'cancelled' conclusions and then
-#   re-verifies the real per-check conclusions itself: all checks green -> publish;
-#   checks not green but main has moved on -> the build/publish job is SKIPPED
-#   (neutral, the newer run publishes instead); checks not green while the commit
-#   is still main HEAD -> the gate fails loudly (broken main must be visible).
+#   E2E, both release builds). The wait step only waits for the checks to COMPLETE
+#   (any conclusion — ci.yml cancels a superseded commit's CI run when a newer merge
+#   lands, and an already-failed check keeps its 'failure' conclusion); the decide
+#   step is the sole arbiter of the real per-check conclusions: all checks green ->
+#   publish; checks not green but main has moved on -> the build/publish job is
+#   SKIPPED (neutral, the newer run publishes instead); checks not green while the
+#   commit is still main HEAD -> the gate fails loudly (broken main must be visible).
 # - Runs QUEUE (no cancel-in-progress): a publish is never interrupted mid-upload,
 #   which could leave the release serving APKs from two different commits. The
 #   freshness guard before publishing keeps queued stale runs from overwriting a
@@ -50,8 +51,10 @@ jobs:
       publish: ${{ steps.decide.outputs.publish }}
     steps:
       # ── 1. Wait for the CI checks on this commit to COMPLETE (not necessarily pass:
-      #      'cancelled' is tolerated here so a superseded commit does not turn this
-      #      workflow red; actual conclusions are verified in the next step) ──
+      #      every terminal conclusion is tolerated here — a superseded commit's checks
+      #      may end 'cancelled' OR keep an already-recorded 'failure'/'timed_out' — so
+      #      the wait can never turn this workflow red by itself; the actual conclusions
+      #      are verified exclusively in the next step) ──
       - name: Wait for CI to complete
         uses: lewagon/wait-on-check-action@v1.8.1
         with:
@@ -59,7 +62,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           check-regexp: '^(Build Release - (GMS|FOSS)|E2E Tests|Unit & Integration Tests|Lint)$'
           wait-interval: 30
-          allowed-conclusions: success,cancelled
+          allowed-conclusions: success,failure,cancelled,timed_out,skipped,neutral,action_required,stale
           running-workflow-name: 'Gate on CI'
 
       # ── 2. Decide whether to publish from the real check conclusions ──
@@ -71,15 +74,18 @@ jobs:
         run: |
           # The check-runs API defaults to filter=latest, returning only the latest
           # run per check suite, so re-runs are counted by their final conclusion.
-          SUCCESS_COUNT=$(gh api "repos/${REPO}/commits/${GITHUB_SHA}/check-runs?per_page=100" --paginate \
-            --jq '[.check_runs[]
-                   | select(.name == "Build Release - GMS"
-                         or .name == "Build Release - FOSS"
-                         or .name == "E2E Tests"
-                         or .name == "Unit & Integration Tests"
-                         or .name == "Lint")
-                   | select(.conclusion == "success")
-                   | .name] | unique | length')
+          # `gh api --paginate` emits one JSON object per page, and its --jq runs
+          # per page (which would break aggregation across pages), so the pages are
+          # slurped into a single external jq invocation instead.
+          SUCCESS_COUNT=$(gh api "repos/${REPO}/commits/${GITHUB_SHA}/check-runs?per_page=100" --paginate |
+            jq -s '[.[].check_runs[]
+                    | select(.name == "Build Release - GMS"
+                          or .name == "Build Release - FOSS"
+                          or .name == "E2E Tests"
+                          or .name == "Unit & Integration Tests"
+                          or .name == "Lint")
+                    | select(.conclusion == "success")
+                    | .name] | unique | length')
 
           if [ "$SUCCESS_COUNT" -eq 5 ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
