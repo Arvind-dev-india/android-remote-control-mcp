@@ -107,7 +107,7 @@ class E2EStorageToolsTest {
     // ─── shared helpers ─────────────────────────────────────────────────────
 
     private fun toolText(result: io.modelcontextprotocol.kotlin.sdk.types.CallToolResult): String =
-        (result.content.first() as TextContent).text ?: ""
+        (result.content.first() as TextContent).text
 
     private fun callListFiles(
         locationId: String,

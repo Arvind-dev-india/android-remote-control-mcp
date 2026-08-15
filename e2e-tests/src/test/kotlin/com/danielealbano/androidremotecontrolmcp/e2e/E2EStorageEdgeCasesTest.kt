@@ -90,7 +90,7 @@ class E2EStorageEdgeCasesTest {
     // ─── shared helpers ─────────────────────────────────────────────────────
 
     private fun toolText(result: CallToolResult): String =
-        (result.content.first() as TextContent).text ?: ""
+        (result.content.first() as TextContent).text
 
     private fun callListFiles(
         locationId: String,
@@ -425,7 +425,7 @@ class E2EStorageEdgeCasesTest {
         val partial = refreshed.callTool("${TOOL_PREFIX}list_storage_locations", emptyMap())
         assertNotEquals(true, partial.isError)
         val partialPictures = Json
-            .parseToJsonElement(stripUntrustedWarning((partial.content.first() as TextContent).text ?: ""))
+            .parseToJsonElement(stripUntrustedWarning((partial.content.first() as TextContent).text))
             .jsonArray.map { it.jsonObject }
             .first { it["id"]!!.jsonPrimitive.content == PICTURES }
         assertEquals("Pictures - All videos, owned images", partialPictures["name"]!!.jsonPrimitive.content)
@@ -436,7 +436,7 @@ class E2EStorageEdgeCasesTest {
         val full = restored.callTool("${TOOL_PREFIX}list_storage_locations", emptyMap())
         assertNotEquals(true, full.isError)
         val fullPictures = Json
-            .parseToJsonElement(stripUntrustedWarning((full.content.first() as TextContent).text ?: ""))
+            .parseToJsonElement(stripUntrustedWarning((full.content.first() as TextContent).text))
             .jsonArray.map { it.jsonObject }
             .first { it["id"]!!.jsonPrimitive.content == PICTURES }
         assertEquals("Pictures - All files", fullPictures["name"]!!.jsonPrimitive.content)
