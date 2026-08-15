@@ -26,15 +26,11 @@ name: Edge Release
 #   REST calls, not a transaction — during the seconds-long replacement window a
 #   downloader can still observe assets from two adjacent commits (or a transient
 #   404); harmless for single-APK installs, unavoidable with the releases API.
-#
-# workflow_dispatch allows re-publishing the current main HEAD manually (first-run
-# testing, asset refresh) without waiting for a merge.
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
   contents: write
