@@ -27,11 +27,14 @@ permissions:
   contents: write
   actions: read
 
-# Rolling release: only the newest commit matters. A queued run for an older commit
-# is superseded, so cancel it instead of publishing stale builds out of order.
+# Rolling release: publishes must never be cancelled mid-flight — a partially
+# clobbered asset set would leave the edge release serving APKs from two different
+# commits. Runs therefore QUEUE instead of cancelling each other; a superseded run
+# skips publishing via the freshness guard below, so the newest commit always wins
+# and every publish is atomic and in order.
 concurrency:
   group: edge-release
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   edge-release:
@@ -85,6 +88,11 @@ jobs:
           else
             LAST_CHANGE="$SUBJECT"
           fi
+
+          # The PR title is contributor-controlled and is rendered in the public
+          # release body inside a code span (so its markdown is inert); strip
+          # backticks so the value cannot terminate the span early.
+          LAST_CHANGE="${LAST_CHANGE//\`/}"
 
           {
             echo "version=$VERSION"
@@ -225,17 +233,35 @@ jobs:
           ls -lh release-assets/ >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-      # ── 10. Move the edge tag to this commit ──
+      # ── 10. Freshness guard: skip publishing if main moved past this commit ──
+      #        Runs queue in this concurrency group instead of cancelling, so a
+      #        publish is never interrupted mid-upload; this guard is what keeps
+      #        the release from being overwritten with a superseded build — the
+      #        newer queued run publishes instead.
+      - name: Check this commit is still main HEAD
+        id: freshness
+        run: |
+          git fetch origin main --quiet
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::main has moved past $GITHUB_SHA; the newer run will publish. Skipping publish steps."
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 11. Move the edge tag to this commit ──
       #       Force-push is intentional: "edge" is a rolling pointer, not history.
       #       Pushing with GITHUB_TOKEN cannot trigger other workflows recursively,
       #       and release.yml only matches 'v*' tags anyway.
       - name: Update edge tag
+        if: steps.freshness.outputs.stale != 'true'
         run: |
           git tag -f edge
           git push -f origin edge
 
-      # ── 11. Create the edge release once, then always update it in place ──
+      # ── 12. Create the edge release once, then always update it in place ──
       - name: Create or update edge release
+        if: steps.freshness.outputs.stale != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -251,7 +277,7 @@ jobs:
 
           - **Version**: \`${VERSION}\` (commit \`${SHORT_SHA}\`)
           - **Built**: ${BUILT_AT} UTC
-          - **Last change**: ${LAST_CHANGE}
+          - **Last change**: \`${LAST_CHANGE}\`
 
           **This is not a stable release.** It may contain regressions, incomplete features, or bugs. For production use, install the [latest stable release](https://github.com/${REPO}/releases/latest). The in-app update checker only offers stable releases and will never prompt you to install an edge build.
 
