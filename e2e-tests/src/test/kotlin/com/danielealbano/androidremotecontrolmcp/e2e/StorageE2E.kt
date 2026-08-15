@@ -18,6 +18,9 @@ object StorageE2E {
     const val PERM_IMAGES = "android.permission.READ_MEDIA_IMAGES"
     const val PERM_VIDEO = "android.permission.READ_MEDIA_VIDEO"
     const val PERM_AUDIO = "android.permission.READ_MEDIA_AUDIO"
+
+    /** Platform permission backing Android 14+ partial photo access (API 34+ only). */
+    const val PERM_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
     private const val SDCARD = "/storage/emulated/0"
     private const val E2E_ACTION_BASE = "com.danielealbano.androidremotecontrolmcp.debug"
     private const val E2E_CONFIG_RECEIVER =
@@ -83,7 +86,7 @@ object StorageE2E {
     }
 
     /**
-     * Triggers a MediaStore scan. Mechanism verified empirically against redroid 13
+     * Triggers a MediaStore scan. Mechanism verified empirically against redroid 13 and 14
      * per the plan's procedure (scan_volume primary; scan_file per path; legacy
      * broadcast last). The verified mechanism is kept, the others removed.
      */
