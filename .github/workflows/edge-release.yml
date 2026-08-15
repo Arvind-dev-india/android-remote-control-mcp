@@ -259,7 +259,9 @@ jobs:
           - \`gms\` — standard build (Google Play services geofencing/location)
           - \`foss\` — no Google dependencies
 
-          APKs are signed with the same key as stable releases, so an edge build installs cleanly over a stable install.
+          Each flavor ships two APKs:
+          - \`…-release.apk\` — signed with the same key as stable releases, so it installs cleanly over a stable install.
+          - \`…-debug.apk\` — debug-signed, with the separate \`.debug\` application id: it installs **alongside** the main app (never over it), for testing only.
           EOF
 
           if gh release view edge --repo "$REPO" > /dev/null 2>&1; then
