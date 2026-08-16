@@ -11,6 +11,7 @@ package com.danielealbano.androidremotecontrolmcp.data.model
  * @property bindingAddress The network binding address.
  * @property bearerToken The bearer token for MCP request authentication.
  * @property autoStartOnBoot Whether to start the MCP server on device boot.
+ * @property toolCallIndicatorEnabled Whether to show an on-device overlay during MCP tool calls.
  * @property httpsEnabled Whether HTTPS is enabled (disabled by default).
  * @property certificateSource The source of the HTTPS certificate.
  * @property certificateHostname The hostname for auto-generated certificates.
@@ -39,6 +40,7 @@ data class ServerConfig(
     val bindingAddress: BindingAddress = BindingAddress.LOCALHOST,
     val bearerToken: String = "",
     val autoStartOnBoot: Boolean = false,
+    val toolCallIndicatorEnabled: Boolean = true,
     val httpsEnabled: Boolean = false,
     val certificateSource: CertificateSource = CertificateSource.AUTO_GENERATED,
     val certificateHostname: String = DEFAULT_CERTIFICATE_HOSTNAME,

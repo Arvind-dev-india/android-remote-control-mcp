@@ -210,6 +210,12 @@ class MainViewModel
             }
         }
 
+        fun updateToolCallIndicatorEnabled(enabled: Boolean) {
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateToolCallIndicatorEnabled(enabled)
+            }
+        }
+
         fun updateHttpsEnabled(enabled: Boolean) {
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateHttpsEnabled(enabled)

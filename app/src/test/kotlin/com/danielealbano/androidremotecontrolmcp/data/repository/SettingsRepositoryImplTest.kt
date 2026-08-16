@@ -100,6 +100,7 @@ class SettingsRepositoryImplTest {
                 assertEquals(ServerConfig.DEFAULT_PORT, config.port)
                 assertEquals(BindingAddress.LOCALHOST, config.bindingAddress)
                 assertFalse(config.autoStartOnBoot)
+                assertTrue(config.toolCallIndicatorEnabled)
                 assertFalse(config.httpsEnabled)
                 assertEquals(CertificateSource.AUTO_GENERATED, config.certificateSource)
                 assertEquals(ServerConfig.DEFAULT_CERTIFICATE_HOSTNAME, config.certificateHostname)
@@ -280,6 +281,27 @@ class SettingsRepositoryImplTest {
                 val config = repository.getServerConfig()
 
                 assertFalse(config.autoStartOnBoot)
+            }
+    }
+
+    @Nested
+    @DisplayName("updateToolCallIndicatorEnabled")
+    inner class UpdateToolCallIndicatorEnabled {
+        @Test
+        fun `disables tool call indicator`() =
+            testScope.runTest {
+                repository.updateToolCallIndicatorEnabled(false)
+
+                assertFalse(repository.getServerConfig().toolCallIndicatorEnabled)
+            }
+
+        @Test
+        fun `enables tool call indicator`() =
+            testScope.runTest {
+                repository.updateToolCallIndicatorEnabled(false)
+                repository.updateToolCallIndicatorEnabled(true)
+
+                assertTrue(repository.getServerConfig().toolCallIndicatorEnabled)
             }
     }
 

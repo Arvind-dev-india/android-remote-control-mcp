@@ -38,6 +38,12 @@ class ServerConfigTest {
         }
 
         @Test
+        fun `tool call indicator is enabled by default`() {
+            val config = ServerConfig()
+            assertTrue(config.toolCallIndicatorEnabled)
+        }
+
+        @Test
         fun `default https enabled is false`() {
             val config = ServerConfig()
             assertFalse(config.httpsEnabled)

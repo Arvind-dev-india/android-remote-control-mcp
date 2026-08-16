@@ -46,6 +46,7 @@ private val BEARER_TOKEN_ENABLED_INITIALIZED_KEY =
 private val PUBLIC_URL_OVERRIDE_KEY = stringPreferencesKey("public_url_override")
 private val JWT_SIGNING_SECRET_KEY = stringPreferencesKey("jwt_signing_secret")
 private val AUTO_START_KEY = booleanPreferencesKey("auto_start_on_boot")
+private val TOOL_CALL_INDICATOR_ENABLED_KEY = booleanPreferencesKey("tool_call_indicator_enabled")
 private val SERVER_RUNNING_KEY = booleanPreferencesKey("server_running")
 private val HTTPS_ENABLED_KEY = booleanPreferencesKey("https_enabled")
 private val CERTIFICATE_SOURCE_KEY = stringPreferencesKey("certificate_source")
@@ -109,6 +110,7 @@ private fun mapPreferencesToServerConfig(prefs: Preferences): ServerConfig {
                 ?: BindingAddress.LOCALHOST,
         bearerToken = prefs[BEARER_TOKEN_KEY] ?: "",
         autoStartOnBoot = prefs[AUTO_START_KEY] ?: false,
+        toolCallIndicatorEnabled = prefs[TOOL_CALL_INDICATOR_ENABLED_KEY] ?: true,
         httpsEnabled = prefs[HTTPS_ENABLED_KEY] ?: false,
         certificateSource =
             CertificateSource.entries.firstOrNull { it.name == certificateSourceName }
@@ -374,6 +376,14 @@ class SettingsRepositoryImpl
                 val old = prefs[AUTO_START_KEY] ?: false
                 prefs[AUTO_START_KEY] = enabled
                 logToggle("auto_start", old, enabled, "Auto-start on boot")
+            }
+        }
+
+        override suspend fun updateToolCallIndicatorEnabled(enabled: Boolean) {
+            dataStore.edit { prefs ->
+                val old = prefs[TOOL_CALL_INDICATOR_ENABLED_KEY] ?: true
+                prefs[TOOL_CALL_INDICATOR_ENABLED_KEY] = enabled
+                logToggle("tool_call_indicator", old, enabled, "Tool-call indicator")
             }
         }
 

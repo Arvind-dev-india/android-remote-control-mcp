@@ -173,6 +173,31 @@ fun GeneralSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Tool-call Indicator Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.config_tool_call_indicator_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(R.string.config_tool_call_indicator_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = serverConfig.toolCallIndicatorEnabled,
+                    onCheckedChange = viewModel::updateToolCallIndicatorEnabled,
+                    enabled = isEnabled,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Auto-Start Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),

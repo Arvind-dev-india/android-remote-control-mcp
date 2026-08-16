@@ -23,16 +23,19 @@ private const val FAILED_MARKER = "failed"
 internal fun loggedToolHandler(
     serverLog: ServerLogRepository,
     toolName: String,
+    toolCallIndicator: ToolCallIndicator = ToolCallIndicator.NONE,
     handler: suspend (CallToolRequest) -> CallToolResult,
 ): suspend (CallToolRequest) -> CallToolResult =
     { request ->
         val startNs = System.nanoTime()
         var completed: CallToolResult? = null
+        runCatching { toolCallIndicator.onToolCallStarted(toolName) }
         try {
             val result = handler(request)
             completed = result
             result
         } finally {
+            runCatching { toolCallIndicator.onToolCallFinished(toolName) }
             val durationMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             val result = completed
             when {
@@ -67,6 +70,7 @@ internal fun loggedToolHandler(
 class LoggedToolRegistrar(
     private val server: Server,
     private val serverLog: ServerLogRepository,
+    private val toolCallIndicator: ToolCallIndicator = ToolCallIndicator.NONE,
 ) {
     /** [Server.addTool] with per-call TOOL_CALL logging. [toolName] is the un-prefixed display name. */
     fun addTool(
@@ -76,7 +80,7 @@ class LoggedToolRegistrar(
         inputSchema: ToolSchema,
         handler: suspend (CallToolRequest) -> CallToolResult,
     ) {
-        val wrapped = loggedToolHandler(serverLog, toolName, handler)
+        val wrapped = loggedToolHandler(serverLog, toolName, toolCallIndicator, handler)
         server.addTool(name = name, description = description, inputSchema = inputSchema) { request ->
             wrapped(request)
         }

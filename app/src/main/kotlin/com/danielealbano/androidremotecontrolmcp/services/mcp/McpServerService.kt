@@ -28,6 +28,8 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordina
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.ReferenceCountedToolCallIndicator
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.ToolCallIndicator
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerFileTools
@@ -50,6 +52,7 @@ import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
 import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityToolCallIndicator
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionExecutor
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.CompactTreeFormatter
@@ -304,7 +307,13 @@ class McpServerService : Service() {
                 )
             val effectivePerms =
                 OptionalToolPermissions.effectivePermissions(config.toolPermissionsConfig, grantedOptionalPermissions)
-            registerAllTools(sdkServer, toolNamePrefix, effectivePerms, config.fileSizeLimitMb)
+            registerAllTools(
+                sdkServer,
+                toolNamePrefix,
+                effectivePerms,
+                config.fileSizeLimitMb,
+                config.toolCallIndicatorEnabled,
+            )
 
             // Create and start the Ktor server
             mcpServer =
@@ -435,8 +444,16 @@ class McpServerService : Service() {
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
         fileSizeLimitMb: Int,
+        toolCallIndicatorEnabled: Boolean,
     ) {
-        val registrar = LoggedToolRegistrar(server, serverLogRepository)
+        val toolCallIndicator = ReferenceCountedToolCallIndicator(AccessibilityToolCallIndicator())
+        toolCallIndicator.setEnabled(toolCallIndicatorEnabled)
+        val registrar =
+            LoggedToolRegistrar(
+                server,
+                serverLogRepository,
+                toolCallIndicator,
+            )
         registerAccessibilityToolBundle(registrar, toolNamePrefix, perms)
         registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
         registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
