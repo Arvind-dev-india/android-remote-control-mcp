@@ -33,6 +33,10 @@ class LoggedToolHandlerTest {
         override fun onToolCallFinished(toolName: String) {
             events += "finished:$toolName"
         }
+
+        override fun setEnabled(enabled: Boolean) {
+            events += "enabled:$enabled"
+        }
     }
 
     @Test
@@ -108,6 +112,21 @@ class LoggedToolHandlerTest {
         indicator.onToolCallFinished("tap")
         assertEquals(
             listOf("started:tap", "started:swipe", "started:tap", "finished:tap"),
+            delegate.events,
+        )
+    }
+
+    @Test
+    fun `set enabled is serialized with tool transitions`() {
+        val delegate = RecordingToolCallIndicator()
+        val indicator = ReferenceCountedToolCallIndicator(delegate)
+
+        indicator.onToolCallStarted("tap")
+        indicator.setEnabled(false)
+        indicator.onToolCallFinished("tap")
+
+        assertEquals(
+            listOf("started:tap", "enabled:false", "finished:tap"),
             delegate.events,
         )
     }

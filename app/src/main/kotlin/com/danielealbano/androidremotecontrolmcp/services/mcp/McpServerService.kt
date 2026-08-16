@@ -454,7 +454,7 @@ class McpServerService : Service() {
                 serverLogRepository,
                 toolCallIndicator,
             )
-        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms, toolCallIndicator)
+        registerAccessibilityToolBundle(registrar, toolNamePrefix, perms)
         registerFileTools(registrar, storageLocationProvider, fileOperationProvider, toolNamePrefix, perms)
         registerAppManagementTools(registrar, appManager, privacyToolGate, toolNamePrefix, perms)
         registerCameraTools(registrar, cameraProvider, fileOperationProvider, toolNamePrefix, perms)
@@ -475,7 +475,6 @@ class McpServerService : Service() {
         registrar: LoggedToolRegistrar,
         toolNamePrefix: String,
         perms: ToolPermissionsConfig,
-        toolCallIndicator: ToolCallIndicator,
     ) {
         registerScreenIntrospectionTools(
             registrar,
@@ -530,8 +529,6 @@ class McpServerService : Service() {
             placeholderSubstitutor,
             toolNamePrefix,
             perms,
-            settingsRepository,
-            toolCallIndicator,
         )
     }
 
