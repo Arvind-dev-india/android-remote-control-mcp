@@ -11,8 +11,10 @@ object OAuthPolicy {
     /** The fixed Claude.ai connector callback. */
     const val CLAUDE_REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback"
 
-    // Ported from the fix/chatgpt-oauth-redirect fork by GitHub user ciel051130.
-    /** Legacy/fixed ChatGPT connector callback used by already-published ChatGPT MCP integrations. */
+    /**
+     * Legacy/fixed ChatGPT connector callback used by already-published ChatGPT MCP integrations.
+     * Ported from the fix/chatgpt-oauth-redirect fork by GitHub user ciel051130.
+     */
     const val CHATGPT_REDIRECT_URI = "https://chatgpt.com/connector_platform_oauth_redirect"
 
     /** ChatGPT also uses per-connector OAuth callback URLs under this exact host/path prefix. */
