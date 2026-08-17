@@ -262,10 +262,10 @@ still returning the same `400 invalid_redirect_uri`.
 automated plan-compliance review of the whole change.
 
 **Acceptance criteria:**
-- [ ] `make lint` passes with zero warnings/errors.
-- [ ] Full test suite passes.
-- [ ] `./gradlew build` succeeds with no warnings/errors.
-- [ ] `code-reviewer` (plan-compliance mode) reports clean.
+- [x] `make lint` passes with zero warnings/errors.
+- [x] Full test suite passes. (JVM unit + integration GREEN; `test-e2e` container-gated/out of scope — see Task 4.2 finding.)
+- [x] `./gradlew build` succeeds with no warnings/errors. (See Task 4.3 finding — `:app:assembleGmsDebug`.)
+- [x] `code-reviewer` (plan-compliance mode) reports clean.
 
 ### Task 4.1 — Linting
 **Action:** run `make lint`; fix ALL violations at the root cause (no suppressions). Re-run until clean.
@@ -300,7 +300,8 @@ compiler warnings/errors (`/tmp/p65-build.log`). Tests were already verified GRE
 **Action:** spawn the `code-reviewer` subagent in plan-compliance mode over the full diff of this plan. Fix ALL findings
 (CRITICAL, WARNING, INFO); re-run until clean.
 **DoD:**
-- [ ] `code-reviewer` reports zero findings.
+- [x] `code-reviewer` reports zero findings. (Round 1 found 2 CRITICAL — the lint fold-fix and plan-doc updates were
+  uncommitted; committed as `008db76` + `6960168`. Round 2 verdict PASS, 0/0/0 against committed HEAD.)
 
 ---
 
