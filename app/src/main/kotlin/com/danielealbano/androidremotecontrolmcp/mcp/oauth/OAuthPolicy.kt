@@ -11,8 +11,16 @@ object OAuthPolicy {
     /** The fixed Claude.ai connector callback. */
     const val CLAUDE_REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback"
 
+    // Ported from the fix/chatgpt-oauth-redirect fork by GitHub user ciel051130.
+    /** Legacy/fixed ChatGPT connector callback used by already-published ChatGPT MCP integrations. */
+    const val CHATGPT_REDIRECT_URI = "https://chatgpt.com/connector_platform_oauth_redirect"
+
+    /** ChatGPT also uses per-connector OAuth callback URLs under this exact host/path prefix. */
+    private const val CHATGPT_REDIRECT_HOST = "chatgpt.com"
+    private const val CHATGPT_REDIRECT_PATH_PREFIX = "/connector/oauth/"
+
     /** Exact non-loopback redirect URIs accepted by the allowlist (add other hosted connectors here). */
-    val ALLOWED_REDIRECT_URIS = setOf(CLAUDE_REDIRECT_URI)
+    val ALLOWED_REDIRECT_URIS = setOf(CLAUDE_REDIRECT_URI, CHATGPT_REDIRECT_URI)
 
     /** Maximum persisted OAuth clients before eviction. */
     const val MAX_OAUTH_CLIENTS = 20
@@ -42,17 +50,26 @@ object OAuthPolicy {
     private val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1", "::1")
 
     /**
-     * CLOSED-SET redirect allowlist (the security boundary). Returns true ONLY for a URI in
-     * [ALLOWED_REDIRECT_URIS], or `http://` loopback (`localhost` / `127.0.0.1` / `[::1]`, any/no port)
-     * for local test clients (MCP Inspector / mcp-remote / Claude Code). The host is compared via
-     * [URI.host] for EXACT equality — deceptive hosts (`localhost.evil.com`, `localhost@evil.com`),
-     * other loopback IPs, `0.0.0.0`, and any https non-allowlisted host are rejected.
+     * CLOSED redirect policy (the security boundary). Returns true ONLY for a URI in [ALLOWED_REDIRECT_URIS],
+     * ChatGPT's HTTPS callback namespace on the EXACT `chatgpt.com` host (path under `/connector/oauth/`), or
+     * `http://` loopback (`localhost` / `127.0.0.1` / `[::1]`, any/no port) for local test clients
+     * (MCP Inspector / mcp-remote / Claude Code). The host is compared via [URI.host] for EXACT equality —
+     * deceptive hosts (`localhost.evil.com`, `chatgpt.com.evil.example`, `localhost@evil.com`), other loopback
+     * IPs, `0.0.0.0`, non-`https` ChatGPT callbacks, and any other https host are rejected.
      */
     fun isAllowedRedirectUri(uri: String): Boolean {
         if (uri in ALLOWED_REDIRECT_URIS) return true
+
         val parsed = runCatching { URI(uri) }.getOrNull()
         val host = parsed?.host?.removePrefix("[")?.removeSuffix("]")
-        return parsed != null && parsed.scheme == "http" && host in LOOPBACK_HOSTS
+        val isChatGptConnectorCallback =
+            parsed != null &&
+                parsed.scheme == "https" &&
+                host == CHATGPT_REDIRECT_HOST &&
+                parsed.path?.startsWith(CHATGPT_REDIRECT_PATH_PREFIX) == true
+        val isLoopback = parsed != null && parsed.scheme == "http" && host in LOOPBACK_HOSTS
+
+        return isChatGptConnectorCallback || isLoopback
     }
 
     /**
