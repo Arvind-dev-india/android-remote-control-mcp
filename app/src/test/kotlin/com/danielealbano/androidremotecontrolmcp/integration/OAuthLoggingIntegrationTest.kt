@@ -44,6 +44,33 @@ class OAuthLoggingIntegrationTest {
                         it.message.contains("OAuth client registered")
                     },
                 )
+                assertTrue(
+                    deps.serverLog.ofType(ServerLogEntry.Type.OAUTH).none {
+                        it.message.contains("rejected redirect URI(s)")
+                    },
+                )
+            }
+        }
+
+    @Test
+    @DisplayName("rejected redirect uri logs the offending uri")
+    fun rejectedRedirectLogs() =
+        runTest {
+            val deps = McpIntegrationTestHelper.createMockDependencies()
+            McpIntegrationTestHelper.withOAuthTestApplication(deps = deps, publicUrlOverride = OVERRIDE) { _ ->
+                val resp =
+                    client.post("/register") {
+                        contentType(ContentType.Application.Json)
+                        setBody("""{"redirect_uris":["https://evil.example/cb"],"token_endpoint_auth_method":"none"}""")
+                    }
+                assertEquals(HttpStatusCode.BadRequest, resp.status)
+                assertTrue(resp.bodyAsText().contains("invalid_redirect_uri"))
+                assertTrue(
+                    deps.serverLog.ofType(ServerLogEntry.Type.OAUTH).any {
+                        it.message.contains("rejected redirect URI(s)") &&
+                            it.message.contains("https://evil.example/cb")
+                    },
+                )
             }
         }
 

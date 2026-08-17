@@ -69,7 +69,14 @@ private suspend fun ApplicationCall.handleRegister(deps: OAuthRouteDeps) {
         respondOAuthError(HttpStatusCode.BadRequest, "invalid_request")
         return
     }
-    if (redirectUris.isEmpty() || redirectUris.any { !OAuthPolicy.isAllowedRedirectUri(it) }) {
+    val rejectedRedirectUris = redirectUris.filterNot(OAuthPolicy::isAllowedRedirectUri)
+    if (redirectUris.isEmpty() || rejectedRedirectUris.isNotEmpty()) {
+        if (rejectedRedirectUris.isNotEmpty()) {
+            deps.serverLog.log(
+                ServerLogEntry.Type.OAUTH,
+                "OAuth client registration rejected redirect URI(s): ${rejectedRedirectUris.joinToString()}",
+            )
+        }
         respondOAuthError(HttpStatusCode.BadRequest, "invalid_redirect_uri")
         return
     }

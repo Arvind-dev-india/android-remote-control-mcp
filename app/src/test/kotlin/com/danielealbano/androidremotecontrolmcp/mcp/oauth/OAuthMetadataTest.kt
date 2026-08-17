@@ -43,6 +43,9 @@ class OAuthMetadataTest {
             listOf("none"),
             obj["token_endpoint_auth_methods_supported"]?.jsonArray?.map { it.jsonPrimitive.content },
         )
-        assertEquals(listOf("mcp"), obj["scopes_supported"]?.jsonArray?.map { it.jsonPrimitive.content })
+        assertEquals(
+            listOf("mcp", "offline_access"),
+            obj["scopes_supported"]?.jsonArray?.map { it.jsonPrimitive.content },
+        )
     }
 }
