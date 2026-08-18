@@ -415,6 +415,62 @@ class CloudflareTunnelProviderTest {
             }
     }
 
+    @Nested
+    @DisplayName("parseCommandLineArguments")
+    inner class ParseCommandLineArguments {
+        @Test
+        fun `empty or blank string returns empty list`() {
+            assertEquals(emptyList<String>(), CloudflareTunnelProvider.parseCommandLineArguments(""))
+            assertEquals(emptyList<String>(), CloudflareTunnelProvider.parseCommandLineArguments("   \t  "))
+        }
+
+        @Test
+        fun `single argument returns single token`() {
+            assertEquals(
+                listOf("--edge"),
+                CloudflareTunnelProvider.parseCommandLineArguments("--edge"),
+            )
+        }
+
+        @Test
+        fun `multiple arguments separated by whitespace`() {
+            assertEquals(
+                listOf("--edge", "region1.v2.argotunnel.com:7844", "--protocol", "http2"),
+                CloudflareTunnelProvider.parseCommandLineArguments(
+                    "  --edge   region1.v2.argotunnel.com:7844 \t --protocol http2  ",
+                ),
+            )
+        }
+
+        @Test
+        fun `double quotes preserve internal spaces and flags`() {
+            assertEquals(
+                listOf("--edge", "region1.v2.argotunnel.com:7844", "--custom-flag=hello world"),
+                CloudflareTunnelProvider.parseCommandLineArguments(
+                    "--edge region1.v2.argotunnel.com:7844 --custom-flag=\"hello world\"",
+                ),
+            )
+        }
+
+        @Test
+        fun `single quotes preserve internal spaces and flags`() {
+            assertEquals(
+                listOf("--edge", "region1.v2.argotunnel.com:7844", "--custom-flag=hello world"),
+                CloudflareTunnelProvider.parseCommandLineArguments(
+                    "--edge region1.v2.argotunnel.com:7844 --custom-flag='hello world'",
+                ),
+            )
+        }
+
+        @Test
+        fun `escaped characters are preserved`() {
+            assertEquals(
+                listOf("--custom=hello\"world"),
+                CloudflareTunnelProvider.parseCommandLineArguments("--custom=hello\\\"world"),
+            )
+        }
+    }
+
     companion object {
         private const val AWAIT_TIMEOUT_MS = 10_000L
 

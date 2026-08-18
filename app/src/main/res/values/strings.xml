@@ -181,6 +181,9 @@
     <string name="remote_access_cloudflare_mode_token">With Token</string>
     <string name="remote_access_cloudflare_mode_token_desc">Static hostname via your Cloudflare account</string>
     <string name="remote_access_cloudflare_token_label">Cloudflare Tunnel Token</string>
+    <string name="remote_access_cloudflare_extra_args_label">Extra Arguments</string>
+    <string name="remote_access_cloudflare_extra_args_hint">--edge region1.v2.argotunnel.com:7844</string>
+    <string name="remote_access_cloudflare_extra_args_help">Optional flags passed to cloudflared (e.g. specify --edge to bypass DNS issues)</string>
     <string name="remote_access_cloudflare_service_url_help">In your Cloudflare dashboard, set this tunnel\'s Public Hostname → Service to:</string>
     <string name="remote_access_cloudflare_service_url_copy">Copy service URL</string>
     <string name="remote_access_https_disabled_warning">Remote access is unavailable while HTTPS is enabled. Disable HTTPS to use a tunnel.</string>
