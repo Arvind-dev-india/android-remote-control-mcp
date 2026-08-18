@@ -48,6 +48,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.listFiles(locationId, path, offset, limit)
             }
+            BuiltinStorageLocation.validatePath(path)
             val directory =
                 resolveDocumentFile(locationId, path)
                     ?: throw McpToolException.ActionFailed(
@@ -102,6 +103,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFile(locationId, path, offset, limit)
             }
+            BuiltinStorageLocation.validatePath(path)
             require(offset >= 1) { "offset must be >= 1, got $offset" }
             val documentFile = resolveRegularFileOrThrow(locationId, path)
 
@@ -155,6 +157,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFileBytes(locationId, path, maxBytes)
             }
+            BuiltinStorageLocation.validatePath(path)
             val documentFile = resolveRegularFileOrThrow(locationId, path)
 
             val fileName = documentFile.name ?: path.substringAfterLast('/')
@@ -179,6 +182,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.writeFile(locationId, path, content)
             }
+            BuiltinStorageLocation.validatePath(path)
             val config = settingsRepository.getServerConfig()
             val contentBytes = content.toByteArray(Charsets.UTF_8)
             val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
@@ -214,6 +218,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.appendFile(locationId, path, content)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val config = settingsRepository.getServerConfig()
@@ -251,6 +256,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.replaceInFile(locationId, path, oldString, newString, replaceAll)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val documentFile = resolveRegularFileOrThrow(locationId, path)
@@ -300,6 +306,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.downloadFromUrl(locationId, path, url)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val config = settingsRepository.getServerConfig()
@@ -416,6 +423,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.deleteFile(locationId, path)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkDeletePermission(locationId)
             val documentFile = resolveFileOrThrow(locationId, path)
@@ -449,6 +457,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.createFileUri(locationId, path, mimeType)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val documentFile = ensureParentDirectoriesAndCreateFile(locationId, path, mimeType)

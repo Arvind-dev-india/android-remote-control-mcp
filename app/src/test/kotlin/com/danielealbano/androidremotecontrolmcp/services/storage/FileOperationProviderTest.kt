@@ -1493,6 +1493,91 @@ class FileOperationProviderTest {
             }
     }
 
+    @Nested
+    @DisplayName("path traversal validation (non-builtin locations)")
+    inner class PathTraversalValidation {
+        // The guard runs before authorization and resolution, so a bad path is rejected
+        // for every entry point regardless of mock setup. "loc1" is a non-builtin location.
+
+        @Test
+        fun `listFiles rejects parent traversal segment`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.listFiles("loc1", "../secrets", 0, 10)
+                    }
+                assertTrue(exception.message!!.contains(".."))
+            }
+
+        @Test
+        fun `readFile rejects parent traversal segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.readFile("loc1", "sub/../../etc/hosts", 1, 10)
+                }
+            }
+
+        @Test
+        fun `readFileBytes rejects absolute path`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.readFileBytes("loc1", "/etc/hosts", TEN_MB)
+                    }
+                assertTrue(exception.message!!.contains("absolute"))
+            }
+
+        @Test
+        fun `writeFile rejects parent traversal segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.writeFile("loc1", "../escape.txt", "data")
+                }
+            }
+
+        @Test
+        fun `appendFile rejects current-directory segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.appendFile("loc1", "./relative.txt", "data")
+                }
+            }
+
+        @Test
+        fun `replaceInFile rejects parent traversal segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.replaceInFile("loc1", "../file.txt", "a", "b", false)
+                }
+            }
+
+        @Test
+        fun `downloadFromUrl rejects parent traversal segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.downloadFromUrl("loc1", "../evil.bin", "https://example.com/f")
+                }
+            }
+
+        @Test
+        fun `deleteFile rejects parent traversal segment`() =
+            runTest {
+                assertThrows<McpToolException.InvalidParams> {
+                    provider.deleteFile("loc1", "../../etc/passwd")
+                }
+            }
+
+        @Test
+        fun `createFileUri rejects control-character segment`() =
+            runTest {
+                val exception =
+                    assertThrows<McpToolException.InvalidParams> {
+                        provider.createFileUri("loc1", "bad\u0000name.txt", "text/plain")
+                    }
+                assertTrue(exception.message!!.contains("control"))
+            }
+    }
+
     companion object {
         private const val BYTES_PER_MB = 1024 * 1024
         private const val DEFAULT_FILE_SIZE_LIMIT_MB = 50
