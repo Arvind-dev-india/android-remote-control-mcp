@@ -442,6 +442,8 @@ adb shell am broadcast \
   --es certificate_hostname "mcp.local" \
   --ez tunnel_enabled false \
   --es tunnel_provider "CLOUDFLARE" \
+  --es cloudflare_tunnel_mode "TOKEN" \
+  --es cloudflare_tunnel_token "your-cloudflare-tunnel-token" \
   --es ngrok_authtoken "your-ngrok-token" \
   --es ngrok_domain "your-domain.ngrok-free.app" \
   --ei file_size_limit_mb 50 \
@@ -477,6 +479,8 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `certificate_hostname` | string | Hostname for auto-generated certificate |
 | `tunnel_enabled` | boolean | Enable remote access tunnel |
 | `tunnel_provider` | string | `CLOUDFLARE` or `NGROK` |
+| `cloudflare_tunnel_mode` | string | `FREE` (Quick Tunnel, random `*.trycloudflare.com` URL) or `TOKEN` (named tunnel with static hostname) |
+| `cloudflare_tunnel_token` | string | Cloudflare named-tunnel token (used when `cloudflare_tunnel_mode` is `TOKEN`) |
 | `ngrok_authtoken` | string | ngrok authentication token |
 | `ngrok_domain` | string | ngrok custom domain (optional) |
 | `file_size_limit_mb` | int | Max file size for file operations (1-500) |
@@ -485,6 +489,9 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `download_timeout_seconds` | int | Download timeout (10-300) |
 | `device_slug` | string | Device identifier for tool name prefix |
 | `tool_permissions` | string (JSON) | Per-tool and per-parameter permissions: `{"disabled_tools":["tool_name"],"disabled_params":{"tool_name":["param"]}}` |
+| `storage_location_id` | string | ID of an existing storage location (from `android_list_storage_locations` or Settings > Storage); required by the two extras below, unknown IDs are ignored |
+| `storage_allow_write` | boolean | Allow write operations on the location identified by `storage_location_id` |
+| `storage_allow_delete` | boolean | Allow delete operations on the location identified by `storage_location_id` |
 
 #### Start the MCP Server
 
