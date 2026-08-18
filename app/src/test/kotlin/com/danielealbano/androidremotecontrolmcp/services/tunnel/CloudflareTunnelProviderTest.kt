@@ -7,6 +7,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -223,6 +224,36 @@ class CloudflareTunnelProviderTest {
 
     private suspend fun CloudflareTunnelProvider.awaitStatus(predicate: (TunnelStatus) -> Boolean): TunnelStatus =
         withTimeout(AWAIT_TIMEOUT_MS) { status.first(predicate) }
+
+    /**
+     * Creates a fake cloudflared script that records its argv (one argument per line) to
+     * [argsFile], then blocks like the real long-running binary. The argv is written to a
+     * temp file and atomically moved into place so readers never observe a partial write.
+     */
+    private fun fakeBinaryRecordingArgs(argsFile: File): String {
+        val script = File.createTempFile("fake-cloudflared", ".sh")
+        script.deleteOnExit()
+        val target = argsFile.absolutePath
+        script.writeText(
+            "#!/bin/sh\n" +
+                "printf '%s\\n' \"\$@\" > \"$target.tmp\"\n" +
+                "mv \"$target.tmp\" \"$target\"\n" +
+                "sleep 60\n",
+        )
+        script.setExecutable(true)
+        return script.absolutePath
+    }
+
+    private fun newArgsFile(): File = File.createTempFile("cloudflared-argv", ".txt").also { it.deleteOnExit() }
+
+    private suspend fun awaitRecordedArgs(argsFile: File): List<String> {
+        withTimeout(AWAIT_TIMEOUT_MS) {
+            while (argsFile.length() == 0L) {
+                delay(ARGS_POLL_INTERVAL_MS)
+            }
+        }
+        return argsFile.readLines()
+    }
 
     @Nested
     @DisplayName("token-mode helpers")
@@ -471,8 +502,137 @@ class CloudflareTunnelProviderTest {
         }
     }
 
+    @Nested
+    @DisplayName("extra args wiring")
+    inner class ExtraArgsWiring {
+        @Test
+        fun `free mode appends extra args after fixed args`() =
+            runBlocking {
+                val argsFile = newArgsFile()
+                every { mockBinaryResolver.resolve() } returns fakeBinaryRecordingArgs(argsFile)
+                val provider = createProvider()
+
+                provider.start(
+                    8080,
+                    ServerConfig(cloudflareTunnelExtraArgs = "--edge region1.v2.argotunnel.com:7844 --protocol http2"),
+                )
+                val argv = awaitRecordedArgs(argsFile)
+
+                assertEquals(
+                    listOf(
+                        "tunnel",
+                        "--url",
+                        "http://localhost:8080",
+                        "--output",
+                        "json",
+                        "--edge",
+                        "region1.v2.argotunnel.com:7844",
+                        "--protocol",
+                        "http2",
+                    ),
+                    argv,
+                )
+                provider.stop()
+            }
+
+        @Test
+        fun `token mode appends extra args after fixed args`() =
+            runBlocking {
+                val argsFile = newArgsFile()
+                every { mockBinaryResolver.resolve() } returns fakeBinaryRecordingArgs(argsFile)
+                val provider = createProvider()
+
+                provider.start(
+                    8080,
+                    tokenConfig().copy(
+                        cloudflareTunnelExtraArgs = "--edge region1.v2.argotunnel.com:7844 --protocol http2",
+                    ),
+                )
+                val argv = awaitRecordedArgs(argsFile)
+
+                assertEquals(
+                    listOf(
+                        "tunnel",
+                        "--output",
+                        "json",
+                        "run",
+                        "--token",
+                        "fake-token",
+                        "--edge",
+                        "region1.v2.argotunnel.com:7844",
+                        "--protocol",
+                        "http2",
+                    ),
+                    argv,
+                )
+                provider.stop()
+            }
+
+        @Test
+        fun `free mode with blank extra args launches fixed args only`() =
+            runBlocking {
+                val argsFile = newArgsFile()
+                every { mockBinaryResolver.resolve() } returns fakeBinaryRecordingArgs(argsFile)
+                val provider = createProvider()
+
+                provider.start(8080, ServerConfig(cloudflareTunnelExtraArgs = "   "))
+                val argv = awaitRecordedArgs(argsFile)
+
+                assertEquals(
+                    listOf("tunnel", "--url", "http://localhost:8080", "--output", "json"),
+                    argv,
+                )
+                provider.stop()
+            }
+
+        @Test
+        fun `token mode with blank extra args launches fixed args only`() =
+            runBlocking {
+                val argsFile = newArgsFile()
+                every { mockBinaryResolver.resolve() } returns fakeBinaryRecordingArgs(argsFile)
+                val provider = createProvider()
+
+                provider.start(8080, tokenConfig().copy(cloudflareTunnelExtraArgs = "   "))
+                val argv = awaitRecordedArgs(argsFile)
+
+                assertEquals(
+                    listOf("tunnel", "--output", "json", "run", "--token", "fake-token"),
+                    argv,
+                )
+                provider.stop()
+            }
+
+        @Test
+        fun `quoted extra arg arrives as a single argv element`() =
+            runBlocking {
+                val argsFile = newArgsFile()
+                every { mockBinaryResolver.resolve() } returns fakeBinaryRecordingArgs(argsFile)
+                val provider = createProvider()
+
+                provider.start(
+                    8080,
+                    ServerConfig(cloudflareTunnelExtraArgs = "--custom-flag=\"hello world\""),
+                )
+                val argv = awaitRecordedArgs(argsFile)
+
+                assertEquals(
+                    listOf(
+                        "tunnel",
+                        "--url",
+                        "http://localhost:8080",
+                        "--output",
+                        "json",
+                        "--custom-flag=hello world",
+                    ),
+                    argv,
+                )
+                provider.stop()
+            }
+    }
+
     companion object {
         private const val AWAIT_TIMEOUT_MS = 10_000L
+        private const val ARGS_POLL_INTERVAL_MS = 50L
 
         /** True for a Connected status that already carries at least one endpoint (route applied). */
         private fun TunnelStatus.connectedWithEndpoints() = this is TunnelStatus.Connected && endpoints.isNotEmpty()
