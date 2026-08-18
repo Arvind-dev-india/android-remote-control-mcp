@@ -640,6 +640,27 @@ class SettingsRepositoryImplTest {
     }
 
     @Nested
+    @DisplayName("updateCloudflareTunnelExtraArgs")
+    inner class UpdateCloudflareTunnelExtraArgs {
+        @Test
+        fun `defaults to empty when unset`() =
+            testScope.runTest {
+                val config = repository.getServerConfig()
+
+                assertEquals("", config.cloudflareTunnelExtraArgs)
+            }
+
+        @Test
+        fun `persists extra args`() =
+            testScope.runTest {
+                repository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844")
+                val config = repository.getServerConfig()
+
+                assertEquals("--edge region1.v2.argotunnel.com:7844", config.cloudflareTunnelExtraArgs)
+            }
+    }
+
+    @Nested
     @DisplayName("updateDeviceSlug")
     inner class UpdateDeviceSlug {
         @Test

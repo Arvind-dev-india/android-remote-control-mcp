@@ -50,6 +50,7 @@ data class ServerConfig(
     val ngrokDomain: String = "",
     val cloudflareTunnelMode: CloudflareTunnelMode = CloudflareTunnelMode.FREE,
     val cloudflareTunnelToken: String = "",
+    val cloudflareTunnelExtraArgs: String = "",
     val fileSizeLimitMb: Int = DEFAULT_FILE_SIZE_LIMIT_MB,
     val allowHttpDownloads: Boolean = false,
     val allowUnverifiedHttpsCerts: Boolean = false,

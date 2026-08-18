@@ -60,6 +60,7 @@ class AdbConfigHandler(
         applyTunnelProvider(intent)
         applyCloudflareTunnelMode(intent)
         applyCloudflareTunnelToken(intent)
+        applyCloudflareTunnelExtraArgs(intent)
         applyNgrokAuthtoken(intent)
         applyNgrokDomain(intent)
         applyFileSizeLimit(intent)
@@ -255,6 +256,12 @@ class AdbConfigHandler(
         Log.i(TAG, "Cloudflare tunnel token updated (length=${value.length})")
     }
 
+    private suspend fun applyCloudflareTunnelExtraArgs(intent: Intent) {
+        val value = intent.getStringExtra(EXTRA_CLOUDFLARE_TUNNEL_EXTRA_ARGS) ?: return
+        settingsRepository.updateCloudflareTunnelExtraArgs(value)
+        Log.i(TAG, "Cloudflare tunnel extra arguments updated (length=${value.length})")
+    }
+
     private suspend fun applyNgrokAuthtoken(intent: Intent) {
         val value = intent.getStringExtra(EXTRA_NGROK_AUTHTOKEN) ?: return
         if (value.isEmpty()) {
@@ -392,6 +399,7 @@ class AdbConfigHandler(
         internal const val EXTRA_TUNNEL_PROVIDER = "tunnel_provider"
         internal const val EXTRA_CLOUDFLARE_TUNNEL_MODE = "cloudflare_tunnel_mode"
         internal const val EXTRA_CLOUDFLARE_TUNNEL_TOKEN = "cloudflare_tunnel_token"
+        internal const val EXTRA_CLOUDFLARE_TUNNEL_EXTRA_ARGS = "cloudflare_tunnel_extra_args"
         internal const val EXTRA_NGROK_AUTHTOKEN = "ngrok_authtoken"
         internal const val EXTRA_NGROK_DOMAIN = "ngrok_domain"
         internal const val EXTRA_FILE_SIZE_LIMIT_MB = "file_size_limit_mb"

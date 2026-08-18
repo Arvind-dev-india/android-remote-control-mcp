@@ -168,6 +168,9 @@ interface SettingsRepository : EventChannelSettings {
     /** Updates the Cloudflare tunnel token (required when using token mode). */
     suspend fun updateCloudflareTunnelToken(token: String)
 
+    /** Updates the optional extra command-line arguments for Cloudflare tunnel. */
+    suspend fun updateCloudflareTunnelExtraArgs(extraArgs: String)
+
     /** Updates the file size limit for file operations (in MB). */
     suspend fun updateFileSizeLimit(limitMb: Int)
 

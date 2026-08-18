@@ -104,6 +104,9 @@ class MainViewModel
         private val _cloudflareTokenInput = MutableStateFlow("")
         val cloudflareTokenInput: StateFlow<String> = _cloudflareTokenInput.asStateFlow()
 
+        private val _cloudflareExtraArgsInput = MutableStateFlow("")
+        val cloudflareExtraArgsInput: StateFlow<String> = _cloudflareExtraArgsInput.asStateFlow()
+
         private val _storageLocations = MutableStateFlow<List<StorageLocation>>(emptyList())
         val storageLocations: StateFlow<List<StorageLocation>> = _storageLocations.asStateFlow()
 
@@ -147,6 +150,7 @@ class MainViewModel
                     _ngrokAuthtokenInput.value = config.ngrokAuthtoken
                     _ngrokDomainInput.value = config.ngrokDomain
                     _cloudflareTokenInput.value = config.cloudflareTunnelToken
+                    _cloudflareExtraArgsInput.value = config.cloudflareTunnelExtraArgs
                     _fileSizeLimitInput.value = config.fileSizeLimitMb.toString()
                     _fileSizeLimitError.value = null
                     _downloadTimeoutInput.value = config.downloadTimeoutSeconds.toString()
@@ -326,6 +330,13 @@ class MainViewModel
             _cloudflareTokenInput.value = token
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateCloudflareTunnelToken(token)
+            }
+        }
+
+        fun updateCloudflareTunnelExtraArgs(extraArgs: String) {
+            _cloudflareExtraArgsInput.value = extraArgs
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateCloudflareTunnelExtraArgs(extraArgs)
             }
         }
 

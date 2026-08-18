@@ -152,8 +152,8 @@ class AdbConfigHandlerTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("ACTION_CONFIGURE")
-    inner class ConfigureTests {
+    @DisplayName("ACTION_CONFIGURE - Basic Settings")
+    inner class ConfigureBasicTests {
         @Test
         @DisplayName("bearer_token is applied when provided")
         fun bearerTokenApplied() =
@@ -356,7 +356,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify(exactly = 0) { settingsRepository.updateCertificateHostname(any()) }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Tunnel Settings")
+    inner class ConfigureTunnelTests {
         @Test
         @DisplayName("tunnel_enabled is applied")
         fun tunnelEnabled() =
@@ -466,6 +470,33 @@ class AdbConfigHandlerTest {
             }
 
         @Test
+        @DisplayName("cloudflare_tunnel_extra_args is applied")
+        fun cloudflareTunnelExtraArgs() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(
+                            AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_EXTRA_ARGS,
+                            "--edge region1.v2.argotunnel.com:7844",
+                        )
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844") }
+            }
+
+        @Test
+        @DisplayName("missing cloudflare_tunnel_extra_args leaves setting untouched")
+        fun missingCloudflareTunnelExtraArgsIgnored() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_TOKEN, "eyJhIjoidGVzdCJ9")
+                    }
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateCloudflareTunnelExtraArgs(any()) }
+            }
+
+        @Test
         @DisplayName("ngrok_authtoken is applied")
         fun ngrokAuthtoken() =
             runTest {
@@ -488,7 +519,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateNgrokDomain("my-app.ngrok-free.app") }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Storage and Misc Settings")
+    inner class ConfigureStorageAndMiscTests {
         @Test
         @DisplayName("valid file_size_limit_mb is applied")
         fun validFileSizeLimit() =
@@ -596,7 +631,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateDeviceSlug("") }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Composite and Edge Cases")
+    inner class ConfigureCompositeTests {
         @Test
         @DisplayName("multiple settings are applied in single broadcast")
         fun multipleSettings() =

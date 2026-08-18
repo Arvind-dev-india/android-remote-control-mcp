@@ -444,6 +444,7 @@ adb shell am broadcast \
   --es tunnel_provider "CLOUDFLARE" \
   --es cloudflare_tunnel_mode "TOKEN" \
   --es cloudflare_tunnel_token "your-cloudflare-tunnel-token" \
+  --es cloudflare_tunnel_extra_args "--edge region1.v2.argotunnel.com:7844" \
   --es ngrok_authtoken "your-ngrok-token" \
   --es ngrok_domain "your-domain.ngrok-free.app" \
   --ei file_size_limit_mb 50 \
@@ -481,6 +482,7 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `tunnel_provider` | string | `CLOUDFLARE` or `NGROK` |
 | `cloudflare_tunnel_mode` | string | `FREE` (Quick Tunnel, random `*.trycloudflare.com` URL) or `TOKEN` (named tunnel with static hostname) |
 | `cloudflare_tunnel_token` | string | Cloudflare named-tunnel token (used when `cloudflare_tunnel_mode` is `TOKEN`) |
+| `cloudflare_tunnel_extra_args` | string | Optional extra arguments passed to cloudflared (e.g. `--edge region1.v2.argotunnel.com:7844`) |
 | `ngrok_authtoken` | string | ngrok authentication token |
 | `ngrok_domain` | string | ngrok custom domain (optional) |
 | `file_size_limit_mb` | int | Max file size for file operations (1-500) |

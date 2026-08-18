@@ -492,6 +492,18 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `updateCloudflareTunnelExtraArgs calls repository and updates input state`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844")
+            advanceUntilIdle()
+
+            assertEquals("--edge region1.v2.argotunnel.com:7844", viewModel.cloudflareExtraArgsInput.value)
+            coVerify { settingsRepository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844") }
+        }
+
+    @Test
     fun `serverConfig collection sets cloudflare token input`() =
         runTest {
             configFlow.value = configFlow.value.copy(cloudflareTunnelToken = "seeded-token")

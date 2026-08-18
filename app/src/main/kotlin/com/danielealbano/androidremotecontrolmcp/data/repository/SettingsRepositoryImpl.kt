@@ -57,6 +57,7 @@ private val NGROK_AUTHTOKEN_KEY = stringPreferencesKey("ngrok_authtoken")
 private val NGROK_DOMAIN_KEY = stringPreferencesKey("ngrok_domain")
 private val CLOUDFLARE_TUNNEL_MODE_KEY = stringPreferencesKey("cloudflare_tunnel_mode")
 private val CLOUDFLARE_TUNNEL_TOKEN_KEY = stringPreferencesKey("cloudflare_tunnel_token")
+private val CLOUDFLARE_TUNNEL_EXTRA_ARGS_KEY = stringPreferencesKey("cloudflare_tunnel_extra_args")
 private val FILE_SIZE_LIMIT_KEY = intPreferencesKey("file_size_limit_mb")
 private val ALLOW_HTTP_DOWNLOADS_KEY = booleanPreferencesKey("allow_http_downloads")
 private val ALLOW_UNVERIFIED_HTTPS_KEY = booleanPreferencesKey("allow_unverified_https_certs")
@@ -128,6 +129,7 @@ private fun mapPreferencesToServerConfig(prefs: Preferences): ServerConfig {
             CloudflareTunnelMode.entries.firstOrNull { it.name == cloudflareTunnelModeName }
                 ?: CloudflareTunnelMode.FREE,
         cloudflareTunnelToken = prefs[CLOUDFLARE_TUNNEL_TOKEN_KEY] ?: "",
+        cloudflareTunnelExtraArgs = prefs[CLOUDFLARE_TUNNEL_EXTRA_ARGS_KEY] ?: "",
         fileSizeLimitMb = prefs[FILE_SIZE_LIMIT_KEY] ?: ServerConfig.DEFAULT_FILE_SIZE_LIMIT_MB,
         allowHttpDownloads = prefs[ALLOW_HTTP_DOWNLOADS_KEY] ?: false,
         allowUnverifiedHttpsCerts = prefs[ALLOW_UNVERIFIED_HTTPS_KEY] ?: false,
@@ -459,6 +461,16 @@ class SettingsRepositoryImpl
         override suspend fun updateCloudflareTunnelToken(token: String) =
             logScalarChange(CLOUDFLARE_TUNNEL_TOKEN_KEY, "cloudflare_tunnel_token", token, "") { _, _ ->
                 "Cloudflare tunnel token changed"
+            }
+
+        override suspend fun updateCloudflareTunnelExtraArgs(extraArgs: String) =
+            logScalarChange(
+                CLOUDFLARE_TUNNEL_EXTRA_ARGS_KEY,
+                "cloudflare_tunnel_extra_args",
+                extraArgs,
+                "",
+            ) { o, n ->
+                "Cloudflare tunnel extra arguments changed $o → $n"
             }
 
         override suspend fun updateFileSizeLimit(limitMb: Int) =

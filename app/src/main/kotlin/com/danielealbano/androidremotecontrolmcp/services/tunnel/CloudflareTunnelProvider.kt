@@ -73,7 +73,7 @@ class CloudflareTunnelProvider
                     }
 
                 when (config.cloudflareTunnelMode) {
-                    CloudflareTunnelMode.FREE -> startFreeTunnel(binaryPath, localPort)
+                    CloudflareTunnelMode.FREE -> startFreeTunnel(binaryPath, localPort, config)
                     CloudflareTunnelMode.TOKEN -> startTokenTunnel(binaryPath, localPort, config)
                 }
             }
@@ -82,11 +82,12 @@ class CloudflareTunnelProvider
         private fun startFreeTunnel(
             binaryPath: String,
             localPort: Int,
+            config: ServerConfig,
         ) {
             _status.value = TunnelStatus.Connecting
             try {
-                val pb =
-                    ProcessBuilder(
+                val args =
+                    mutableListOf(
                         binaryPath,
                         "tunnel",
                         "--url",
@@ -94,6 +95,10 @@ class CloudflareTunnelProvider
                         "--output",
                         "json",
                     )
+                if (config.cloudflareTunnelExtraArgs.isNotBlank()) {
+                    args.addAll(parseCommandLineArguments(config.cloudflareTunnelExtraArgs))
+                }
+                val pb = ProcessBuilder(args)
                 pb.redirectErrorStream(false)
                 val proc = pb.start()
                 process = proc
@@ -134,8 +139,8 @@ class CloudflareTunnelProvider
             try {
                 // NOTE: exact argument order; `--output json` MUST come before `run`, and `--url`
                 // MUST NOT be passed (it breaks the control stream of a remotely-managed tunnel).
-                val pb =
-                    ProcessBuilder(
+                val args =
+                    mutableListOf(
                         binaryPath,
                         "tunnel",
                         "--output",
@@ -144,6 +149,10 @@ class CloudflareTunnelProvider
                         "--token",
                         config.cloudflareTunnelToken,
                     )
+                if (config.cloudflareTunnelExtraArgs.isNotBlank()) {
+                    args.addAll(parseCommandLineArguments(config.cloudflareTunnelExtraArgs))
+                }
+                val pb = ProcessBuilder(args)
                 pb.redirectErrorStream(false)
                 val proc = pb.start()
                 process = proc
@@ -341,6 +350,46 @@ class CloudflareTunnelProvider
                     uri.port == expectedPort &&
                     pathIsRoot &&
                     hasNoExtraParts
+            }
+
+            /**
+             * Parses a raw command-line argument string into discrete tokens,
+             * safely handling whitespace and single/double quotes.
+             */
+            internal fun parseCommandLineArguments(raw: String): List<String> {
+                if (raw.isBlank()) return emptyList()
+                val args = mutableListOf<String>()
+                val current = StringBuilder()
+                var inQuote: Char? = null
+                var escapeNext = false
+
+                for (ch in raw.trim()) {
+                    if (escapeNext) {
+                        current.append(ch)
+                        escapeNext = false
+                    } else if (ch == '\\') {
+                        escapeNext = true
+                    } else if (inQuote != null) {
+                        if (ch == inQuote) {
+                            inQuote = null
+                        } else {
+                            current.append(ch)
+                        }
+                    } else if (ch == '\'' || ch == '"') {
+                        inQuote = ch
+                    } else if (ch.isWhitespace()) {
+                        if (current.isNotEmpty()) {
+                            args.add(current.toString())
+                            current.clear()
+                        }
+                    } else {
+                        current.append(ch)
+                    }
+                }
+                if (current.isNotEmpty()) {
+                    args.add(current.toString())
+                }
+                return args
             }
         }
     }
