@@ -286,6 +286,39 @@ class AdbConfigHandlerTest {
             }
 
         @Test
+        @DisplayName("hide_from_recents true is applied")
+        fun hideFromRecentsTrue() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, true)
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateHideFromRecents(true) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents false is applied")
+        fun hideFromRecentsFalse() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, false)
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateHideFromRecents(false) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents is not applied when extra is absent")
+        fun hideFromRecentsAbsent() =
+            runTest {
+                val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
+            }
+
+        @Test
         @DisplayName("https_enabled is applied")
         fun httpsEnabled() =
             runTest {
@@ -672,6 +705,7 @@ class AdbConfigHandlerTest {
                 coVerify(exactly = 0) { settingsRepository.updateBindingAddress(any()) }
                 coVerify(exactly = 0) { settingsRepository.updatePort(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateAutoStartOnBoot(any()) }
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateHttpsEnabled(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateSource(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateHostname(any()) }

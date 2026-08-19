@@ -46,6 +46,7 @@ private val BEARER_TOKEN_ENABLED_INITIALIZED_KEY =
 private val PUBLIC_URL_OVERRIDE_KEY = stringPreferencesKey("public_url_override")
 private val JWT_SIGNING_SECRET_KEY = stringPreferencesKey("jwt_signing_secret")
 private val AUTO_START_KEY = booleanPreferencesKey("auto_start_on_boot")
+private val HIDE_FROM_RECENTS_KEY = booleanPreferencesKey("hide_from_recents")
 private val TOOL_CALL_INDICATOR_ENABLED_KEY = booleanPreferencesKey("tool_call_indicator_enabled")
 private val SERVER_RUNNING_KEY = booleanPreferencesKey("server_running")
 private val HTTPS_ENABLED_KEY = booleanPreferencesKey("https_enabled")
@@ -142,6 +143,7 @@ private fun mapPreferencesToServerConfig(prefs: Preferences): ServerConfig {
         publicUrlOverride = prefs[PUBLIC_URL_OVERRIDE_KEY] ?: "",
         toolPermissionsConfig = ToolPermissionsConfig.fromJsonOrDefault(prefs[TOOL_PERMISSIONS_KEY]),
         privacyModeConfig = PrivacyModeConfig.fromJsonOrDefault(prefs[PRIVACY_MODE_CONFIG_KEY]),
+        hideFromRecents = prefs[HIDE_FROM_RECENTS_KEY] ?: false,
     )
 }
 
@@ -378,6 +380,14 @@ class SettingsRepositoryImpl
                 val old = prefs[AUTO_START_KEY] ?: false
                 prefs[AUTO_START_KEY] = enabled
                 logToggle("auto_start", old, enabled, "Auto-start on boot")
+            }
+        }
+
+        override suspend fun updateHideFromRecents(enabled: Boolean) {
+            dataStore.edit { prefs ->
+                val old = prefs[HIDE_FROM_RECENTS_KEY] ?: false
+                prefs[HIDE_FROM_RECENTS_KEY] = enabled
+                logToggle("hide_from_recents", old, enabled, "Hide from recents")
             }
         }
 

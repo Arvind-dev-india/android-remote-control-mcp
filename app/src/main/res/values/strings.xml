@@ -83,6 +83,8 @@
     <string name="config_bearer_token_empty_warning_title">Authentication disabled</string>
     <string name="config_bearer_token_empty_warning_body">The bearer token is empty, so the MCP server accepts unauthenticated requests from anyone who can reach it. Stop the server (if running), then press Regenerate to enable authentication.</string>
     <string name="config_auto_start_label">Auto-start on boot</string>
+    <string name="config_hide_from_recents_label">Hide from recents</string>
+    <string name="config_hide_from_recents_description">Exclude the app from Android\'s recent apps overview.</string>
     <string name="config_tool_call_indicator_label">Show tool-call indicator</string>
     <string name="config_tool_call_indicator_description">Display a privacy-safe overlay while the MCP controls this device.</string>
     <string name="config_https_enabled_label">Enable HTTPS</string>

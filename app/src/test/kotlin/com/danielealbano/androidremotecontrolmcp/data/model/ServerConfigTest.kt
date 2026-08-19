@@ -38,6 +38,12 @@ class ServerConfigTest {
         }
 
         @Test
+        fun `default hide from recents is false`() {
+            val config = ServerConfig()
+            assertFalse(config.hideFromRecents)
+        }
+
+        @Test
         fun `tool call indicator is enabled by default`() {
             val config = ServerConfig()
             assertTrue(config.toolCallIndicatorEnabled)

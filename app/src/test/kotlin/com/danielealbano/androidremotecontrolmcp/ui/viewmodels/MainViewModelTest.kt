@@ -292,6 +292,17 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `updateHideFromRecents calls repository`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.updateHideFromRecents(true)
+            advanceUntilIdle()
+
+            coVerify { settingsRepository.updateHideFromRecents(true) }
+        }
+
+    @Test
     fun `updateHttpsEnabled calls repository`() =
         runTest {
             advanceUntilIdle()

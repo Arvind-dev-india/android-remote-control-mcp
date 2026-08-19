@@ -1,6 +1,8 @@
 package com.danielealbano.androidremotecontrolmcp.ui
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,11 +10,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckScheduler
 import com.danielealbano.androidremotecontrolmcp.ui.screens.MainScreen
 import com.danielealbano.androidremotecontrolmcp.ui.theme.AndroidRemoteControlMcpTheme
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -25,6 +31,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.serverConfig.collect { config ->
+                    updateExcludeFromRecents(config.hideFromRecents)
+                }
+            }
+        }
 
         notificationPermissionLauncher =
             registerForActivityResult(
@@ -103,5 +117,12 @@ class MainActivity : ComponentActivity() {
 
     private fun requestLocationPermission() {
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    private fun updateExcludeFromRecents(hide: Boolean) {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        activityManager?.appTasks?.forEach { task ->
+            task.setExcludeFromRecents(hide)
+        }
     }
 }

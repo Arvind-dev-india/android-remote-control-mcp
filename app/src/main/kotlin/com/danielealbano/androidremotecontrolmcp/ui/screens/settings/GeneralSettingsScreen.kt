@@ -214,6 +214,31 @@ fun GeneralSettingsScreen(
                     enabled = isEnabled,
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Hide from Recents Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.config_hide_from_recents_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(R.string.config_hide_from_recents_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = serverConfig.hideFromRecents,
+                    onCheckedChange = viewModel::updateHideFromRecents,
+                    enabled = isEnabled,
+                )
+            }
         }
     }
 }

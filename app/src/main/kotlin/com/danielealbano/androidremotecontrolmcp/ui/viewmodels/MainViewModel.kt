@@ -214,6 +214,12 @@ class MainViewModel
             }
         }
 
+        fun updateHideFromRecents(enabled: Boolean) {
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateHideFromRecents(enabled)
+            }
+        }
+
         fun updateToolCallIndicatorEnabled(enabled: Boolean) {
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateToolCallIndicatorEnabled(enabled)

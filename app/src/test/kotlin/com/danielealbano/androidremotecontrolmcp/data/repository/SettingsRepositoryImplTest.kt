@@ -100,6 +100,7 @@ class SettingsRepositoryImplTest {
                 assertEquals(ServerConfig.DEFAULT_PORT, config.port)
                 assertEquals(BindingAddress.LOCALHOST, config.bindingAddress)
                 assertFalse(config.autoStartOnBoot)
+                assertFalse(config.hideFromRecents)
                 assertTrue(config.toolCallIndicatorEnabled)
                 assertFalse(config.httpsEnabled)
                 assertEquals(CertificateSource.AUTO_GENERATED, config.certificateSource)
@@ -281,6 +282,29 @@ class SettingsRepositoryImplTest {
                 val config = repository.getServerConfig()
 
                 assertFalse(config.autoStartOnBoot)
+            }
+    }
+
+    @Nested
+    @DisplayName("updateHideFromRecents")
+    inner class UpdateHideFromRecents {
+        @Test
+        fun `enables hide from recents`() =
+            testScope.runTest {
+                repository.updateHideFromRecents(true)
+                val config = repository.getServerConfig()
+
+                assertTrue(config.hideFromRecents)
+            }
+
+        @Test
+        fun `disables hide from recents`() =
+            testScope.runTest {
+                repository.updateHideFromRecents(true)
+                repository.updateHideFromRecents(false)
+                val config = repository.getServerConfig()
+
+                assertFalse(config.hideFromRecents)
             }
     }
 

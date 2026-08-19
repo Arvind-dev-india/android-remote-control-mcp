@@ -113,6 +113,11 @@ class E2EConfigReceiver : BroadcastReceiver() {
                 settingsRepository.updateAutoStartOnBoot(autoStart)
                 Log.i(TAG, "Auto-start on boot updated to $autoStart")
             }
+            if (intent.hasExtra(EXTRA_HIDE_FROM_RECENTS)) {
+                val hideFromRecents = intent.getBooleanExtra(EXTRA_HIDE_FROM_RECENTS, false)
+                settingsRepository.updateHideFromRecents(hideFromRecents)
+                Log.i(TAG, "Hide from recents updated to $hideFromRecents")
+            }
             applyAuthFlags(intent)
             applyDownloadSettings(intent)
             val storageLocationId = intent.getStringExtra(EXTRA_STORAGE_LOCATION_ID)
@@ -184,6 +189,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
         private const val EXTRA_BINDING_ADDRESS = "binding_address"
         private const val EXTRA_PORT = "port"
         private const val EXTRA_AUTO_START_ON_BOOT = "auto_start_on_boot"
+        private const val EXTRA_HIDE_FROM_RECENTS = "hide_from_recents"
         private const val EXTRA_STORAGE_LOCATION_ID = "storage_location_id"
         private const val EXTRA_STORAGE_ALLOW_WRITE = "storage_allow_write"
         private const val EXTRA_STORAGE_ALLOW_DELETE = "storage_allow_delete"
