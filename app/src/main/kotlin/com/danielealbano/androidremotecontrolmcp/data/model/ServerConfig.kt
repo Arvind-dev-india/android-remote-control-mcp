@@ -34,6 +34,7 @@ package com.danielealbano.androidremotecontrolmcp.data.model
  *   auto-generates a token.
  * @property publicUrlOverride Optional public base URL that pins the host used for OAuth metadata and
  *   share links (empty = auto-detect from the request).
+ * @property hideFromRecents Whether to exclude the app from Android's Recent Apps / Overview screen.
  */
 data class ServerConfig(
     val port: Int = DEFAULT_PORT,
@@ -61,6 +62,7 @@ data class ServerConfig(
     val publicUrlOverride: String = "",
     val toolPermissionsConfig: ToolPermissionsConfig = ToolPermissionsConfig(),
     val privacyModeConfig: PrivacyModeConfig = PrivacyModeConfig(),
+    val hideFromRecents: Boolean = false,
 ) {
     companion object {
         /** Default server port. */

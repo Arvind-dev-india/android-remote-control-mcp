@@ -45,6 +45,7 @@ import javax.inject.Inject
  *   --es binding_address "0.0.0.0" \
  *   --ei port 8080 \
  *   --ez auto_start_on_boot true \
+ *   --ez hide_from_recents false \
  *   --ez https_enabled false \
  *   --es certificate_source "AUTO_GENERATED" \
  *   --es certificate_hostname "android-mcp.local" \

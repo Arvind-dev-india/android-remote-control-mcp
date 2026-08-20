@@ -105,6 +105,9 @@ interface SettingsRepository : EventChannelSettings {
     /** Updates the auto-start-on-boot preference. */
     suspend fun updateAutoStartOnBoot(enabled: Boolean)
 
+    /** Updates the hide-from-recents preference. */
+    suspend fun updateHideFromRecents(enabled: Boolean)
+
     /** Enables or disables the on-device MCP tool-call activity indicator. */
     suspend fun updateToolCallIndicatorEnabled(enabled: Boolean)
 

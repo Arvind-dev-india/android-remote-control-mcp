@@ -153,6 +153,27 @@ class E2EConfigReceiverTest {
         }
 
     @Test
+    fun `handleConfigure updates hide from recents`() =
+        runTest {
+            val intent = mockk<Intent>(relaxed = true)
+            every { intent.action } returns E2EConfigReceiver.ACTION_E2E_CONFIGURE
+            every { intent.getStringExtra("bearer_token") } returns null
+            every { intent.getStringExtra("binding_address") } returns null
+            every { intent.getIntExtra("port", -1) } returns -1
+            every { intent.hasExtra("auto_start_on_boot") } returns false
+            every { intent.hasExtra("hide_from_recents") } returns true
+            every { intent.getBooleanExtra("hide_from_recents", false) } returns true
+            every { intent.getStringExtra("storage_location_id") } returns null
+
+            coEvery { mockSettingsRepository.updateHideFromRecents(true) } just Runs
+
+            receiver.onReceive(mockContext, intent)
+            Thread.sleep(COROUTINE_WAIT_MS)
+
+            coVerify { mockSettingsRepository.updateHideFromRecents(true) }
+        }
+
+    @Test
     fun `handleConfigure updates storage location write permission`() =
         runTest {
             val intent = mockk<Intent>(relaxed = true)

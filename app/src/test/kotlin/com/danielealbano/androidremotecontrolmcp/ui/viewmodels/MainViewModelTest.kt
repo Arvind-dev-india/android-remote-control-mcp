@@ -292,6 +292,17 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `updateHideFromRecents calls repository`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.updateHideFromRecents(true)
+            advanceUntilIdle()
+
+            coVerify { settingsRepository.updateHideFromRecents(true) }
+        }
+
+    @Test
     fun `updateHttpsEnabled calls repository`() =
         runTest {
             advanceUntilIdle()
@@ -1335,6 +1346,22 @@ class MainViewModelTest {
             advanceUntilIdle()
 
             assertEquals(updatedPerms, values.last())
+            job.cancel()
+        }
+
+    @Test
+    fun `hideFromRecents emits updated config`() =
+        runTest {
+            advanceUntilIdle()
+
+            val values = mutableListOf<Boolean>()
+            val job = launch { viewModel.hideFromRecents.collect { values.add(it) } }
+            advanceUntilIdle()
+
+            configFlow.value = configFlow.value.copy(hideFromRecents = true)
+            advanceUntilIdle()
+
+            assertEquals(true, values.last())
             job.cancel()
         }
 }

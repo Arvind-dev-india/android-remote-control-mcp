@@ -12,6 +12,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.utils.RecentsUtils
 
 /**
  * Handles ADB configuration broadcast intents by parsing extras and
@@ -34,7 +35,7 @@ class AdbConfigHandler(
         intent: Intent,
     ) {
         when (intent.action) {
-            AdbConfigReceiver.ACTION_CONFIGURE -> handleConfigure(intent)
+            AdbConfigReceiver.ACTION_CONFIGURE -> handleConfigure(context, intent)
             AdbConfigReceiver.ACTION_START_SERVER -> handleStartServer(context)
             AdbConfigReceiver.ACTION_STOP_SERVER -> handleStopServer(context)
             else -> Log.w(TAG, "Ignoring unexpected action: ${intent.action}")
@@ -42,7 +43,10 @@ class AdbConfigHandler(
     }
 
     @Suppress("LongMethod")
-    private suspend fun handleConfigure(intent: Intent) {
+    private suspend fun handleConfigure(
+        context: Context,
+        intent: Intent,
+    ) {
         Log.i(TAG, "Received ADB configuration broadcast")
         serverLogRepository.log(ServerLogEntry.Type.SETTINGS, "Configuration update received via ADB")
 
@@ -53,6 +57,7 @@ class AdbConfigHandler(
         applyBindingAddress(intent)
         applyPort(intent)
         applyAutoStartOnBoot(intent)
+        applyHideFromRecents(context, intent)
         applyHttpsEnabled(intent)
         applyCertificateSource(intent)
         applyCertificateHostname(intent)
@@ -168,6 +173,17 @@ class AdbConfigHandler(
         val value = intent.getBooleanExtra(EXTRA_AUTO_START_ON_BOOT, false)
         settingsRepository.updateAutoStartOnBoot(value)
         Log.i(TAG, "Auto-start on boot updated to $value")
+    }
+
+    private suspend fun applyHideFromRecents(
+        context: Context,
+        intent: Intent,
+    ) {
+        if (!intent.hasExtra(EXTRA_HIDE_FROM_RECENTS)) return
+        val value = intent.getBooleanExtra(EXTRA_HIDE_FROM_RECENTS, false)
+        settingsRepository.updateHideFromRecents(value)
+        RecentsUtils.setExcludeFromRecents(context, value)
+        Log.i(TAG, "Hide from recents updated to $value")
     }
 
     private suspend fun applyHttpsEnabled(intent: Intent) {
@@ -392,6 +408,7 @@ class AdbConfigHandler(
         internal const val EXTRA_BINDING_ADDRESS = "binding_address"
         internal const val EXTRA_PORT = "port"
         internal const val EXTRA_AUTO_START_ON_BOOT = "auto_start_on_boot"
+        internal const val EXTRA_HIDE_FROM_RECENTS = "hide_from_recents"
         internal const val EXTRA_HTTPS_ENABLED = "https_enabled"
         internal const val EXTRA_CERTIFICATE_SOURCE = "certificate_source"
         internal const val EXTRA_CERTIFICATE_HOSTNAME = "certificate_hostname"

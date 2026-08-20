@@ -214,6 +214,12 @@ class MainViewModel
             }
         }
 
+        fun updateHideFromRecents(enabled: Boolean) {
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateHideFromRecents(enabled)
+            }
+        }
+
         fun updateToolCallIndicatorEnabled(enabled: Boolean) {
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateToolCallIndicatorEnabled(enabled)
@@ -540,6 +546,11 @@ class MainViewModel
             settingsRepository.serverConfig
                 .map { it.toolPermissionsConfig }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), ToolPermissionsConfig())
+
+        val hideFromRecents: StateFlow<Boolean> =
+            settingsRepository.serverConfig
+                .map { it.hideFromRecents }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), false)
 
         val pendingApprovalCount: StateFlow<Int> =
             approvalCoordinator

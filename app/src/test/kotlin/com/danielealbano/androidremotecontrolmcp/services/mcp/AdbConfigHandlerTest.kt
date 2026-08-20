@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.services.mcp
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -283,6 +284,57 @@ class AdbConfigHandlerTest {
                 val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
                 handler.handle(context, intent)
                 coVerify(exactly = 0) { settingsRepository.updateAutoStartOnBoot(any()) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents true excludes existing app tasks from recents")
+        fun hideFromRecentsTrue() =
+            runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, true)
+                    }
+                handler.handle(context, intent)
+
+                coVerify { settingsRepository.updateHideFromRecents(true) }
+                verify { task.setExcludeFromRecents(true) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents false includes existing app tasks in recents")
+        fun hideFromRecentsFalse() =
+            runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, false)
+                    }
+                handler.handle(context, intent)
+
+                coVerify { settingsRepository.updateHideFromRecents(false) }
+                verify { task.setExcludeFromRecents(false) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents is not applied when extra is absent")
+        fun hideFromRecentsAbsent() =
+            runTest {
+                val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
             }
 
         @Test
@@ -672,6 +724,7 @@ class AdbConfigHandlerTest {
                 coVerify(exactly = 0) { settingsRepository.updateBindingAddress(any()) }
                 coVerify(exactly = 0) { settingsRepository.updatePort(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateAutoStartOnBoot(any()) }
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateHttpsEnabled(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateSource(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateHostname(any()) }
