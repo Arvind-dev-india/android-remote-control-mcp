@@ -1348,4 +1348,20 @@ class MainViewModelTest {
             assertEquals(updatedPerms, values.last())
             job.cancel()
         }
+
+    @Test
+    fun `hideFromRecents emits updated config`() =
+        runTest {
+            advanceUntilIdle()
+
+            val values = mutableListOf<Boolean>()
+            val job = launch { viewModel.hideFromRecents.collect { values.add(it) } }
+            advanceUntilIdle()
+
+            configFlow.value = configFlow.value.copy(hideFromRecents = true)
+            advanceUntilIdle()
+
+            assertEquals(true, values.last())
+            job.cancel()
+        }
 }

@@ -1,8 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.ui
 
 import android.Manifest
-import android.app.ActivityManager
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +15,7 @@ import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckSche
 import com.danielealbano.androidremotecontrolmcp.ui.screens.MainScreen
 import com.danielealbano.androidremotecontrolmcp.ui.theme.AndroidRemoteControlMcpTheme
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
+import com.danielealbano.androidremotecontrolmcp.utils.RecentsUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -34,8 +33,8 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.serverConfig.collect { config ->
-                    updateExcludeFromRecents(config.hideFromRecents)
+                viewModel.hideFromRecents.collect { hide ->
+                    updateExcludeFromRecents(hide)
                 }
             }
         }
@@ -120,9 +119,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateExcludeFromRecents(hide: Boolean) {
-        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        activityManager?.appTasks?.forEach { task ->
-            task.setExcludeFromRecents(hide)
-        }
+        RecentsUtils.setExcludeFromRecents(this, hide)
     }
 }

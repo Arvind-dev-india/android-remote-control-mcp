@@ -9,6 +9,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.utils.RecentsUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,8 @@ import javax.inject.Inject
  *   --es bearer_token "test-token-uuid" \
  *   --es binding_address "0.0.0.0" \
  *   --ei port 8080 \
- *   --ez auto_start_on_boot true
+ *   --ez auto_start_on_boot true \
+ *   --ez hide_from_recents false
  *
  * # Start the MCP server (runs inside app process, avoids exported=false restriction)
  * adb shell am broadcast \
@@ -72,7 +74,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
         @Suppress("TooGenericExceptionCaught")
         try {
             when (intent.action) {
-                ACTION_E2E_CONFIGURE -> handleConfigure(intent)
+                ACTION_E2E_CONFIGURE -> handleConfigure(context, intent)
                 ACTION_E2E_START_SERVER -> handleStartServer(context)
                 else -> Log.w(TAG, "Ignoring unexpected action: ${intent.action}")
             }
@@ -81,7 +83,10 @@ class E2EConfigReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun handleConfigure(intent: Intent) {
+    private fun handleConfigure(
+        context: Context,
+        intent: Intent,
+    ) {
         Log.i(TAG, "Received E2E configuration broadcast")
 
         val bearerToken = intent.getStringExtra(EXTRA_BEARER_TOKEN)
@@ -116,6 +121,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
             if (intent.hasExtra(EXTRA_HIDE_FROM_RECENTS)) {
                 val hideFromRecents = intent.getBooleanExtra(EXTRA_HIDE_FROM_RECENTS, false)
                 settingsRepository.updateHideFromRecents(hideFromRecents)
+                RecentsUtils.setExcludeFromRecents(context, hideFromRecents)
                 Log.i(TAG, "Hide from recents updated to $hideFromRecents")
             }
             applyAuthFlags(intent)

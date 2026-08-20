@@ -437,6 +437,7 @@ adb shell am broadcast \
   --es binding_address "0.0.0.0" \
   --ei port 8080 \
   --ez auto_start_on_boot true \
+  --ez hide_from_recents false \
   --ez https_enabled false \
   --es certificate_source "AUTO_GENERATED" \
   --es certificate_hostname "mcp.local" \
@@ -475,6 +476,7 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `binding_address` | string | `127.0.0.1` (localhost) or `0.0.0.0` (network) |
 | `port` | int | HTTP/HTTPS server port (1-65535) |
 | `auto_start_on_boot` | boolean | Start MCP server when device boots |
+| `hide_from_recents` | boolean | Exclude the app from the Android Recent Tasks list |
 | `https_enabled` | boolean | Enable HTTPS with TLS |
 | `certificate_source` | string | `AUTO_GENERATED` or `CUSTOM` |
 | `certificate_hostname` | string | Hostname for auto-generated certificate |

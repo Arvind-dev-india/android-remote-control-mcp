@@ -1,6 +1,5 @@
 package com.danielealbano.androidremotecontrolmcp.services.mcp
 
-import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -13,6 +12,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.utils.RecentsUtils
 
 /**
  * Handles ADB configuration broadcast intents by parsing extras and
@@ -182,10 +182,7 @@ class AdbConfigHandler(
         if (!intent.hasExtra(EXTRA_HIDE_FROM_RECENTS)) return
         val value = intent.getBooleanExtra(EXTRA_HIDE_FROM_RECENTS, false)
         settingsRepository.updateHideFromRecents(value)
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        activityManager?.appTasks?.forEach { task ->
-            task.setExcludeFromRecents(value)
-        }
+        RecentsUtils.setExcludeFromRecents(context, value)
         Log.i(TAG, "Hide from recents updated to $value")
     }
 

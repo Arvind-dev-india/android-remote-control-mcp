@@ -1,5 +1,6 @@
 package com.danielealbano.androidremotecontrolmcp.services.mcp
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -286,27 +287,45 @@ class AdbConfigHandlerTest {
             }
 
         @Test
-        @DisplayName("hide_from_recents true is applied")
+        @DisplayName("hide_from_recents true excludes existing app tasks from recents")
         fun hideFromRecentsTrue() =
             runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
                 val intent =
                     createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
                         boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, true)
                     }
                 handler.handle(context, intent)
+
                 coVerify { settingsRepository.updateHideFromRecents(true) }
+                verify { task.setExcludeFromRecents(true) }
             }
 
         @Test
-        @DisplayName("hide_from_recents false is applied")
+        @DisplayName("hide_from_recents false includes existing app tasks in recents")
         fun hideFromRecentsFalse() =
             runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
                 val intent =
                     createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
                         boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, false)
                     }
                 handler.handle(context, intent)
+
                 coVerify { settingsRepository.updateHideFromRecents(false) }
+                verify { task.setExcludeFromRecents(false) }
             }
 
         @Test

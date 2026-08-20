@@ -547,6 +547,11 @@ class MainViewModel
                 .map { it.toolPermissionsConfig }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), ToolPermissionsConfig())
 
+        val hideFromRecents: StateFlow<Boolean> =
+            settingsRepository.serverConfig
+                .map { it.hideFromRecents }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), false)
+
         val pendingApprovalCount: StateFlow<Int> =
             approvalCoordinator
                 .observePending()
