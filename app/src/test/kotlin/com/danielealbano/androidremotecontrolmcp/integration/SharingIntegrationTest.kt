@@ -7,7 +7,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.contentTypeOrOctetStream
-import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpStatelessTransport
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSharingTools
@@ -470,7 +470,7 @@ class SharingIntegrationTest {
                     excludedPaths = setOf("/health")
                     excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX)
                 }
-                mcpStreamableHttp { server }
+                installMcpStatelessTransport { server }
                 routing {
                     get("${EphemeralFileLinkService.PATH_PREFIX}{token}") {
                         val entry = linkService.resolve(call.parameters["token"].orEmpty())

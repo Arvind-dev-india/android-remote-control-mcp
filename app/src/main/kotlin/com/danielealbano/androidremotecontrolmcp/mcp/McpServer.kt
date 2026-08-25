@@ -12,7 +12,6 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.call
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.engine.sslConnector
@@ -23,7 +22,6 @@ import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import io.modelcontextprotocol.kotlin.sdk.server.mcpStatelessStreamableHttp
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.security.KeyStore
@@ -173,19 +171,6 @@ class McpServer(
             onAuthFailure = { serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
         }
 
-        intercept(io.ktor.server.application.ApplicationCallPipeline.Plugins) {
-            kotlinx.coroutines.withContext(
-                com.danielealbano.androidremotecontrolmcp.mcp.RequestBaseUrlElement(
-                    com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl(
-                        call,
-                        config.publicUrlOverride
-                    )
-                )
-            ) {
-                proceed()
-            }
-        }
-
         // Health check endpoint — unauthenticated, installed before MCP routes.
         // BearerTokenAuthPlugin skips paths matching "/health" (no auth required).
         routing {
@@ -223,12 +208,9 @@ class McpServer(
             }
         }
 
-        // MCP Stateless Streamable HTTP transport at /mcp
-        mcpStatelessStreamableHttp(
-            path = "/mcp",
-            // Disabled: requests arrive via cloudflared/ngrok tunnel; Host header is often not localhost
-            enableDnsRebindingProtection = false
-        ) {
+        // MCP Stateless Streamable HTTP transport at /mcp, plus the per-request base-URL element
+        // scoped to that route. See installMcpStatelessTransport for the rationale.
+        installMcpStatelessTransport(publicUrlOverride = config.publicUrlOverride) {
             mcpSdkServer
         }
     }

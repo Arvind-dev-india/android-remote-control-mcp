@@ -12,7 +12,7 @@ import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepo
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
 import com.danielealbano.androidremotecontrolmcp.mcp.installMcpBasePlugins
-import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpStatelessTransport
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStoreImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenServiceImpl
@@ -412,8 +412,8 @@ object McpIntegrationTestHelper {
      * [Client] with [StreamableHttpClientTransport].
      *
      * The application is configured with ContentNegotiation (McpJson),
-     * BearerTokenAuthPlugin, and mcpStreamableHttp, mirroring the production
-     * McpServer setup.
+     * BearerTokenAuthPlugin, and the stateless Streamable HTTP transport, mirroring the
+     * production McpServer setup.
      *
      * @param deps Mocked service dependencies (created via [createMockDependencies]).
      * @param testBlock The test code to execute with the SDK [Client] and [MockDependencies].
@@ -433,7 +433,7 @@ object McpIntegrationTestHelper {
                     expectedToken = TEST_BEARER_TOKEN
                     onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
-                mcpStreamableHttp { sdkServer }
+                installMcpStatelessTransport { sdkServer }
             }
 
             val httpClient =
@@ -491,7 +491,7 @@ object McpIntegrationTestHelper {
                     this.oauthEnabled = oauthEnabled
                     onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
-                mcpStreamableHttp { sdkServer }
+                installMcpStatelessTransport { sdkServer }
             }
 
             testBlock(deps)
@@ -511,7 +511,7 @@ object McpIntegrationTestHelper {
      * real [JwtTokenServiceImpl] (mocked signing secret), real in-memory code store + approval
      * coordinator, real [OAuthClientRepositoryImpl] over a temp dedicated DataStore, the shared
      * [OAuthAccessValidator], the production [McpAuthPlugin] exclusions, the mounted OAuth routes, and
-     * `mcpStreamableHttp`. The test drives the DCR→authorize→approve→token→/mcp dance itself.
+     * the stateless Streamable HTTP transport. The test drives the DCR→authorize→approve→token→/mcp dance itself.
      *
      * @param bearerTokenEnabled When true (with [bearerToken]), exercises dual-accept.
      * @param publicUrlOverride Pins the metadata/`aud` host (empty = request-derived).
@@ -571,7 +571,7 @@ object McpIntegrationTestHelper {
                         ),
                     )
                 }
-                mcpStreamableHttp(publicUrlOverride = publicUrlOverride) { sdkServer }
+                installMcpStatelessTransport(publicUrlOverride = publicUrlOverride) { sdkServer }
             }
 
             val httpClient =

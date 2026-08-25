@@ -2,7 +2,7 @@ package com.danielealbano.androidremotecontrolmcp.integration
 
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
 import com.danielealbano.androidremotecontrolmcp.mcp.installMcpBasePlugins
-import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpStatelessTransport
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -72,7 +72,7 @@ class CorsIntegrationTest {
                     get("/health") { call.respondText("{}", ContentType.Application.Json) }
                     post("/register") { call.respondText("{}", ContentType.Application.Json) }
                 }
-                mcpStreamableHttp { sdkServer }
+                installMcpStatelessTransport { sdkServer }
             }
             testBlock()
         }
