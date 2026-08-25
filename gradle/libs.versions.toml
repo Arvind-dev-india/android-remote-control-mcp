@@ -18,7 +18,7 @@ play-services-location = "21.3.0"
 osmdroid = "6.1.20"
 
 # Networking
-ktor = "3.4.0"
+ktor = "3.4.3"
 
 # MCP SDK
 mcp-kotlin-sdk = "0.15.0"

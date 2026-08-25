@@ -226,6 +226,7 @@ class McpServer(
         // MCP Stateless Streamable HTTP transport at /mcp
         mcpStatelessStreamableHttp(
             path = "/mcp",
+            // Disabled: requests arrive via cloudflared/ngrok tunnel; Host header is often not localhost
             enableDnsRebindingProtection = false
         ) {
             mcpSdkServer
