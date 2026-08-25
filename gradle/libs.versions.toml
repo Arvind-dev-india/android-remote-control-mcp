@@ -21,7 +21,7 @@ osmdroid = "6.1.20"
 ktor = "3.4.0"
 
 # MCP SDK
-mcp-kotlin-sdk = "0.8.3"
+mcp-kotlin-sdk = "0.15.0"
 
 # OAuth (JWT signing/verification)
 java-jwt = "4.5.2"

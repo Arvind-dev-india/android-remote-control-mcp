@@ -12,6 +12,7 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.call
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.engine.sslConnector
@@ -22,6 +23,7 @@ import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import io.modelcontextprotocol.kotlin.sdk.server.mcpStatelessStreamableHttp
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.security.KeyStore
@@ -171,6 +173,19 @@ class McpServer(
             onAuthFailure = { serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
         }
 
+        intercept(io.ktor.server.application.ApplicationCallPipeline.Plugins) {
+            kotlinx.coroutines.withContext(
+                com.danielealbano.androidremotecontrolmcp.mcp.RequestBaseUrlElement(
+                    com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl(
+                        call,
+                        config.publicUrlOverride
+                    )
+                )
+            ) {
+                proceed()
+            }
+        }
+
         // Health check endpoint — unauthenticated, installed before MCP routes.
         // BearerTokenAuthPlugin skips paths matching "/health" (no auth required).
         routing {
@@ -208,8 +223,11 @@ class McpServer(
             }
         }
 
-        // MCP Streamable HTTP transport at /mcp (JSON-only mode, no SSE)
-        mcpStreamableHttp(publicUrlOverride = config.publicUrlOverride) {
+        // MCP Stateless Streamable HTTP transport at /mcp
+        mcpStatelessStreamableHttp(
+            path = "/mcp",
+            enableDnsRebindingProtection = false
+        ) {
             mcpSdkServer
         }
     }
