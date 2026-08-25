@@ -99,7 +99,7 @@ The typical startup flow: User opens app → enables Accessibility Service in An
 - **DataStore**: Settings persistence (modern replacement for SharedPreferences)
 - **Hilt**: Dependency injection (Dagger-based, official Android DI)
 - **Ktor Server**: HTTP/HTTPS server (Kotlin-native, async, coroutine-based)
-- **MCP Kotlin SDK**: Official Model Context Protocol implementation v0.8.3 (from Anthropic/ModelContextProtocol), including `Server`, `StreamableHttpServerTransport`, and type-safe tool registration via `Server.addTool()`
+- **MCP Kotlin SDK**: Official Model Context Protocol implementation v0.15.0 (from Anthropic/ModelContextProtocol), including `Server`, the stateless Streamable HTTP transport (`mcpStatelessStreamableHttp`), and type-safe tool registration via `Server.addTool()`
 - **SLF4J-Android**: Routes MCP SDK internal SLF4J logs to `android.util.Log`
 - **Kotlinx Serialization**: JSON serialization for MCP protocol
 - **Kotlinx Coroutines**: Async/concurrency
@@ -136,7 +136,7 @@ The typical startup flow: User opens app → enables Accessibility Service in An
   - `services/location/` — `LocationProvider.kt`, `LocationProviderImpl.kt`
   - `services/mcp/` — `McpServerService.kt`, `BootCompletedReceiver.kt`, `AdbConfigHandler.kt`, `AdbConfigReceiver.kt`, `AdbServiceTrampolineActivity.kt`
   - `services/tunnel/` — `TunnelProvider.kt`, `TunnelManager.kt`, `CloudflareTunnelProvider.kt`, `CloudflaredBinaryResolver.kt`, `AndroidCloudflareBinaryResolver.kt`, `NgrokTunnelProvider.kt`
-  - `mcp/` — `McpServer.kt`, `McpStreamableHttpExtension.kt`, `McpToolException.kt`, `CertificateManager.kt`
+  - `mcp/` — `McpServer.kt`, `McpStatelessTransport.kt`, `McpToolException.kt`, `CertificateManager.kt`
   - `mcp/tools/` — `McpToolUtils.kt`, `TreeFingerprint.kt`, `ScreenIntrospectionTools.kt`, `TouchActionTools.kt`, `NodeActionTools.kt`, `TextInputTools.kt`, `SystemActionTools.kt`, `GestureTools.kt`, `UtilityTools.kt`, `FileTools.kt`, `AppManagementTools.kt`, `CameraTools.kt`, `LocationTools.kt`
   - `mcp/auth/` — `BearerTokenAuth.kt`
   - `ui/` — `MainActivity.kt`
@@ -547,7 +547,7 @@ HomeScreen contains a TopAppBar, then a scrollable layout with: ServerStatusCard
 
 - **Framework**: Ktor `testApplication`, JUnit 5, MockK
 - **Scope**: Full HTTP stack (authentication, JSON-RPC protocol, tool dispatch) via in-process Ktor test server; all 11 tool categories, error code propagation
-- **Mocking**: Mock Android services (`ActionExecutor`, `AccessibilityServiceProvider`, `ScreenCaptureProvider`, `AccessibilityTreeParser`, `ElementFinder`, `TypeInputController`, `StorageLocationProvider`, `FileOperationProvider`, `AppManager`, `CameraProvider`, `LocationProvider`) via interfaces; real SDK `Server` with `McpStreamableHttp` routing and `BearerTokenAuth`
+- **Mocking**: Mock Android services (`ActionExecutor`, `AccessibilityServiceProvider`, `ScreenCaptureProvider`, `AccessibilityTreeParser`, `ElementFinder`, `TypeInputController`, `StorageLocationProvider`, `FileOperationProvider`, `AppManager`, `CameraProvider`, `LocationProvider`) via interfaces; real SDK `Server` with stateless Streamable HTTP routing (`mcpStatelessStreamableHttp`) and `BearerTokenAuth`
 - **Infrastructure**: `McpIntegrationTestHelper` configures `testApplication` with same routing as production `McpServer`; uses SDK `Client` + `StreamableHttpClientTransport` for type-safe MCP communication
 - **Run**: `make test-integration` or `./gradlew :app:testDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"`
 - **Note**: JVM-based, no emulator or device required. Runs as part of `make test-unit` since both are under `app/src/test/`
