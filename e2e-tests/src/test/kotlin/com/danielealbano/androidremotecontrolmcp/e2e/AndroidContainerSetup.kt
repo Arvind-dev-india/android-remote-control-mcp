@@ -27,6 +27,7 @@ object AndroidContainerSetup {
     private const val MCP_DEFAULT_PORT = 8080
     private const val PROCESS_TIMEOUT_SECONDS = 30L
     private const val MEMORY_BYTES = 8L * 1024 * 1024 * 1024 // 8 GB
+    private const val PIDS_LIMIT = 16_384L
 
     private const val APP_PACKAGE = "com.danielealbano.androidremotecontrolmcp.gms.debug"
 
@@ -178,6 +179,11 @@ object AndroidContainerSetup {
                 cmd.hostConfig
                     ?.withMemory(MEMORY_BYTES)
                     ?.withMemorySwap(MEMORY_BYTES)
+                    // Explicit pids limit so local (podman, default 2048) and CI (docker, default
+                    // unlimited) behave identically. A full Android system (system_server, zygote,
+                    // HALs, several test apps) legitimately needs thousands of tasks; 2048 is too
+                    // tight and container-wide exhaustion kills system_server alongside the app.
+                    ?.withPidsLimit(PIDS_LIMIT)
                     ?.withCapAdd(*Capability.values())
                     ?.withSecurityOpts(
                         listOf(
