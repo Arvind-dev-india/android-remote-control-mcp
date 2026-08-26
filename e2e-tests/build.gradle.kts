@@ -49,7 +49,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 
     // SLF4J logging for Testcontainers diagnostics
-    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.16")
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.18")
 }
 
 tasks.withType<Test> {
