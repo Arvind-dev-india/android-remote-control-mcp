@@ -55,7 +55,7 @@ tasks.test {
 }
 
 jacoco {
-    toolVersion = "0.8.14"
+    toolVersion = "0.8.15"
 }
 
 // OrtPiiModelRunner is exercised only by the PRIVACY_MODEL_DIR-gated real-model test (CI has no
