@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
@@ -93,15 +94,7 @@ class CameraProviderImpl
         @androidx.camera.camera2.interop.ExperimentalCamera2Interop
         override suspend fun listCameras(): List<CameraInfo> {
             requireCameraPermission()
-            val provider =
-                try {
-                    getCameraProvider()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(TAG, "Camera provider unavailable, returning empty camera list", e)
-                    return emptyList()
-                }
+            val provider = acquireCameraProviderOrNull() ?: return emptyList()
             return provider.availableCameraInfos.map { cameraInfo ->
                 val camera2Info = Camera2CameraInfo.from(cameraInfo)
                 val cameraId = camera2Info.cameraId
@@ -523,8 +516,56 @@ class CameraProviderImpl
                 McpToolException.ActionFailed("$action failed: ${e.message ?: "Unknown error"}")
             }
 
-        private suspend fun getCameraProvider(): ProcessCameraProvider =
-            suspendCancellableCoroutine { continuation ->
+        /**
+         * Cheap camera-presence probe via [CameraManager], used to avoid CameraX initialization
+         * entirely on camera-less devices.
+         *
+         * CameraX 1.6+ (CameraPipe stack) constructs a fresh pipe component — including new
+         * threads — on every failed-init retry when no camera is present, and those threads are
+         * never reclaimed. Repeated [ProcessCameraProvider.getInstance] attempts on a camera-less
+         * device (e.g., redroid in E2E) then exhaust the process/container thread limit
+         * (`pthread_create failed: Try again`), crashing the app. Querying
+         * [CameraManager.getCameraIdList] is a single lightweight binder call with no CameraX
+         * involvement, so guarding on it prevents the leak.
+         *
+         * Returns `true` when the query itself fails, so a transient [CameraManager] error defers
+         * to CameraX init for the definitive answer instead of hiding real cameras.
+         */
+        private fun hasSystemCameras(): Boolean =
+            try {
+                val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                cameraManager.cameraIdList.isNotEmpty()
+            } catch (e: Exception) {
+                Log.w(TAG, "CameraManager camera-id query failed, deferring to CameraX init", e)
+                true
+            }
+
+        /**
+         * Acquires the [ProcessCameraProvider] for enumeration, or `null` when the device has no
+         * cameras (per [hasSystemCameras]) or CameraX initialization fails.
+         */
+        private suspend fun acquireCameraProviderOrNull(): ProcessCameraProvider? {
+            if (!hasSystemCameras()) {
+                Log.i(TAG, "No cameras reported by CameraManager, returning empty camera list")
+                return null
+            }
+            return try {
+                getCameraProvider()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Camera provider unavailable, returning empty camera list", e)
+                null
+            }
+        }
+
+        private suspend fun getCameraProvider(): ProcessCameraProvider {
+            // Guard ALL camera paths (photo/video/resolutions), not just listCameras — see
+            // hasSystemCameras for why CameraX init must be avoided on camera-less devices.
+            if (!hasSystemCameras()) {
+                throw McpToolException.ActionFailed("No cameras available on this device")
+            }
+            return suspendCancellableCoroutine { continuation ->
                 val future = ProcessCameraProvider.getInstance(context)
                 continuation.invokeOnCancellation { future.cancel(true) }
                 future.addListener(
@@ -540,6 +581,7 @@ class CameraProviderImpl
                     mainExecutor,
                 )
             }
+        }
 
         @androidx.camera.camera2.interop.ExperimentalCamera2Interop
         private fun findCameraInfo(

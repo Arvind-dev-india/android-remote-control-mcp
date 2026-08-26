@@ -6,6 +6,7 @@ import android.Manifest
 import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.core.content.ContextCompat
@@ -146,6 +147,63 @@ class CameraProviderImplTest {
 
             assertFalse(cameraProvider.isMicrophonePermissionGranted())
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Camera-presence guard (CameraManager pre-check before any CameraX init)
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("camera-presence guard")
+    inner class CameraPresenceGuard {
+        private fun grantCameraPermission() {
+            every {
+                ContextCompat.checkSelfPermission(mockContext, Manifest.permission.CAMERA)
+            } returns PackageManager.PERMISSION_GRANTED
+        }
+
+        private fun stubCameraIdList(ids: Array<String>) {
+            val mockCameraManager = mockk<CameraManager>()
+            every { mockContext.getSystemService(Context.CAMERA_SERVICE) } returns mockCameraManager
+            every { mockCameraManager.cameraIdList } returns ids
+        }
+
+        @Test
+        fun `listCameras returns empty list without CameraX init when no cameras present`() =
+            runTest {
+                grantCameraPermission()
+                stubCameraIdList(emptyArray())
+
+                // Guard must answer BEFORE ProcessCameraProvider.getInstance — reaching CameraX
+                // in a JVM test would throw, so a clean empty list proves the early exit.
+                assertTrue(cameraProvider.listCameras().isEmpty())
+            }
+
+        @Test
+        fun `listPhotoResolutions throws ActionFailed when no cameras present`() =
+            runTest {
+                grantCameraPermission()
+                stubCameraIdList(emptyArray())
+
+                val exception =
+                    assertThrows<McpToolException.ActionFailed> {
+                        cameraProvider.listPhotoResolutions("0")
+                    }
+                assertTrue(exception.message!!.contains("No cameras available"))
+            }
+
+        @Test
+        fun `listVideoResolutions throws ActionFailed when no cameras present`() =
+            runTest {
+                grantCameraPermission()
+                stubCameraIdList(emptyArray())
+
+                val exception =
+                    assertThrows<McpToolException.ActionFailed> {
+                        cameraProvider.listVideoResolutions("0")
+                    }
+                assertTrue(exception.message!!.contains("No cameras available"))
+            }
     }
 
     // ─────────────────────────────────────────────────────────────────────
