@@ -37,7 +37,7 @@ jobs:
       # The CI build-release job is a per-flavor matrix, so the checks are named
       # "Build Release - GMS" and "Build Release - FOSS"; the regexp waits for both.
       - name: Wait for CI to pass
-        uses: lewagon/wait-on-check-action@v1.8.1
+        uses: lewagon/wait-on-check-action@v1.9.1
         with:
           ref: ${{ github.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
 
       # ── 5. Setup build toolchains (same as CI build-release job) ──
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -149,7 +149,7 @@ jobs:
 
       # ── 7. Geolocation DB toolchain (generated at build time from DB-IP City Lite) ──
       - name: Set up Python (geolocation DB generator)
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
