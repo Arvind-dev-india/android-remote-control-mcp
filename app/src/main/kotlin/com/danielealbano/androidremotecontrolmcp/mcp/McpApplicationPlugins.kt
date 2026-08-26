@@ -13,13 +13,14 @@ import io.modelcontextprotocol.kotlin.sdk.types.McpJson
  * ([McpServer.configureApplication]) and the integration tests:
  *
  * 1. [ContentNegotiation] with `json(McpJson)` — required by the SDK Streamable HTTP transport.
- * 2. [configureCors] — MUST precede auth so token-less browser preflight `OPTIONS` are answered by
- *    CORS instead of being failed closed (401) by the auth plugin.
+ * 2. [configureCors] — installs Ktor's CORS plugin (Validators phase since Ktor 3.5).
  * 3. [McpAuthPlugin] — combined bearer/OAuth authentication, configured by the caller.
  *
- * Centralizing the order here makes the CORS-before-auth invariant impossible to break by reordering
- * a single caller: every caller (production and tests) goes through this function, and the integration
- * tests exercise it directly, so a regression in the ordering cannot pass unnoticed.
+ * The CORS-before-auth execution order (so token-less browser preflight `OPTIONS` are answered by CORS
+ * instead of being failed closed by auth, and 401s still carry `Access-Control-Allow-Origin`) is
+ * guaranteed by [McpAuthPlugin] running in a phase inserted after the CORS `Validators` phase — NOT by
+ * install order. Centralizing the wiring here still keeps production and tests identical, and the
+ * integration tests exercise it directly so a regression cannot pass unnoticed.
  *
  * @param configureAuth Caller-supplied [McpAuthConfig] block (tokens, OAuth validator, exclusions).
  */

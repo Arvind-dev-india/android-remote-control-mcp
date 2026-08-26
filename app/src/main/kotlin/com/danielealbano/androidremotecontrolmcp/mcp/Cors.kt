@@ -20,11 +20,12 @@ private const val CORS_MAX_AGE_SECONDS = 3600L
  * OAuth discovery/DCR/authorize flow AND the `/mcp` protocol exchange. Without it the browser's
  * preflight `OPTIONS` and cross-origin requests are blocked before reaching any handler.
  *
- * MUST be installed BEFORE [com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin]: that
- * plugin intercepts [io.ktor.server.application.ApplicationCallPipeline.Plugins] and fails closed on
- * any token-less request to `/mcp` — including a preflight `OPTIONS`, which carries no `Authorization`
- * header. Installing CORS first lets it answer and finish the preflight before auth runs. This ordering
- * is centralized in [installMcpBasePlugins] so production and tests cannot drift.
+ * Must run BEFORE [com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin], which fails closed
+ * on any token-less request to `/mcp` — including a preflight `OPTIONS`, which carries no `Authorization`
+ * header. Ktor's CORS plugin registers in the `Validators` phase; [McpAuthPlugin] therefore runs in a
+ * phase inserted after `Validators` (before `Call`) so CORS answers the preflight and decorates
+ * responses before auth runs. This wiring is centralized in [installMcpBasePlugins] so production and
+ * tests cannot drift.
  *
  * Any origin is allowed ([anyHost]) — this does NOT weaken auth: `/mcp` still requires the bearer or
  * OAuth token (which a cross-origin page cannot obtain) and the OAuth flow is still gated by the
