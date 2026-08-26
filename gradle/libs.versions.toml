@@ -30,7 +30,7 @@ java-jwt = "4.5.2"
 jackson = "2.21.5"
 
 # Image loading (OAuth client logos)
-coil = "3.2.0"
+coil = "3.5.0"
 
 # SLF4J (routes SDK logs to android.util.Log)
 slf4j-android = "1.7.36"
