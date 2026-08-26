@@ -57,7 +57,7 @@ jobs:
       #      lag), which means CI never started for this commit — failing loudly is
       #      correct there, since publishing would be ungated. ──
       - name: Wait for CI to complete
-        uses: lewagon/wait-on-check-action@v1.8.1
+        uses: lewagon/wait-on-check-action@v1.9.1
         with:
           ref: ${{ github.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -172,7 +172,7 @@ jobs:
 
       # ── 3. Setup build toolchains (same as release.yml) ──
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -226,7 +226,7 @@ jobs:
 
       # ── 5. Geolocation DB toolchain (generated at build time from DB-IP City Lite) ──
       - name: Set up Python (geolocation DB generator)
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 

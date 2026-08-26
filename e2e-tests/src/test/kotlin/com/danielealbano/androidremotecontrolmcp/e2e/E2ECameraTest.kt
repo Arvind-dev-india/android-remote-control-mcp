@@ -392,7 +392,10 @@ class E2ECameraTest {
         assertTrue(
             text.contains("not found", ignoreCase = true) ||
                 text.contains("nonexistent_camera_99") ||
-                text.contains("failed", ignoreCase = true),
+                text.contains("failed", ignoreCase = true) ||
+                // Camera-less device (e.g. redroid): the CameraManager guard answers before
+                // any per-id lookup, so the error reports no cameras at all.
+                text.contains("no cameras available", ignoreCase = true),
             "Error should mention camera issue, got: $text",
         )
     }
