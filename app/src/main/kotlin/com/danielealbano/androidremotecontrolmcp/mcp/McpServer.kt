@@ -208,8 +208,9 @@ class McpServer(
             }
         }
 
-        // MCP Streamable HTTP transport at /mcp (JSON-only mode, no SSE)
-        mcpStreamableHttp(publicUrlOverride = config.publicUrlOverride) {
+        // MCP Stateless Streamable HTTP transport at /mcp, plus the per-request base-URL element
+        // scoped to that route. See installMcpStatelessTransport for the rationale.
+        installMcpStatelessTransport(publicUrlOverride = config.publicUrlOverride) {
             mcpSdkServer
         }
     }
