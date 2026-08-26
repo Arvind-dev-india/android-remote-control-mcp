@@ -5,7 +5,7 @@ kotlin = "2.4.10"
 ksp = "2.3.11"
 
 # Compose
-compose-bom = "2026.02.00"
+compose-bom = "2026.08.00"
 
 # AndroidX
 activity-compose = "1.13.0"
