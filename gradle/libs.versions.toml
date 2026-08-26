@@ -53,7 +53,7 @@ androidx-hilt = "1.4.0"
 work = "2.11.2"
 
 # Material Components (XML themes)
-material = "1.13.0"
+material = "1.14.0"
 
 # Accompanist
 accompanist = "0.37.3"
