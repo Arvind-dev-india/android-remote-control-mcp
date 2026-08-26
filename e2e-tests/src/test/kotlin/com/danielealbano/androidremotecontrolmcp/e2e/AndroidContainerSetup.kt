@@ -151,6 +151,11 @@ object AndroidContainerSetup {
                                 if (output == "1") {
                                     val elapsed = System.currentTimeMillis() - startTime
                                     println("[E2E Setup] Redroid boot completed (${elapsed}ms)")
+                                    // sys.boot_completed can fire before core system services register with
+                                    // the service manager. Enabling the accessibility service and granting
+                                    // permissions then race a half-booted framework ("Can't find service:
+                                    // settings"). Gate on the services the setup actually uses.
+                                    waitForSystemServices(serial, listOf("settings", "package"), timeoutMs - elapsed)
                                     _adbSerial = serial
                                     return
                                 }
@@ -740,6 +745,46 @@ object AndroidContainerSetup {
     internal fun execAdb(vararg args: String): String {
         val command = arrayOf("adb", "-s", adbSerial) + args
         return runProcess(*command)
+    }
+
+    /**
+     * Polls `service check <name>` until each named system service is registered with the
+     * service manager, or the timeout elapses. `sys.boot_completed` fires before services like
+     * `settings` and `package` are up, so subsequent `settings put` / `pm grant` steps otherwise
+     * race a half-booted framework and fail with "Can't find service: <name>".
+     *
+     * @throws IllegalStateException if any service is not registered within [timeoutMs]
+     */
+    private fun waitForSystemServices(serial: String, services: List<String>, timeoutMs: Long) {
+        for (service in services) {
+            println("[E2E Setup] Waiting for system service '$service'...")
+            val startTime = System.currentTimeMillis()
+            var ready = false
+            while (System.currentTimeMillis() - startTime < timeoutMs) {
+                try {
+                    val output = runProcess(
+                        "adb", "-s", serial, "shell", "service", "check", service,
+                        timeoutSeconds = 10L,
+                    )
+                    // `service check` prints "Service <name>: found" once registered.
+                    if (output.contains("found", ignoreCase = true) &&
+                        !output.contains("not found", ignoreCase = true)
+                    ) {
+                        println("[E2E Setup] Service '$service' ready (${System.currentTimeMillis() - startTime}ms)")
+                        ready = true
+                        break
+                    }
+                } catch (e: Exception) {
+                    println("[E2E Setup] service check '$service' failed: ${e::class.simpleName}: ${e.message}")
+                }
+                Thread.sleep(POLL_INTERVAL_MS)
+            }
+            if (!ready) {
+                throw IllegalStateException(
+                    "System service '$service' did not register within ${timeoutMs}ms. ADB serial: $serial",
+                )
+            }
+        }
     }
 
     /**
