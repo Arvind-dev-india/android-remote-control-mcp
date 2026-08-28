@@ -48,8 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           version="${TAG#v}"
-          if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-(alpha|beta|rc[0-9]+))?$ ]]; then
-            echo "::error::Expected vMAJOR.MINOR.PATCH[-alpha|-beta|-rcN]"
+          if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-(alpha|beta|rc[0-9]+|yedhant\.[0-9]+))?$ ]]; then
+            echo "::error::Expected vMAJOR.MINOR.PATCH[-alpha|-beta|-rcN|-yedhant.N]"
             exit 1
           fi
           major="${BASH_REMATCH[1]}"
@@ -67,6 +67,12 @@ jobs:
               rc="${suffix#rc}"
               test "$rc" -ge 1
               offset=$((20 + 10#$rc))
+              test "$offset" -lt 99
+              ;;
+            yedhant.*)
+              build="${suffix#yedhant.}"
+              test "$build" -ge 1
+              offset=$((50 + 10#$build))
               test "$offset" -lt 99
               ;;
           esac
