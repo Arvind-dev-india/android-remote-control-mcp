@@ -22,13 +22,19 @@ import java.util.concurrent.TimeUnit
  */
 object AndroidContainerSetup {
 
-    private const val DOCKER_IMAGE = "redroid/redroid:13.0.0-latest"
+    private const val DOCKER_IMAGE = "redroid/redroid:14.0.0-latest"
     private const val ADB_PORT = 5555
     private const val MCP_DEFAULT_PORT = 8080
     private const val PROCESS_TIMEOUT_SECONDS = 30L
     private const val MEMORY_BYTES = 8L * 1024 * 1024 * 1024 // 8 GB
+    private const val PIDS_LIMIT = 16_384L
 
-    private const val APP_PACKAGE = "com.yedhant.androidremotecontrolmcp.debug"
+    private const val APP_PACKAGE = "com.yedhant.androidremotecontrolmcp.gms.debug"
+
+    // The E2E/OAuth broadcast ACTIONS are hardcoded in E2EConfigReceiver/OAuthApprovalTestReceiver using
+    // their source package (com.yedhant.androidremotecontrolmcp.debug) — NOT the applicationId. They
+    // must be sent verbatim, independent of the flavor's applicationId suffix (…gms.debug).
+    private const val E2E_ACTION_BASE = "com.yedhant.androidremotecontrolmcp.debug"
     private const val CALCULATOR_PACKAGE = "com.simplemobiletools.calculator"
     private const val COMPOSE_TEST_PACKAGE = "com.danielealbano.composetestapp"
     private const val CALCULATOR_APK_RESOURCE = "/simple-calculator.apk"
@@ -146,6 +152,11 @@ object AndroidContainerSetup {
                                 if (output == "1") {
                                     val elapsed = System.currentTimeMillis() - startTime
                                     println("[E2E Setup] Redroid boot completed (${elapsed}ms)")
+                                    // sys.boot_completed can fire before core system services register with
+                                    // the service manager. Enabling the accessibility service and granting
+                                    // permissions then race a half-booted framework ("Can't find service:
+                                    // settings"). Gate on the services the setup actually uses.
+                                    waitForSystemServices(serial, listOf("settings", "package"), timeoutMs - elapsed)
                                     _adbSerial = serial
                                     return
                                 }
@@ -168,6 +179,11 @@ object AndroidContainerSetup {
                 cmd.hostConfig
                     ?.withMemory(MEMORY_BYTES)
                     ?.withMemorySwap(MEMORY_BYTES)
+                    // Explicit pids limit so local (podman, default 2048) and CI (docker, default
+                    // unlimited) behave identically. A full Android system (system_server, zygote,
+                    // HALs, several test apps) legitimately needs thousands of tasks; 2048 is too
+                    // tight and container-wide exhaustion kills system_server alongside the app.
+                    ?.withPidsLimit(PIDS_LIMIT)
                     ?.withCapAdd(*Capability.values())
                     ?.withSecurityOpts(
                         listOf(
@@ -336,7 +352,7 @@ object AndroidContainerSetup {
         execAdb("shell", "am", "force-stop", APP_PACKAGE)
         Thread.sleep(1_000)
 
-        val configAction = "$APP_PACKAGE.E2E_CONFIGURE"
+        val configAction = "$E2E_ACTION_BASE.E2E_CONFIGURE"
         execAdb(
             "shell", "am", "broadcast",
             "--include-stopped-packages",
@@ -357,7 +373,7 @@ object AndroidContainerSetup {
 
     /** Approves all currently-pending OAuth authorizations via the debug-only approval receiver. */
     fun approvePendingOAuth() {
-        val action = "$APP_PACKAGE.OAUTH_APPROVE"
+        val action = "$E2E_ACTION_BASE.OAUTH_APPROVE"
         execAdb(
             "shell", "am", "broadcast",
             "-a", action,
@@ -380,7 +396,7 @@ object AndroidContainerSetup {
         execAdb("shell", "am", "start", "-n", "$APP_PACKAGE/$MAIN_ACTIVITY_CLASS")
         Thread.sleep(5_000)
 
-        val startServerAction = "$APP_PACKAGE.E2E_START_SERVER"
+        val startServerAction = "$E2E_ACTION_BASE.E2E_START_SERVER"
         execAdb(
             "shell", "am", "broadcast",
             "-a", startServerAction,
@@ -736,9 +752,49 @@ object AndroidContainerSetup {
      * Execute an adb command on the host targeting the redroid container.
      * Returns stdout on success. Uses [PROCESS_TIMEOUT_SECONDS] timeout.
      */
-    private fun execAdb(vararg args: String): String {
+    internal fun execAdb(vararg args: String): String {
         val command = arrayOf("adb", "-s", adbSerial) + args
         return runProcess(*command)
+    }
+
+    /**
+     * Polls `service check <name>` until each named system service is registered with the
+     * service manager, or the timeout elapses. `sys.boot_completed` fires before services like
+     * `settings` and `package` are up, so subsequent `settings put` / `pm grant` steps otherwise
+     * race a half-booted framework and fail with "Can't find service: <name>".
+     *
+     * @throws IllegalStateException if any service is not registered within [timeoutMs]
+     */
+    private fun waitForSystemServices(serial: String, services: List<String>, timeoutMs: Long) {
+        for (service in services) {
+            println("[E2E Setup] Waiting for system service '$service'...")
+            val startTime = System.currentTimeMillis()
+            var ready = false
+            while (System.currentTimeMillis() - startTime < timeoutMs) {
+                try {
+                    val output = runProcess(
+                        "adb", "-s", serial, "shell", "service", "check", service,
+                        timeoutSeconds = 10L,
+                    )
+                    // `service check` prints "Service <name>: found" once registered.
+                    if (output.contains("found", ignoreCase = true) &&
+                        !output.contains("not found", ignoreCase = true)
+                    ) {
+                        println("[E2E Setup] Service '$service' ready (${System.currentTimeMillis() - startTime}ms)")
+                        ready = true
+                        break
+                    }
+                } catch (e: Exception) {
+                    println("[E2E Setup] service check '$service' failed: ${e::class.simpleName}: ${e.message}")
+                }
+                Thread.sleep(POLL_INTERVAL_MS)
+            }
+            if (!ready) {
+                throw IllegalStateException(
+                    "System service '$service' did not register within ${timeoutMs}ms. ADB serial: $serial",
+                )
+            }
+        }
     }
 
     /**

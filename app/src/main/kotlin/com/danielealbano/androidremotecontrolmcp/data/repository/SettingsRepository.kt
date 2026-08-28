@@ -1,16 +1,18 @@
 package com.danielealbano.androidremotecontrolmcp.data.repository
 
+import com.danielealbano.androidremotecontrolmcp.data.model.AvailableUpdate
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
-import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
-import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
+import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -21,7 +23,7 @@ import kotlinx.coroutines.flow.Flow
  * and Services must not access DataStore directly.
  */
 @Suppress("TooManyFunctions")
-interface SettingsRepository {
+interface SettingsRepository : EventChannelSettings {
     /**
      * Observes the current server configuration. Emits a new [ServerConfig]
      * whenever any setting changes.
@@ -103,6 +105,21 @@ interface SettingsRepository {
     /** Updates the auto-start-on-boot preference. */
     suspend fun updateAutoStartOnBoot(enabled: Boolean)
 
+    /** Updates the hide-from-recents preference. */
+    suspend fun updateHideFromRecents(enabled: Boolean)
+
+    /** Enables or disables the on-device MCP tool-call activity indicator. */
+    suspend fun updateToolCallIndicatorEnabled(enabled: Boolean)
+
+    /**
+     * Observes the persisted server-running intent flag (`true` after ACTION_START, `false` after
+     * ACTION_STOP). Used by restart triggers to decide whether to bring the MCP server back up.
+     */
+    val serverRunning: Flow<Boolean>
+
+    /** Persists the server-running intent flag. */
+    suspend fun updateServerRunning(running: Boolean)
+
     /** Updates the HTTPS enabled toggle. */
     suspend fun updateHttpsEnabled(enabled: Boolean)
 
@@ -153,6 +170,9 @@ interface SettingsRepository {
 
     /** Updates the Cloudflare tunnel token (required when using token mode). */
     suspend fun updateCloudflareTunnelToken(token: String)
+
+    /** Updates the optional extra command-line arguments for Cloudflare tunnel. */
+    suspend fun updateCloudflareTunnelExtraArgs(extraArgs: String)
 
     /** Updates the file size limit for file operations (in MB). */
     suspend fun updateFileSizeLimit(limitMb: Int)
@@ -221,6 +241,63 @@ interface SettingsRepository {
         paramName: String,
         enabled: Boolean,
     )
+
+    /** Replaces the full Privacy Mode configuration. */
+    suspend fun updatePrivacyModeConfig(config: PrivacyModeConfig)
+
+    /** Enables or disables Privacy Mode. */
+    suspend fun updatePrivacyModeEnabled(enabled: Boolean)
+
+    /** Enables or disables a specific PII category within Privacy Mode. */
+    suspend fun updatePrivacyCategoryEnabled(
+        category: PiiCategory,
+        enabled: Boolean,
+    )
+
+    /** Sets the redaction mode (pseudonymize vs full redaction). */
+    suspend fun updatePrivacyRedactionMode(mode: RedactionMode)
+
+    /** Sets the pseudonym placeholder format (hashed vs numbered). */
+    suspend fun updatePrivacyPlaceholderFormat(format: PlaceholderFormat)
+
+    /** Persists the measured per-100-node inference overhead estimate, in seconds. */
+    suspend fun updatePrivacyBenchmarkEstimateSeconds(seconds: Double)
+
+    /** Emits the stored Privacy Mode benchmark estimate (seconds), or null if never measured. */
+    val privacyBenchmarkEstimateSeconds: Flow<Double?>
+
+    /** Persists whether the home-screen Privacy Mode callout card was dismissed. */
+    suspend fun updatePrivacyModeCardDismissed(dismissed: Boolean)
+
+    /** Emits whether the home-screen Privacy Mode callout card was dismissed (default false). */
+    val privacyModeCardDismissed: Flow<Boolean>
+
+    /** Emits whether automatic GitHub update checks are enabled (default true). */
+    val autoUpdateCheckEnabled: Flow<Boolean>
+
+    /** Enables or disables automatic GitHub update checks. */
+    suspend fun updateAutoUpdateCheckEnabled(enabled: Boolean)
+
+    /**
+     * Emits the currently-known available update (a release newer than the installed build), or null
+     * when none is known. Drives the in-app "update available" banner.
+     */
+    val availableUpdate: Flow<AvailableUpdate?>
+
+    /** Persists the detected available update, or clears it when [update] is null. */
+    suspend fun setAvailableUpdate(update: AvailableUpdate?)
+
+    /** Returns the version for which an update notification was last posted (empty if none). Used for de-dup. */
+    suspend fun getNotifiedUpdateVersion(): String
+
+    /** Records the version for which an update notification has now been posted. */
+    suspend fun setNotifiedUpdateVersion(version: String)
+
+    /** Returns the epoch-millis of the last automatic update check, or 0 if none has run. */
+    suspend fun getLastAutoCheckAtMillis(): Long
+
+    /** Records the epoch-millis of the most recent automatic update check (for on-open throttling). */
+    suspend fun setLastAutoCheckAtMillis(millis: Long)
 
     /**
      * Data class representing a stored storage location record.
@@ -307,73 +384,4 @@ interface SettingsRepository {
         locationId: String,
         allowDelete: Boolean,
     )
-
-    // --- Event Channel ---
-
-    /** Observes the current event channel configuration. */
-    val eventChannelConfig: Flow<EventChannelConfig>
-
-    /** Returns the current event channel configuration as a one-shot read. */
-    suspend fun getEventChannelConfig(): EventChannelConfig
-
-    /** Updates the event channel enabled toggle. */
-    suspend fun updateEventChannelEnabled(enabled: Boolean)
-
-    /** Updates the event channel endpoint URL. */
-    suspend fun updateEventChannelEndpointUrl(url: String)
-
-    /** Updates the event channel auth token. */
-    suspend fun updateEventChannelAuthToken(token: String)
-
-    /** Generates a new random event channel auth token (UUID), persists it, and returns it. */
-    suspend fun generateNewEventChannelAuthToken(): String
-
-    /**
-     * Validates an endpoint URL.
-     *
-     * This is a pure validation function with no I/O; it is intentionally
-     * non-suspending so callers are not forced into a coroutine context.
-     *
-     * @return [Result.success] with the validated URL, or [Result.failure] with an [IllegalArgumentException].
-     */
-    fun validateEndpointUrl(url: String): Result<String>
-
-    /** Updates the notification channel enabled toggle. */
-    suspend fun updateNotificationChannelEnabled(enabled: Boolean)
-
-    /** Updates the notification filter mode. */
-    suspend fun updateNotificationFilterMode(mode: NotificationFilterMode)
-
-    /** Updates the set of app package names for notification filtering. */
-    suspend fun updateNotificationFilterApps(apps: Set<String>)
-
-    /** Updates the WiFi channel enabled toggle. */
-    suspend fun updateWifiChannelEnabled(enabled: Boolean)
-
-    /** Updates the set of WiFi SSIDs to monitor. */
-    suspend fun updateWifiSsids(ssids: Set<String>)
-
-    /** Updates the WiFi notify on discovered toggle. */
-    suspend fun updateWifiNotifyOnDiscovered(enabled: Boolean)
-
-    /** Updates the WiFi notify on lost toggle. */
-    suspend fun updateWifiNotifyOnLost(enabled: Boolean)
-
-    /** Updates the WiFi notify on connected toggle. */
-    suspend fun updateWifiNotifyOnConnected(enabled: Boolean)
-
-    /** Updates the WiFi notify on disconnected toggle. */
-    suspend fun updateWifiNotifyOnDisconnected(enabled: Boolean)
-
-    /** Updates the geofence channel enabled toggle. */
-    suspend fun updateGeofenceChannelEnabled(enabled: Boolean)
-
-    /** Adds a geofence zone. */
-    suspend fun addGeofenceZone(zone: GeofenceZone)
-
-    /** Removes a geofence zone by ID. */
-    suspend fun removeGeofenceZone(zoneId: String)
-
-    /** Updates an existing geofence zone (matched by ID). */
-    suspend fun updateGeofenceZone(zone: GeofenceZone)
 }

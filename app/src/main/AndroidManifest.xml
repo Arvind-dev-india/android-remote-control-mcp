@@ -24,10 +24,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Location -->
+    <!-- Location (background-location is geofence-only → declared in the gms flavor manifest) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- WiFi (Event Channel) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -41,6 +40,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
@@ -129,6 +129,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Package Replaced Receiver (restart the MCP server after an app update if it was running) -->
+        <receiver
+            android:name=".services.mcp.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <!-- Event Channel Service -->
         <service
             android:name=".services.channel.EventChannelService"
@@ -144,6 +152,19 @@
             android:name=".ui.ApprovalActivity"
             android:exported="false"
             android:label="@string/approval_title" />
+
+        <!-- Remove WorkManager's default on-startup initializer: McpApplication implements
+             Configuration.Provider for on-demand initialization with the Hilt worker factory. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 

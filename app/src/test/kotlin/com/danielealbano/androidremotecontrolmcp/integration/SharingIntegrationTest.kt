@@ -7,7 +7,8 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
 import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.contentTypeOrOctetStream
-import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpStatelessTransport
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSharingTools
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
@@ -17,6 +18,8 @@ import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentI
 import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedItem
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileBytesResult
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.readRawBytes
@@ -447,12 +450,13 @@ class SharingIntegrationTest {
     ) {
         val server = newServer()
         registerSharingTools(
-            server,
+            LoggedToolRegistrar(server, RecordingServerLogRepository()),
             inbox,
             linkService,
             config.fileOperationProvider,
             FILE_SIZE_LIMIT_MB,
             { BASE_URL },
+            PrivacyToolTestDoubles.passthroughGate(),
             "",
             ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
         )
@@ -466,7 +470,7 @@ class SharingIntegrationTest {
                     excludedPaths = setOf("/health")
                     excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX)
                 }
-                mcpStreamableHttp { server }
+                installMcpStatelessTransport { server }
                 routing {
                     get("${EphemeralFileLinkService.PATH_PREFIX}{token}") {
                         val entry = linkService.resolve(call.parameters["token"].orEmpty())

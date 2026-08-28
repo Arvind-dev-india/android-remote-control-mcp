@@ -7,6 +7,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinAccessLevel
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinStorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageBackend
@@ -221,13 +222,6 @@ class StorageLocationProviderImpl
             return settingsRepository.getStoredLocations().any { it.treeUri == treeUriString }
         }
 
-        @Suppress("ReturnCount")
-        override suspend fun isAllFilesMode(locationId: String): Boolean {
-            val builtin = BuiltinStorageLocation.fromLocationId(locationId) ?: return false
-            val permission = builtin.readMediaPermission ?: return false
-            return permissionChecker.hasPermission(permission)
-        }
-
         // ─────────────────────────────────────────────────────────────────────
         // Private helpers — built-in locations
         // ─────────────────────────────────────────────────────────────────────
@@ -237,13 +231,9 @@ class StorageLocationProviderImpl
             val availableBytes = querySharedStorageAvailableBytes()
             return BuiltinStorageLocation.entries.map { entry ->
                 val perms = permOverrides[entry.locationId] ?: BuiltinPermissions()
-                val allFilesMode =
-                    entry.readMediaPermission != null &&
-                        permissionChecker.hasPermission(entry.readMediaPermission)
-                val displayName = if (allFilesMode) entry.displayNameAll else entry.displayNameOwned
                 StorageLocation(
                     id = entry.locationId,
-                    name = displayName,
+                    name = buildBuiltinDisplayName(entry),
                     path = "/${entry.baseRelativePath.trimEnd('/')}",
                     description = "",
                     treeUri = "",
@@ -252,9 +242,59 @@ class StorageLocationProviderImpl
                     allowDelete = perms.allowDelete,
                     backend = StorageBackend.MEDIA_STORE,
                     isBuiltin = true,
+                    accessLevel = computeAccessLevel(entry),
                 )
             }
         }
+
+        private fun buildBuiltinDisplayName(entry: BuiltinStorageLocation): String {
+            val permissioned = entry.collections.filter { it.readMediaPermission != null }
+            if (permissioned.isEmpty()) return "${entry.displayBaseName} - Only owned files"
+            val granted =
+                permissioned.filter { collection ->
+                    collection.readMediaPermission?.let(permissionChecker::hasPermission) == true
+                }
+            return when {
+                granted.size == permissioned.size -> {
+                    "${entry.displayBaseName} - All files"
+                }
+
+                hasPartialVisualAccess(entry) -> {
+                    "${entry.displayBaseName} - Selected files only"
+                }
+
+                granted.isEmpty() -> {
+                    "${entry.displayBaseName} - Only owned files"
+                }
+
+                else -> {
+                    val grantedLabels = granted.joinToString(", ") { it.typeLabel }
+                    val ownedLabels = (permissioned - granted.toSet()).joinToString(", ") { it.typeLabel }
+                    "${entry.displayBaseName} - All $grantedLabels, owned $ownedLabels"
+                }
+            }
+        }
+
+        private fun computeAccessLevel(entry: BuiltinStorageLocation): BuiltinAccessLevel {
+            val permissioned = entry.collections.filter { it.readMediaPermission != null }
+            if (permissioned.isEmpty()) return BuiltinAccessLevel.OWNED_ONLY
+            val granted =
+                permissioned.filter { collection ->
+                    collection.readMediaPermission?.let(permissionChecker::hasPermission) == true
+                }
+            return when {
+                granted.size == permissioned.size -> BuiltinAccessLevel.FULL
+                hasPartialVisualAccess(entry) -> BuiltinAccessLevel.PARTIAL
+                granted.isEmpty() -> BuiltinAccessLevel.OWNED_ONLY
+                else -> BuiltinAccessLevel.PARTIAL
+            }
+        }
+
+        private fun hasPartialVisualAccess(entry: BuiltinStorageLocation): Boolean =
+            entry.collections.any { it.isVisual } &&
+                permissionChecker.hasPermission(
+                    android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                )
 
         @Suppress("TooGenericExceptionCaught")
         private fun querySharedStorageAvailableBytes(): Long? =

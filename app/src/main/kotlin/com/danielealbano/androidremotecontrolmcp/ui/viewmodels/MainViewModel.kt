@@ -11,7 +11,6 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -19,9 +18,11 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
+import com.danielealbano.androidremotecontrolmcp.services.power.BatteryOptimizationManager
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
 import com.danielealbano.androidremotecontrolmcp.utils.Logger
@@ -48,7 +49,9 @@ class MainViewModel
         private val settingsRepository: SettingsRepository,
         private val tunnelManager: TunnelManager,
         private val storageLocationProvider: StorageLocationProvider,
+        private val batteryOptimizationManager: BatteryOptimizationManager,
         @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+        private val approvalCoordinator: OAuthApprovalCoordinator,
     ) : ViewModel() {
         private val _serverConfig = MutableStateFlow(ServerConfig())
         val serverConfig: StateFlow<ServerConfig> = _serverConfig.asStateFlow()
@@ -71,9 +74,6 @@ class MainViewModel
         private val _isAccessibilityEnabled = MutableStateFlow(false)
         val isAccessibilityEnabled: StateFlow<Boolean> = _isAccessibilityEnabled.asStateFlow()
 
-        private val _serverLogs = MutableStateFlow<List<ServerLogEntry>>(emptyList())
-        val serverLogs: StateFlow<List<ServerLogEntry>> = _serverLogs.asStateFlow()
-
         private val _isNotificationPermissionGranted = MutableStateFlow(false)
         val isNotificationPermissionGranted: StateFlow<Boolean> = _isNotificationPermissionGranted.asStateFlow()
 
@@ -86,8 +86,8 @@ class MainViewModel
         private val _isLocationPermissionGranted = MutableStateFlow(false)
         val isLocationPermissionGranted: StateFlow<Boolean> = _isLocationPermissionGranted.asStateFlow()
 
-        private val _isBackgroundLocationGranted = MutableStateFlow(false)
-        val isBackgroundLocationGranted: StateFlow<Boolean> = _isBackgroundLocationGranted.asStateFlow()
+        private val _isBatteryOptimizationIgnored = MutableStateFlow(false)
+        val isBatteryOptimizationIgnored: StateFlow<Boolean> = _isBatteryOptimizationIgnored.asStateFlow()
 
         private val _isNotificationListenerEnabled = MutableStateFlow(false)
         val isNotificationListenerEnabled: StateFlow<Boolean> = _isNotificationListenerEnabled.asStateFlow()
@@ -103,6 +103,9 @@ class MainViewModel
 
         private val _cloudflareTokenInput = MutableStateFlow("")
         val cloudflareTokenInput: StateFlow<String> = _cloudflareTokenInput.asStateFlow()
+
+        private val _cloudflareExtraArgsInput = MutableStateFlow("")
+        val cloudflareExtraArgsInput: StateFlow<String> = _cloudflareExtraArgsInput.asStateFlow()
 
         private val _storageLocations = MutableStateFlow<List<StorageLocation>>(emptyList())
         val storageLocations: StateFlow<List<StorageLocation>> = _storageLocations.asStateFlow()
@@ -147,6 +150,7 @@ class MainViewModel
                     _ngrokAuthtokenInput.value = config.ngrokAuthtoken
                     _ngrokDomainInput.value = config.ngrokDomain
                     _cloudflareTokenInput.value = config.cloudflareTunnelToken
+                    _cloudflareExtraArgsInput.value = config.cloudflareTunnelExtraArgs
                     _fileSizeLimitInput.value = config.fileSizeLimitMb.toString()
                     _fileSizeLimitError.value = null
                     _downloadTimeoutInput.value = config.downloadTimeoutSeconds.toString()
@@ -168,13 +172,6 @@ class MainViewModel
             viewModelScope.launch {
                 tunnelManager.tunnelStatus.collect { status ->
                     _tunnelStatus.value = status
-                }
-            }
-
-            // Collect server log events emitted by McpServerService
-            viewModelScope.launch {
-                McpServerService.serverLogEvents.collect { entry ->
-                    addServerLogEntry(entry)
                 }
             }
         }
@@ -214,6 +211,18 @@ class MainViewModel
         fun updateAutoStartOnBoot(enabled: Boolean) {
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateAutoStartOnBoot(enabled)
+            }
+        }
+
+        fun updateHideFromRecents(enabled: Boolean) {
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateHideFromRecents(enabled)
+            }
+        }
+
+        fun updateToolCallIndicatorEnabled(enabled: Boolean) {
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateToolCallIndicatorEnabled(enabled)
             }
         }
 
@@ -278,17 +287,17 @@ class MainViewModel
                 PermissionUtils.isMicrophonePermissionGranted(context)
             _isLocationPermissionGranted.value =
                 PermissionUtils.isLocationPermissionGranted(context)
-            _isBackgroundLocationGranted.value =
-                androidx.core.content.ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             _isNotificationListenerEnabled.value =
                 PermissionUtils.isNotificationListenerEnabled(
                     context,
                     McpNotificationListenerService::class.java,
                 )
+            _isBatteryOptimizationIgnored.value = batteryOptimizationManager.isIgnoringBatteryOptimizations()
             refreshStorageLocations()
+        }
+
+        fun requestBatteryOptimizationExemption() {
+            batteryOptimizationManager.requestExemption()
         }
 
         fun updateTunnelEnabled(enabled: Boolean) {
@@ -327,6 +336,13 @@ class MainViewModel
             _cloudflareTokenInput.value = token
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateCloudflareTunnelToken(token)
+            }
+        }
+
+        fun updateCloudflareTunnelExtraArgs(extraArgs: String) {
+            _cloudflareExtraArgsInput.value = extraArgs
+            viewModelScope.launch(ioDispatcher) {
+                settingsRepository.updateCloudflareTunnelExtraArgs(extraArgs)
             }
         }
 
@@ -526,21 +542,21 @@ class MainViewModel
             context.startActivity(shareIntent)
         }
 
-        fun addServerLogEntry(entry: ServerLogEntry) {
-            _serverLogs.update { currentLogs ->
-                val updated = currentLogs + entry
-                if (updated.size > MAX_LOG_ENTRIES) {
-                    updated.drop(updated.size - MAX_LOG_ENTRIES)
-                } else {
-                    updated
-                }
-            }
-        }
-
         val toolPermissionsConfig: StateFlow<ToolPermissionsConfig> =
             settingsRepository.serverConfig
                 .map { it.toolPermissionsConfig }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), ToolPermissionsConfig())
+
+        val hideFromRecents: StateFlow<Boolean> =
+            settingsRepository.serverConfig
+                .map { it.hideFromRecents }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), false)
+
+        val pendingApprovalCount: StateFlow<Int> =
+            approvalCoordinator
+                .observePending()
+                .map { it.size }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(FLOW_TIMEOUT_MS), 0)
 
         fun updateToolEnabled(
             toolName: String,
@@ -563,7 +579,6 @@ class MainViewModel
 
         companion object {
             private const val TAG = "MCP:MainViewModel"
-            private const val MAX_LOG_ENTRIES = 100
             private const val FLOW_TIMEOUT_MS = 5_000L
         }
     }

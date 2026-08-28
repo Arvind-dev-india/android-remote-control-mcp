@@ -187,6 +187,24 @@ class OAuthFlowIntegrationTest {
         }
 
     @Test
+    @DisplayName("register accepts ChatGPT connector redirect_uri")
+    fun registerAcceptsChatGptRedirect() =
+        runTest {
+            McpIntegrationTestHelper.withOAuthTestApplication { _ ->
+                val resp =
+                    client.post("/register") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            """{"redirect_uris":["https://chatgpt.com/connector/oauth/abc123"],""" +
+                                """"token_endpoint_auth_method":"none"}""",
+                        )
+                    }
+                assertEquals(HttpStatusCode.Created, resp.status)
+                assertTrue(resp.bodyAsText().contains("https://chatgpt.com/connector/oauth/abc123"))
+            }
+        }
+
+    @Test
     @DisplayName("authorize rejects non-S256 challenge method")
     fun authorizeRejectsNonS256() =
         runTest {

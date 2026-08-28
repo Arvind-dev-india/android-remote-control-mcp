@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -47,12 +46,9 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelEndpoint
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.ui.theme.AndroidRemoteControlMcpTheme
+import com.danielealbano.androidremotecontrolmcp.ui.theme.WarningAmber
 
 private const val TOKEN_MASK = "********-****-****-****-************"
-
-/** Amber used for advisory route warnings (yellow triangle). */
-private const val WARNING_AMBER_ARGB = 0xFFF9A825L
-private val WarningAmber = Color(WARNING_AMBER_ARGB)
 
 /**
  * Visual content of the Public URL row when it is shown.

@@ -4,8 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.danielealbano.androidremotecontrolmcp.data.repository.EventChannelSettings
+import com.danielealbano.androidremotecontrolmcp.data.repository.EventChannelSettingsImpl
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.geo.DbIpGeoResolver
@@ -16,6 +20,11 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenServiceImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipeline
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.model.PrivacyModelStore
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.OrtPiiModelRunner
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCacheImpl
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -32,12 +41,8 @@ import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProvider
 import com.danielealbano.androidremotecontrolmcp.services.camera.CameraProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.channel.EventDispatcherImpl
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManager
-import com.danielealbano.androidremotecontrolmcp.services.channel.geofence.GeofenceManagerImpl
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcher
 import com.danielealbano.androidremotecontrolmcp.services.intents.IntentDispatcherImpl
-import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
-import com.danielealbano.androidremotecontrolmcp.services.location.LocationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProvider
 import com.danielealbano.androidremotecontrolmcp.services.notifications.NotificationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ApiLevelProvider
@@ -58,6 +63,12 @@ import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocatio
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProviderImpl
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.AndroidCloudflareBinaryResolver
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.CloudflaredBinaryResolver
+import com.danielealbano.androidremotecontrolmcp.services.update.AppVersionProvider
+import com.danielealbano.androidremotecontrolmcp.services.update.BuildConfigAppVersionProvider
+import com.danielealbano.androidremotecontrolmcp.services.update.GithubReleaseChecker
+import com.danielealbano.androidremotecontrolmcp.services.update.GithubReleaseCheckerImpl
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateNotifier
+import com.danielealbano.androidremotecontrolmcp.services.update.UpdateNotifierImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -68,11 +79,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import javax.inject.Qualifier
 import javax.inject.Singleton
-
-/** Qualifier for the IO [CoroutineDispatcher]. */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class IoDispatcher
 
 /** Qualifier for the dedicated OAuth-clients Preferences DataStore. */
 @Qualifier
@@ -117,6 +123,22 @@ object AppModule {
     @Provides
     @IoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Provides [Dispatchers.Default] for CPU-bound work (on-device NER inference).
+     */
+    @Provides
+    @DefaultDispatcher
+    fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
+
+    /**
+     * Provides the Privacy Mode model store rooted at the app's files directory.
+     */
+    @Provides
+    @Singleton
+    fun providePrivacyModelStore(
+        @ApplicationContext context: Context,
+    ): PrivacyModelStore = PrivacyModelStore(context.filesDir)
 }
 
 @Module
@@ -129,6 +151,11 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
 
+    /** Binds the event-channel settings slice that [SettingsRepositoryImpl] delegates to. */
+    @Binds
+    @Singleton
+    abstract fun bindEventChannelSettings(impl: EventChannelSettingsImpl): EventChannelSettings
+
     /** Binds the persisted OAuth client registry. */
     @Binds
     @Singleton
@@ -138,6 +165,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGeoIpResolver(impl: DbIpGeoResolver): GeoIpResolver
+
+    /** Binds the disk-backed server log used by the in-app logs viewer. */
+    @Binds
+    @Singleton
+    abstract fun bindServerLogRepository(impl: ServerLogRepositoryImpl): ServerLogRepository
 }
 
 @Suppress("TooManyFunctions")
@@ -207,17 +239,15 @@ abstract class ServiceModule {
     @Singleton
     abstract fun bindPermissionChecker(impl: PermissionCheckerImpl): PermissionChecker
 
-    @Binds
-    @Singleton
-    abstract fun bindLocationProvider(impl: LocationProviderImpl): LocationProvider
+    // LocationProvider is bound per-flavor (Fused in gms / LocationManager in foss) — see
+    // GmsLocationModule / FossLocationModule.
 
     @Binds
     @Singleton
     abstract fun bindEventDispatcher(impl: EventDispatcherImpl): EventDispatcher
 
-    @Binds
-    @Singleton
-    abstract fun bindGeofenceManager(impl: GeofenceManagerImpl): GeofenceManager
+    // GeofenceManager and GeofenceChannelController are bound per-flavor — see GmsGeofenceModule
+    // (gms) / FossGeofenceModule (foss). foss has no GeofenceManager (geofencing excluded).
 
     @Binds
     @Singleton
@@ -238,4 +268,24 @@ abstract class ServiceModule {
     @Binds
     @Singleton
     abstract fun bindOAuthApprovalCoordinator(impl: OAuthApprovalCoordinatorImpl): OAuthApprovalCoordinator
+
+    @Binds
+    @Singleton
+    abstract fun bindPrivacyPipeline(impl: PrivacyPipelineImpl): PrivacyPipeline
+
+    @Binds
+    @Singleton
+    abstract fun bindPiiModelInference(impl: OrtPiiModelRunner): PiiModelInference
+
+    @Binds
+    @Singleton
+    abstract fun bindGithubReleaseChecker(impl: GithubReleaseCheckerImpl): GithubReleaseChecker
+
+    @Binds
+    @Singleton
+    abstract fun bindAppVersionProvider(impl: BuildConfigAppVersionProvider): AppVersionProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindUpdateNotifier(impl: UpdateNotifierImpl): UpdateNotifier
 }

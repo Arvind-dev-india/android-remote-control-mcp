@@ -2,10 +2,10 @@
 
 package com.danielealbano.androidremotecontrolmcp.ui.screens.settings
 
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,11 +55,11 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinAccessLevel
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinStorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -112,7 +112,7 @@ fun StorageSettingsScreen(
 
     val permissionLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission(),
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { _ -> viewModel.refreshStorageLocations() }
 
     val documentTreeLauncher =
@@ -193,23 +193,26 @@ fun StorageSettingsScreen(
 
                 builtinLocations.forEach { location ->
                     val builtin = BuiltinStorageLocation.fromLocationId(location.id)
-                    val hasAllFiles =
-                        builtin?.readMediaPermission?.let {
-                            ContextCompat.checkSelfPermission(context, it) ==
-                                PackageManager.PERMISSION_GRANTED
-                        } ?: false
+                    val readMediaPermissions =
+                        builtin
+                            ?.collections
+                            ?.mapNotNull { it.readMediaPermission }
+                            ?.distinct()
+                            .orEmpty()
+                    val requestPermissions = builtinRequestPermissions(builtin)
                     BuiltinStorageLocationRow(
                         location = location,
-                        hasAllFilesPermission = hasAllFiles,
-                        readMediaPermission = builtin?.readMediaPermission,
+                        accessLevel = location.accessLevel,
+                        readMediaPermissions = readMediaPermissions,
+                        requestPermissions = requestPermissions,
                         onAllowWriteChange = { enabled ->
                             viewModel.updateLocationAllowWrite(location.id, enabled)
                         },
                         onAllowDeleteChange = { enabled ->
                             viewModel.updateLocationAllowDelete(location.id, enabled)
                         },
-                        onRequestPermission = { permission ->
-                            permissionLauncher.launch(permission)
+                        onRequestPermission = { permissions ->
+                            permissionLauncher.launch(permissions.toTypedArray())
                         },
                     )
                 }
@@ -634,11 +637,12 @@ private fun StorageLocationRow(
 @Composable
 private fun BuiltinStorageLocationRow(
     location: StorageLocation,
-    hasAllFilesPermission: Boolean,
-    readMediaPermission: String?,
+    accessLevel: BuiltinAccessLevel?,
+    readMediaPermissions: List<String>,
+    requestPermissions: List<String>,
     onAllowWriteChange: (Boolean) -> Unit,
     onAllowDeleteChange: (Boolean) -> Unit,
-    onRequestPermission: (String) -> Unit,
+    onRequestPermission: (List<String>) -> Unit,
 ) {
     Column(
         modifier =
@@ -705,22 +709,40 @@ private fun BuiltinStorageLocationRow(
                 )
             }
         }
-        if (readMediaPermission != null) {
+        if (readMediaPermissions.isNotEmpty()) {
             OutlinedButton(
-                onClick = { onRequestPermission(readMediaPermission) },
-                enabled = !hasAllFilesPermission,
+                onClick = { onRequestPermission(requestPermissions) },
+                enabled = builtinGrantButtonEnabled(accessLevel),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(
-                    stringResource(
-                        if (hasAllFilesPermission) {
-                            R.string.storage_builtin_all_files_granted
-                        } else {
-                            R.string.storage_builtin_grant_all_files
-                        },
-                    ),
-                )
+                Text(stringResource(builtinGrantButtonLabelRes(accessLevel)))
             }
         }
     }
 }
+
+/** Permissions to request for a builtin location's grant button. */
+internal fun builtinRequestPermissions(builtin: BuiltinStorageLocation?): List<String> {
+    val readMediaPermissions =
+        builtin
+            ?.collections
+            ?.mapNotNull { it.readMediaPermission }
+            ?.distinct()
+            .orEmpty()
+    return if (builtin?.collections?.any { it.isVisual } == true) {
+        readMediaPermissions + android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+    } else {
+        readMediaPermissions
+    }
+}
+
+/** The grant button is disabled only when full access is already granted. */
+internal fun builtinGrantButtonEnabled(level: BuiltinAccessLevel?): Boolean = level != BuiltinAccessLevel.FULL
+
+@StringRes
+internal fun builtinGrantButtonLabelRes(accessLevel: BuiltinAccessLevel?): Int =
+    when (accessLevel) {
+        BuiltinAccessLevel.FULL -> R.string.storage_builtin_all_files_granted
+        BuiltinAccessLevel.PARTIAL -> R.string.storage_builtin_manage_access
+        else -> R.string.storage_builtin_grant_all_files
+    }

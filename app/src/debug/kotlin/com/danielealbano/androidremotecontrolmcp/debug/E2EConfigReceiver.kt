@@ -10,6 +10,7 @@ import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfi
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.mcp.McpServerService
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.utils.RecentsUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,25 +22,37 @@ import javax.inject.Inject
  * Debug-only [BroadcastReceiver] that accepts test configuration overrides
  * via `adb shell am broadcast`.
  *
- * This receiver is ONLY included in debug builds. It allows E2E tests to
- * inject server settings (bearer token, binding address, port) into the
- * app's DataStore without manipulating protobuf files directly.
+ * This receiver lives in the `debug` source set, so it is absent from the release
+ * APK entirely. It allows E2E tests to inject server settings (bearer token,
+ * binding address, port) into the app's DataStore without manipulating protobuf
+ * files directly.
+ *
+ * The source set alone is NOT the security boundary: debug APKs are attached to
+ * GitHub releases, so this receiver does reach real devices. It is additionally
+ * gated by `android:permission="android.permission.DUMP"` in the debug manifest —
+ * a signature/privileged platform permission held by the adb shell UID
+ * (com.android.shell) but not grantable to third-party apps. ActivityManager
+ * enforces it against the sender's real binder calling UID, so `adb shell am
+ * broadcast` still reaches this receiver while an ordinary app is rejected with a
+ * SecurityException before [onReceive] runs. Without that gate, any installed app
+ * could rewrite the MCP server's configuration (see GHSA-v82h-m32h-3j39).
  *
  * **Usage** (from E2E test via adb):
  * ```
  * # Configure settings
  * adb shell am broadcast \
- *   -a com.danielealbano.androidremotecontrolmcp.debug.E2E_CONFIGURE \
- *   -n com.danielealbano.androidremotecontrolmcp.debug/.E2EConfigReceiver \
+ *   -a com.yedhant.androidremotecontrolmcp.debug.E2E_CONFIGURE \
+ *   -n com.yedhant.androidremotecontrolmcp.gms.debug/.debug.E2EConfigReceiver \
  *   --es bearer_token "test-token-uuid" \
  *   --es binding_address "0.0.0.0" \
  *   --ei port 8080 \
- *   --ez auto_start_on_boot true
+ *   --ez auto_start_on_boot true \
+ *   --ez hide_from_recents false
  *
  * # Start the MCP server (runs inside app process, avoids exported=false restriction)
  * adb shell am broadcast \
- *   -a com.danielealbano.androidremotecontrolmcp.debug.E2E_START_SERVER \
- *   -n com.danielealbano.androidremotecontrolmcp.debug/.E2EConfigReceiver
+ *   -a com.yedhant.androidremotecontrolmcp.debug.E2E_START_SERVER \
+ *   -n com.yedhant.androidremotecontrolmcp.gms.debug/.debug.E2EConfigReceiver
  * ```
  */
 @AndroidEntryPoint
@@ -62,7 +75,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
         @Suppress("TooGenericExceptionCaught")
         try {
             when (intent.action) {
-                ACTION_E2E_CONFIGURE -> handleConfigure(intent)
+                ACTION_E2E_CONFIGURE -> handleConfigure(context, intent)
                 ACTION_E2E_START_SERVER -> handleStartServer(context)
                 else -> Log.w(TAG, "Ignoring unexpected action: ${intent.action}")
             }
@@ -71,7 +84,10 @@ class E2EConfigReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun handleConfigure(intent: Intent) {
+    private fun handleConfigure(
+        context: Context,
+        intent: Intent,
+    ) {
         Log.i(TAG, "Received E2E configuration broadcast")
 
         val bearerToken = intent.getStringExtra(EXTRA_BEARER_TOKEN)
@@ -103,6 +119,12 @@ class E2EConfigReceiver : BroadcastReceiver() {
                 settingsRepository.updateAutoStartOnBoot(autoStart)
                 Log.i(TAG, "Auto-start on boot updated to $autoStart")
             }
+            if (intent.hasExtra(EXTRA_HIDE_FROM_RECENTS)) {
+                val hideFromRecents = intent.getBooleanExtra(EXTRA_HIDE_FROM_RECENTS, false)
+                settingsRepository.updateHideFromRecents(hideFromRecents)
+                RecentsUtils.setExcludeFromRecents(context, hideFromRecents)
+                Log.i(TAG, "Hide from recents updated to $hideFromRecents")
+            }
             applyAuthFlags(intent)
             if (intent.hasExtra(EXTRA_DEVICE_SLUG)) {
                 val deviceSlug = intent.getStringExtra(EXTRA_DEVICE_SLUG) ?: ""
@@ -113,6 +135,7 @@ class E2EConfigReceiver : BroadcastReceiver() {
                     ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
                 )
             }
+            applyDownloadSettings(intent)
             val storageLocationId = intent.getStringExtra(EXTRA_STORAGE_LOCATION_ID)
             if (!storageLocationId.isNullOrEmpty()) {
                 if (storageLocationProvider.isLocationAuthorized(storageLocationId)) {
@@ -147,6 +170,21 @@ class E2EConfigReceiver : BroadcastReceiver() {
         }
     }
 
+    private suspend fun applyDownloadSettings(intent: Intent) {
+        val downloadTimeout = intent.getIntExtra(EXTRA_DOWNLOAD_TIMEOUT_SECONDS, -1)
+        if (downloadTimeout in
+            ServerConfig.MIN_DOWNLOAD_TIMEOUT_SECONDS..ServerConfig.MAX_DOWNLOAD_TIMEOUT_SECONDS
+        ) {
+            settingsRepository.updateDownloadTimeout(downloadTimeout)
+            Log.i(TAG, "Download timeout updated to $downloadTimeout s")
+        }
+        if (intent.hasExtra(EXTRA_ALLOW_HTTP_DOWNLOADS)) {
+            val allowHttp = intent.getBooleanExtra(EXTRA_ALLOW_HTTP_DOWNLOADS, false)
+            settingsRepository.updateAllowHttpDownloads(allowHttp)
+            Log.i(TAG, "Allow HTTP downloads updated to $allowHttp")
+        }
+    }
+
     private fun handleStartServer(context: Context) {
         Log.i(TAG, "Received E2E start server broadcast")
         val intent =
@@ -169,8 +207,11 @@ class E2EConfigReceiver : BroadcastReceiver() {
         private const val EXTRA_AUTO_START_ON_BOOT = "auto_start_on_boot"
         private const val EXTRA_DEVICE_SLUG = "device_slug"
         private const val EXTRA_ENABLE_ALL_TOOLS = "enable_all_tools"
+        private const val EXTRA_HIDE_FROM_RECENTS = "hide_from_recents"
         private const val EXTRA_STORAGE_LOCATION_ID = "storage_location_id"
         private const val EXTRA_STORAGE_ALLOW_WRITE = "storage_allow_write"
         private const val EXTRA_STORAGE_ALLOW_DELETE = "storage_allow_delete"
+        private const val EXTRA_DOWNLOAD_TIMEOUT_SECONDS = "download_timeout_seconds"
+        private const val EXTRA_ALLOW_HTTP_DOWNLOADS = "allow_http_downloads"
     }
 }

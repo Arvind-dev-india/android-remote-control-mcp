@@ -6,8 +6,9 @@
 package com.danielealbano.androidremotecontrolmcp.data.repository
 
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
+import kotlinx.coroutines.Dispatchers
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -28,7 +29,6 @@ class EventChannelSettingsTest {
             assertEquals("", config.authToken)
             assertFalse(config.notifications.enabled)
             assertFalse(config.wifi.enabled)
-            assertFalse(config.geofence.enabled)
         }
     }
 
@@ -81,43 +81,6 @@ class EventChannelSettingsTest {
         }
 
         @Test
-        fun `addGeofenceZone adds to list`() {
-            val zone =
-                GeofenceZone(
-                    id = "z1",
-                    name = "Test",
-                    latitude = 40.0,
-                    longitude = -74.0,
-                    radiusMeters = 200f,
-                )
-            val config =
-                EventChannelConfig(
-                    geofence =
-                        com.danielealbano.androidremotecontrolmcp.data.model.GeofenceChannelConfig(
-                            zones = listOf(zone),
-                        ),
-                )
-            val json = config.toJson()
-            val restored = EventChannelConfig.fromJson(json)
-            assertEquals(1, restored.geofence.zones.size)
-            assertEquals(
-                "z1",
-                restored.geofence.zones
-                    .first()
-                    .id,
-            )
-        }
-
-        @Test
-        fun `removeGeofenceZone removes from list`() {
-            val zone1 = GeofenceZone("z1", "A", 40.0, -74.0, 200f)
-            val zone2 = GeofenceZone("z2", "B", 51.0, -0.1, 300f)
-            val zones = listOf(zone1, zone2).filter { it.id != "z1" }
-            assertEquals(1, zones.size)
-            assertEquals("z2", zones.first().id)
-        }
-
-        @Test
         fun `updateWifiSsids persists`() {
             val ssids = setOf("Net1", "Net2")
             val config =
@@ -136,7 +99,15 @@ class EventChannelSettingsTest {
     @Nested
     @DisplayName("URL validation")
     inner class UrlValidation {
-        private val repo = SettingsRepositoryImpl(mockk(relaxed = true))
+        private val repo =
+            SettingsRepositoryImpl(
+                mockk(relaxed = true),
+                SettingsChangeLogger(RecordingServerLogRepository(), Dispatchers.Unconfined, 0L),
+                EventChannelSettingsImpl(
+                    mockk(relaxed = true),
+                    SettingsChangeLogger(RecordingServerLogRepository(), Dispatchers.Unconfined, 0L),
+                ),
+            )
 
         @Test
         fun `validateEndpointUrl rejects invalid URL`() {

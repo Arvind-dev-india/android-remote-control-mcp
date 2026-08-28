@@ -1,9 +1,10 @@
-.PHONY: help check-deps check-deps-updates update-deps build build-release clean \
-        test-unit test-integration test-e2e test coverage \
+.PHONY: help check-deps check-deps-updates update-deps build build-foss build-release clean \
+        test-unit test-integration test-e2e test coverage privacy-benchmark \
         lint lint-fix \
         install install-release uninstall grant-permissions start-server forward-port \
         setup-emulator start-emulator stop-emulator \
         logs logs-clear \
+        build-release-bundle \
         version-bump-patch version-bump-minor version-bump-major \
         compile-cloudflared compile-ngrok-native check-so-alignment \
         all ci
@@ -119,11 +120,23 @@ update-deps: ## Update version catalog with latest stable versions (interactive)
 # Build
 # ─────────────────────────────────────────────────────────────────────────────
 
-build: compile-cloudflared compile-ngrok-native ## Build debug APK
-	$(GRADLE) assembleDebug
+build: compile-cloudflared compile-ngrok-native ## Build gms debug APK
+	$(GRADLE) assembleGmsDebug
 
-build-release: compile-cloudflared compile-ngrok-native ## Build release APK
-	$(GRADLE) assembleRelease
+build-foss: compile-cloudflared compile-ngrok-native ## Build foss (F-Droid) debug APK
+	$(GRADLE) assembleFossDebug
+
+build-release: compile-cloudflared compile-ngrok-native ## Build gms + foss release APKs
+	$(GRADLE) assembleGmsRelease assembleFossRelease
+
+build-release-bundle: compile-cloudflared compile-ngrok-native ## Build signed gms release AAB for Google Play upload
+	@test -f keystore.properties || { \
+		echo "ERROR: keystore.properties not found — the AAB would be UNSIGNED and rejected by Google Play."; \
+		echo "Create it from keystore.properties.example first."; \
+		exit 1; \
+	}
+	$(GRADLE) bundleGmsRelease
+	@echo "AAB: app/build/outputs/bundle/gmsRelease/app-gms-release.aab"
 
 clean: ## Clean build artifacts
 	$(GRADLE) clean
@@ -133,13 +146,16 @@ clean: ## Clean build artifacts
 # ─────────────────────────────────────────────────────────────────────────────
 
 test-unit: ## Run unit tests (includes integration tests since both are JVM-based)
-	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test
+	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:test :privacy:test :privacy-benchmark:test
 
 test-integration: ## Run integration tests (JVM-based, no emulator required)
-	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"
+	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) $(GRADLE) :app:testGmsDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"
 
 test-e2e: ## Run E2E tests (requires rootful podman socket)
 	$(if $(wildcard .env),set -a && . ./.env && set +a &&,) DOCKER_HOST=unix:///run/podman/podman.sock TESTCONTAINERS_RYUK_DISABLED=true $(GRADLE) :e2e-tests:cleanTest :e2e-tests:test
+
+privacy-benchmark: ## Run the Privacy Mode effectiveness benchmark (downloads model + dataset to privacy-benchmark/.cache on first run)
+	$(GRADLE) :privacy-benchmark:run $(if $(BENCHMARK_ARGS),--args="$(BENCHMARK_ARGS)",)
 
 test: test-unit test-e2e ## Run all tests
 
@@ -161,11 +177,11 @@ lint-fix: ## Auto-fix linting issues
 # Device Management
 # ─────────────────────────────────────────────────────────────────────────────
 
-install: ## Install debug APK on connected device/emulator
-	$(GRADLE) installDebug
+install: ## Install gms debug APK on connected device/emulator
+	$(GRADLE) installGmsDebug
 
-install-release: ## Install release APK on connected device/emulator
-	$(GRADLE) installRelease
+install-release: ## Install gms release APK on connected device/emulator
+	$(GRADLE) installGmsRelease
 
 uninstall: ## Uninstall app from connected device/emulator
 	$(ADB) uninstall $(APP_ID) 2>/dev/null || true
@@ -282,11 +298,8 @@ version-bump-patch: ## Bump patch version (1.0.0 -> 1.0.1)
 	NEW_PATCH=$$((PATCH + 1)); \
 	NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 version-bump-minor: ## Bump minor version (1.0.0 -> 1.1.0)
 	@CURRENT=$$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2); \
@@ -295,11 +308,8 @@ version-bump-minor: ## Bump minor version (1.0.0 -> 1.1.0)
 	NEW_MINOR=$$((MINOR + 1)); \
 	NEW_VERSION="$$MAJOR.$$NEW_MINOR.0"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 version-bump-major: ## Bump major version (1.0.0 -> 2.0.0)
 	@CURRENT=$$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2); \
@@ -307,11 +317,8 @@ version-bump-major: ## Bump major version (1.0.0 -> 2.0.0)
 	NEW_MAJOR=$$((MAJOR + 1)); \
 	NEW_VERSION="$$NEW_MAJOR.0.0"; \
 	sed -i.bak "s/^VERSION_NAME=.*/VERSION_NAME=$$NEW_VERSION/" gradle.properties; \
-	CODE=$$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2); \
-	NEW_CODE=$$((CODE + 1)); \
-	sed -i.bak "s/^VERSION_CODE=.*/VERSION_CODE=$$NEW_CODE/" gradle.properties; \
 	rm -f gradle.properties.bak; \
-	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (code: $$CODE -> $$NEW_CODE)"
+	echo "Version bumped: $$CURRENT -> $$NEW_VERSION (versionCode is derived from git, not bumped here)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Native Binary Compilation (cloudflared + ngrok)
@@ -372,7 +379,17 @@ NGROK_JNILIBS_DIR := app/src/main/jniLibs
 NGROK_JAVA_JAR := $(NGROK_SRC_DIR)/ngrok-java/target/ngrok-java-1.2.0-SNAPSHOT.jar
 NGROK_NATIVE_CLASSES_JAR := $(NGROK_NATIVE_DIR)/target/ngrok-java-native-classes.jar
 NGROK_HOST_NATIVE_DIR := $(NGROK_NATIVE_DIR)/target/aarch64-apple-darwin/release
-JAVA_HOME_17 ?= $(or $(JAVA_HOME),/opt/homebrew/opt/openjdk@17)
+# JDK home used to bootstrap the ngrok-java native build (Maven still selects the compiler via
+# toolchains.xml). Resolution order: an explicit JAVA_HOME wins; otherwise detect per-OS — macOS
+# uses java_home (falling back to the homebrew openjdk@17), any other OS derives it from the javac
+# on PATH. Override explicitly with `make ... JAVA_HOME_17=/path/to/jdk` if detection is wrong.
+ifneq ($(strip $(JAVA_HOME)),)
+JAVA_HOME_17 ?= $(JAVA_HOME)
+else ifeq ($(shell uname -s),Darwin)
+JAVA_HOME_17 ?= $(shell /usr/libexec/java_home -v 17 2>/dev/null || echo /opt/homebrew/opt/openjdk@17)
+else
+JAVA_HOME_17 ?= $(shell d=$$(command -v javac 2>/dev/null) && dirname "$$(dirname "$$(readlink -f "$$d")")")
+endif
 
 compile-ngrok-native: ## Build ngrok-java native library from source (requires Rust + Android NDK + Maven)
 	@if [ ! -f "$(NGROK_NATIVE_DIR)/Cargo.toml" ]; then \
@@ -448,7 +465,7 @@ check-so-alignment: ## Check 16KB page alignment of native .so libraries in debu
 		echo "ERROR: llvm-objdump not found. Install LLVM toolchain."; \
 		exit 1; \
 	fi; \
-	APK="app/build/outputs/apk/debug/app-debug.apk"; \
+	APK="app/build/outputs/apk/gms/debug/app-gms-debug.apk"; \
 	if [ ! -f "$$APK" ]; then \
 		echo "Debug APK not found. Run 'make build' first."; \
 		exit 1; \

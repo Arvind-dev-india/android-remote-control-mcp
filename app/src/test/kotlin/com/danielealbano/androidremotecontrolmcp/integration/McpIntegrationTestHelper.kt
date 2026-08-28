@@ -3,13 +3,16 @@ package com.danielealbano.androidremotecontrolmcp.integration
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
-import com.danielealbano.androidremotecontrolmcp.mcp.auth.McpAuthPlugin
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
-import com.danielealbano.androidremotecontrolmcp.mcp.mcpStreamableHttp
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpBasePlugins
+import com.danielealbano.androidremotecontrolmcp.mcp.installMcpStatelessTransport
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.AuthorizationCodeStoreImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenService
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.JwtTokenServiceImpl
@@ -17,7 +20,9 @@ import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthAccessValidator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinatorImpl
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthRouteDeps
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthServerDeps
 import com.danielealbano.androidremotecontrolmcp.mcp.oauth.installOAuthRoutes
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.LoggedToolRegistrar
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.McpToolUtils
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerAppManagementTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerCameraTools
@@ -28,10 +33,30 @@ import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerLocationTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerNodeActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerNotificationTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerScreenIntrospectionTools
+import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSharingTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerSystemActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTextInputTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerTouchActionTools
 import com.danielealbano.androidremotecontrolmcp.mcp.tools.registerUtilityTools
+import com.danielealbano.androidremotecontrolmcp.privacy.ContextExtractor
+import com.danielealbano.androidremotecontrolmcp.privacy.DeterministicEngine
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeManager
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyModeStatus
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyPipelineImpl
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
+import com.danielealbano.androidremotecontrolmcp.privacy.PseudonymStore
+import com.danielealbano.androidremotecontrolmcp.privacy.RedactionEngine
+import com.danielealbano.androidremotecontrolmcp.privacy.Redactor
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CardDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.CredentialDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.EmailDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.IbanDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.NationalIdDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.detectors.PhoneDetector
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerCache
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.NerEngine
+import com.danielealbano.androidremotecontrolmcp.privacy.ner.PiiModelInference
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -52,14 +77,16 @@ import com.danielealbano.androidremotecontrolmcp.services.notifications.Notifica
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import com.danielealbano.androidremotecontrolmcp.services.sharing.EphemeralFileLinkService
+import com.danielealbano.androidremotecontrolmcp.services.sharing.SharedContentInbox
 import com.danielealbano.androidremotecontrolmcp.services.storage.FileOperationProvider
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -71,6 +98,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Integration test helper that configures a Ktor [testApplication] with the same
@@ -83,6 +111,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
  */
 object McpIntegrationTestHelper {
     const val TEST_BEARER_TOKEN = "test-integration-token"
+    const val TEST_BASE_URL = "http://localhost:8080"
 
     /**
      * Configures multi-window mocking on the given [MockDependencies].
@@ -141,8 +170,36 @@ object McpIntegrationTestHelper {
     /**
      * Creates mocked service dependencies used by all tool handlers.
      */
-    fun createMockDependencies(): MockDependencies =
-        MockDependencies(
+    fun createMockDependencies(): MockDependencies {
+        val statusFlow = MutableStateFlow<PrivacyModeStatus>(PrivacyModeStatus.Disabled)
+        // disabled by default; setPrivacy() changes it
+        val configFlow = MutableStateFlow(PrivacyModeConfig())
+        val pseudonymStore = PseudonymStore()
+        val piiModelInference = mockk<PiiModelInference>()
+        coEvery { piiModelInference.infer(any()) } returns emptyList()
+        val manager = mockk<PrivacyModeManager>()
+        // reads the LATEST value each call
+        coEvery { manager.currentConfig() } answers { configFlow.value }
+        every { manager.status } returns statusFlow
+        val pipeline =
+            PrivacyPipelineImpl(
+                manager = manager,
+                engine =
+                    RedactionEngine(
+                        DeterministicEngine(
+                            CredentialDetector(),
+                            CardDetector(),
+                            IbanDetector(),
+                            EmailDetector(),
+                            PhoneDetector(),
+                            NationalIdDetector(),
+                        ),
+                        NerEngine(piiModelInference, NerCache()),
+                        ContextExtractor(),
+                        Redactor(pseudonymStore),
+                    ),
+            )
+        return MockDependencies(
             actionExecutor = mockk(relaxed = true),
             accessibilityServiceProvider = mockk(relaxed = true),
             screenCaptureProvider = mockk(relaxed = true),
@@ -160,7 +217,31 @@ object McpIntegrationTestHelper {
             intentDispatcher = mockk(relaxed = true),
             notificationProvider = mockk(relaxed = true),
             locationProvider = mockk(relaxed = true),
+            sharedContentInbox = mockk(relaxed = true),
+            ephemeralFileLinkService = mockk(relaxed = true),
+            privacyStatusFlow = statusFlow,
+            privacyConfigFlow = configFlow,
+            privacyModeManager = manager,
+            piiModelInference = piiModelInference,
+            pseudonymStore = pseudonymStore,
+            privacyToolGate = PrivacyToolGate(pipeline),
+            placeholderSubstitutor = PlaceholderSubstitutor(pseudonymStore),
+            serverLog = RecordingServerLogRepository(),
         )
+    }
+
+    /**
+     * Reconfigures privacy per test case. Both flows are live-read by the pipeline,
+     * so mutating them changes what the gate observes on the next call.
+     */
+    fun setPrivacy(
+        deps: MockDependencies,
+        config: PrivacyModeConfig,
+        status: PrivacyModeStatus,
+    ) {
+        deps.privacyConfigFlow.value = config
+        deps.privacyStatusFlow.value = status
+    }
 
     /**
      * Registers all MCP tools with the given [Server] using mocked dependencies.
@@ -173,8 +254,9 @@ object McpIntegrationTestHelper {
             ToolPermissionsConfig(enabledTools = ToolPermissionsConfig.ALL_SUPPORTED_TOOLS),
     ) {
         val toolNamePrefix = McpToolUtils.buildToolNamePrefix(deviceSlug)
+        val registrar = LoggedToolRegistrar(server, deps.serverLog)
         registerScreenIntrospectionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.accessibilityServiceProvider,
             deps.screenCaptureProvider,
@@ -184,47 +266,97 @@ object McpIntegrationTestHelper {
             deps.nodeCache,
             deps.screenStateSnapshotCache,
             WebViewNodeMerger(),
+            deps.privacyToolGate,
+            ScreenshotRedactor(),
             toolNamePrefix,
             perms,
         )
-        registerSystemActionTools(server, deps.actionExecutor, deps.accessibilityServiceProvider, toolNamePrefix, perms)
-        registerTouchActionTools(server, deps.actionExecutor, toolNamePrefix, perms)
-        registerGestureTools(server, deps.actionExecutor, toolNamePrefix, perms)
+        registerSystemActionTools(
+            registrar,
+            deps.actionExecutor,
+            deps.accessibilityServiceProvider,
+            toolNamePrefix,
+            perms,
+        )
+        registerTouchActionTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
+        registerGestureTools(registrar, deps.actionExecutor, toolNamePrefix, perms)
+        registerInteractionToolBundle(registrar, deps, toolNamePrefix, perms)
+        registerNonAccessibilityTools(registrar, deps, toolNamePrefix, perms)
+    }
+
+    private fun registerInteractionToolBundle(
+        registrar: LoggedToolRegistrar,
+        deps: MockDependencies,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
         registerNodeActionTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.actionExecutor,
             deps.accessibilityServiceProvider,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
         registerTextInputTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.actionExecutor,
             deps.accessibilityServiceProvider,
             deps.typeInputController,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
         registerUtilityTools(
-            server,
+            registrar,
             deps.treeParser,
             deps.elementFinder,
             deps.accessibilityServiceProvider,
             deps.nodeCache,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
             toolNamePrefix,
             perms,
         )
-        registerFileTools(server, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerAppManagementTools(server, deps.appManager, toolNamePrefix, perms)
-        registerCameraTools(server, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
-        registerIntentTools(server, deps.intentDispatcher, toolNamePrefix, perms)
-        registerNotificationTools(server, deps.notificationProvider, toolNamePrefix, perms)
-        registerLocationTools(server, deps.locationProvider, toolNamePrefix, perms)
+    }
+
+    private fun registerNonAccessibilityTools(
+        registrar: LoggedToolRegistrar,
+        deps: MockDependencies,
+        toolNamePrefix: String,
+        perms: ToolPermissionsConfig,
+    ) {
+        registerFileTools(registrar, deps.storageLocationProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerAppManagementTools(registrar, deps.appManager, deps.privacyToolGate, toolNamePrefix, perms)
+        registerCameraTools(registrar, deps.cameraProvider, deps.fileOperationProvider, toolNamePrefix, perms)
+        registerIntentTools(registrar, deps.intentDispatcher, toolNamePrefix, perms)
+        registerNotificationTools(
+            registrar,
+            deps.notificationProvider,
+            deps.privacyToolGate,
+            deps.placeholderSubstitutor,
+            toolNamePrefix,
+            perms,
+        )
+        registerLocationTools(registrar, deps.locationProvider, deps.privacyToolGate, toolNamePrefix, perms)
+        registerSharingTools(
+            registrar,
+            deps.sharedContentInbox,
+            deps.ephemeralFileLinkService,
+            deps.fileOperationProvider,
+            ServerConfig.DEFAULT_FILE_SIZE_LIMIT_MB,
+            { TEST_BASE_URL },
+            deps.privacyToolGate,
+            toolNamePrefix,
+            perms,
+        )
     }
 
     /**
@@ -282,8 +414,8 @@ object McpIntegrationTestHelper {
      * [Client] with [StreamableHttpClientTransport].
      *
      * The application is configured with ContentNegotiation (McpJson),
-     * BearerTokenAuthPlugin, and mcpStreamableHttp, mirroring the production
-     * McpServer setup.
+     * BearerTokenAuthPlugin, and the stateless Streamable HTTP transport, mirroring the
+     * production McpServer setup.
      *
      * @param deps Mocked service dependencies (created via [createMockDependencies]).
      * @param testBlock The test code to execute with the SDK [Client] and [MockDependencies].
@@ -299,9 +431,12 @@ object McpIntegrationTestHelper {
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) { expectedToken = TEST_BEARER_TOKEN }
-                mcpStreamableHttp { sdkServer }
+                // Uses the production base-plugin wiring (ContentNegotiation → CORS → auth).
+                installMcpBasePlugins {
+                    expectedToken = TEST_BEARER_TOKEN
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
+                }
+                installMcpStatelessTransport { sdkServer }
             }
 
             val httpClient =
@@ -353,13 +488,13 @@ object McpIntegrationTestHelper {
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) {
+                installMcpBasePlugins {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = if (bearerTokenEnabled) TEST_BEARER_TOKEN else ""
                     this.oauthEnabled = oauthEnabled
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
-                mcpStreamableHttp { sdkServer }
+                installMcpStatelessTransport { sdkServer }
             }
 
             testBlock(deps)
@@ -379,7 +514,7 @@ object McpIntegrationTestHelper {
      * real [JwtTokenServiceImpl] (mocked signing secret), real in-memory code store + approval
      * coordinator, real [OAuthClientRepositoryImpl] over a temp dedicated DataStore, the shared
      * [OAuthAccessValidator], the production [McpAuthPlugin] exclusions, the mounted OAuth routes, and
-     * `mcpStreamableHttp`. The test drives the DCR→authorize→approve→token→/mcp dance itself.
+     * the stateless Streamable HTTP transport. The test drives the DCR→authorize→approve→token→/mcp dance itself.
      *
      * @param bearerTokenEnabled When true (with [bearerToken]), exercises dual-accept.
      * @param publicUrlOverride Pins the metadata/`aud` host (empty = request-derived).
@@ -404,15 +539,16 @@ object McpIntegrationTestHelper {
                 produceFile = { java.io.File(tempDir, "oauth_clients.preferences_pb") },
             )
         // spyk wraps the real impl transparently so tests can coVerify last-used touches.
-        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore))
+        val clientRepository = io.mockk.spyk(OAuthClientRepositoryImpl(clientsDataStore, deps.serverLog))
         val codeStore = AuthorizationCodeStoreImpl()
-        val approvalCoordinator = OAuthApprovalCoordinatorImpl()
-        val accessValidator = OAuthAccessValidator(tokenService, clientRepository)
+        val approvalCoordinator = OAuthApprovalCoordinatorImpl(deps.serverLog)
+        val accessValidator = OAuthAccessValidator(tokenService, clientRepository, deps.serverLog)
 
         testApplication {
             application {
-                install(ContentNegotiation) { json(McpJson) }
-                install(McpAuthPlugin) {
+                // Full production wiring WITH CORS in front of the real OAuth routes, so the
+                // OAuth-flow tests verify OAuth and CORS coexist end-to-end.
+                installMcpBasePlugins {
                     this.bearerTokenEnabled = bearerTokenEnabled
                     expectedToken = bearerToken
                     oauthEnabled = true
@@ -420,20 +556,25 @@ object McpIntegrationTestHelper {
                     validateOAuthToken = { token, resource -> accessValidator.validate(token, resource) }
                     excludedPaths = setOf("/health", "/register", "/token", "/authorize", "/authorize/status")
                     excludedPathPrefixes = setOf(EphemeralFileLinkService.PATH_PREFIX, "/.well-known/")
+                    onAuthFailure = { deps.serverLog.log(ServerLogEntry.Type.AUTH, "Authentication failed from $it") }
                 }
                 routing {
                     installOAuthRoutes(
                         OAuthRouteDeps(
-                            clientRepository = clientRepository,
-                            tokenService = tokenService,
-                            authorizationCodeStore = codeStore,
-                            approvalCoordinator = approvalCoordinator,
+                            oauth =
+                                OAuthServerDeps(
+                                    jwtTokenService = tokenService,
+                                    oauthClientRepository = clientRepository,
+                                    authorizationCodeStore = codeStore,
+                                    approvalCoordinator = approvalCoordinator,
+                                    geoIpResolver = { null },
+                                ),
                             publicUrlOverride = publicUrlOverride,
-                            geoIpResolver = { null },
+                            serverLog = deps.serverLog,
                         ),
                     )
                 }
-                mcpStreamableHttp(publicUrlOverride = publicUrlOverride) { sdkServer }
+                installMcpStatelessTransport(publicUrlOverride = publicUrlOverride) { sdkServer }
             }
 
             val httpClient =
@@ -470,4 +611,14 @@ data class MockDependencies(
     val intentDispatcher: IntentDispatcher,
     val notificationProvider: NotificationProvider,
     val locationProvider: LocationProvider,
+    val sharedContentInbox: SharedContentInbox,
+    val ephemeralFileLinkService: EphemeralFileLinkService,
+    val privacyStatusFlow: MutableStateFlow<PrivacyModeStatus>,
+    val privacyConfigFlow: MutableStateFlow<PrivacyModeConfig>,
+    val privacyModeManager: PrivacyModeManager,
+    val piiModelInference: PiiModelInference,
+    val pseudonymStore: PseudonymStore,
+    val privacyToolGate: PrivacyToolGate,
+    val placeholderSubstitutor: PlaceholderSubstitutor,
+    val serverLog: RecordingServerLogRepository = RecordingServerLogRepository(),
 )

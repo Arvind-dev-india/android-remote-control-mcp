@@ -37,6 +37,22 @@ class BuiltinStorageLocationTest {
         }
 
         @Test
+        fun `fromLocationId returns DCIM for dcim builtin id`() {
+            assertEquals(
+                BuiltinStorageLocation.DCIM,
+                BuiltinStorageLocation.fromLocationId("builtin:dcim"),
+            )
+        }
+
+        @Test
+        fun `fromLocationId returns RECORDINGS for recordings builtin id`() {
+            assertEquals(
+                BuiltinStorageLocation.RECORDINGS,
+                BuiltinStorageLocation.fromLocationId("builtin:recordings"),
+            )
+        }
+
+        @Test
         fun `fromLocationId returns null for unknown ID`() {
             assertNull(BuiltinStorageLocation.fromLocationId("builtin:documents"))
         }
@@ -67,18 +83,72 @@ class BuiltinStorageLocationTest {
     }
 
     @Nested
-    @DisplayName("readMediaPermission")
-    inner class ReadMediaPermissionTest {
+    @DisplayName("collections")
+    inner class CollectionsTest {
         @Test
-        fun `downloads has no readMediaPermission`() {
-            assertNull(BuiltinStorageLocation.DOWNLOADS.readMediaPermission)
+        fun `DCIM entry has DCIM base path and Camera display name`() {
+            assertEquals("DCIM/", BuiltinStorageLocation.DCIM.baseRelativePath)
+            assertEquals("Camera (DCIM)", BuiltinStorageLocation.DCIM.displayBaseName)
         }
 
         @Test
-        fun `pictures movies music have readMediaPermission`() {
-            assertNotNull(BuiltinStorageLocation.PICTURES.readMediaPermission)
-            assertNotNull(BuiltinStorageLocation.MOVIES.readMediaPermission)
-            assertNotNull(BuiltinStorageLocation.MUSIC.readMediaPermission)
+        fun `DCIM and PICTURES have images then videos collections`() {
+            for (entry in listOf(BuiltinStorageLocation.DCIM, BuiltinStorageLocation.PICTURES)) {
+                assertEquals(2, entry.collections.size)
+                assertEquals(
+                    android.Manifest.permission.READ_MEDIA_IMAGES,
+                    entry.collections[0].readMediaPermission,
+                )
+                assertEquals("image/", entry.collections[0].mimeTypePrefix)
+                assertEquals(
+                    android.Manifest.permission.READ_MEDIA_VIDEO,
+                    entry.collections[1].readMediaPermission,
+                )
+                assertEquals("video/", entry.collections[1].mimeTypePrefix)
+            }
+        }
+
+        @Test
+        fun `DOWNLOADS collection accepts any mime and has no permission`() {
+            assertEquals(1, BuiltinStorageLocation.DOWNLOADS.collections.size)
+            assertNull(BuiltinStorageLocation.DOWNLOADS.collections[0].mimeTypePrefix)
+            assertNull(BuiltinStorageLocation.DOWNLOADS.collections[0].readMediaPermission)
+        }
+
+        @Test
+        fun `pictures movies music collections have readMediaPermission`() {
+            assertNotNull(BuiltinStorageLocation.PICTURES.collections[0].readMediaPermission)
+            assertNotNull(BuiltinStorageLocation.MOVIES.collections[0].readMediaPermission)
+            assertNotNull(BuiltinStorageLocation.MUSIC.collections[0].readMediaPermission)
+        }
+
+        @Test
+        fun `RECORDINGS entry has Recordings base path and display name`() {
+            assertEquals("Recordings/", BuiltinStorageLocation.RECORDINGS.baseRelativePath)
+            assertEquals("Recordings", BuiltinStorageLocation.RECORDINGS.displayBaseName)
+        }
+
+        @Test
+        fun `RECORDINGS has single audio collection`() {
+            assertEquals(1, BuiltinStorageLocation.RECORDINGS.collections.size)
+            assertEquals(
+                android.Manifest.permission.READ_MEDIA_AUDIO,
+                BuiltinStorageLocation.RECORDINGS.collections[0].readMediaPermission,
+            )
+            assertEquals("audio/", BuiltinStorageLocation.RECORDINGS.collections[0].mimeTypePrefix)
+            assertEquals("audio", BuiltinStorageLocation.RECORDINGS.collections[0].typeLabel)
+        }
+
+        @Test
+        fun `isVisual is true for images and video collections`() {
+            assertTrue(BuiltinStorageLocation.PICTURES.collections[0].isVisual)
+            assertTrue(BuiltinStorageLocation.PICTURES.collections[1].isVisual)
+        }
+
+        @Test
+        fun `isVisual is false for audio and permissionless collections`() {
+            assertFalse(BuiltinStorageLocation.MUSIC.collections[0].isVisual)
+            assertFalse(BuiltinStorageLocation.DOWNLOADS.collections[0].isVisual)
         }
     }
 

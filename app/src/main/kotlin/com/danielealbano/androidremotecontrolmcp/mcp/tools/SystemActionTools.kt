@@ -9,19 +9,8 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.ActionEx
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
@@ -83,10 +72,11 @@ class PressBackHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Presses the back button (global accessibility action). " +
@@ -132,10 +122,11 @@ class PressHomeHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Navigates to the home screen. Returns after the action is performed.",
                 inputSchema =
@@ -179,10 +170,11 @@ class PressRecentsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Opens the recent apps screen. Returns after the action is performed.",
                 inputSchema =
@@ -226,10 +218,11 @@ class OpenNotificationsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Pulls down the notification shade. Returns after the action is performed.",
                 inputSchema =
@@ -273,10 +266,11 @@ class OpenQuickSettingsHandler
             }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Opens the quick settings panel. Returns after the action is performed.",
                 inputSchema =
@@ -289,326 +283,6 @@ class OpenQuickSettingsHandler
 
         companion object {
             const val TOOL_NAME = "open_quick_settings"
-        }
-    }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// get_device_logs
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * MCP tool handler for `get_device_logs`.
- *
- * Retrieves device logcat logs filtered by time range, last N lines, tag, level,
- * or package name. Useful for debugging app behavior and system events.
- *
- * **Input**: `{ "last_lines": 100, "since": "...", "until": "...",
- *   "tag": "...", "level": "D", "package_name": "..." }`
- * **Output**: `{ "content": [{ "type": "text",
- *   "text": "{\"logs\":\"...\",\"line_count\":100,\"truncated\":false}" }] }`
- * **Errors**:
- *   - InvalidParams if parameters are invalid
- *   - ActionFailed if logcat execution fails
- */
-class GetDeviceLogsHandler
-    @Inject
-    constructor() {
-        @Suppress(
-            "TooGenericExceptionCaught",
-            "SwallowedException",
-            "ThrowsCount",
-            "LongMethod",
-            "CyclomaticComplexMethod",
-        )
-        suspend fun execute(arguments: JsonObject?): CallToolResult {
-            val lastLines = parseLastLines(arguments)
-            val since = arguments?.get("since")?.jsonPrimitive?.contentOrNull
-            val until = arguments?.get("until")?.jsonPrimitive?.contentOrNull
-            val tag = arguments?.get("tag")?.jsonPrimitive?.contentOrNull
-            val levelStr = arguments?.get("level")?.jsonPrimitive?.contentOrNull ?: DEFAULT_LEVEL
-            val packageName = arguments?.get("package_name")?.jsonPrimitive?.contentOrNull
-
-            if (levelStr !in VALID_LEVELS) {
-                throw McpToolException.InvalidParams(
-                    "level must be one of: ${VALID_LEVELS.joinToString(", ")}. Got: '$levelStr'",
-                )
-            }
-
-            if (tag != null && !TAG_REGEX.matches(tag)) {
-                throw McpToolException.InvalidParams(
-                    "tag contains invalid characters. Allowed: letters, digits, '.', '_', ':', '*', '-'. Got: '$tag'",
-                )
-            }
-
-            if (packageName != null && !PACKAGE_NAME_REGEX.matches(packageName)) {
-                throw McpToolException.InvalidParams(
-                    "package_name contains invalid characters. " +
-                        "Must start with a letter and contain only letters, digits, '.', '_'. " +
-                        "Got: '$packageName'",
-                )
-            }
-
-            if (since != null && !TIMESTAMP_REGEX.matches(since)) {
-                throw McpToolException.InvalidParams(
-                    "since must be an ISO 8601 timestamp (e.g., '2024-01-15T10:30:00'). Got: '$since'",
-                )
-            }
-
-            if (until != null && !TIMESTAMP_REGEX.matches(until)) {
-                throw McpToolException.InvalidParams(
-                    "until must be an ISO 8601 timestamp (e.g., '2024-01-15T10:30:00'). Got: '$until'",
-                )
-            }
-
-            return try {
-                val pid = if (packageName != null) resolvePid(packageName) else null
-                // Request one extra line to reliably detect truncation
-                val requestLines = lastLines + 1
-                val command = buildLogcatCommand(requestLines, since, tag, levelStr, pid)
-                val process = Runtime.getRuntime().exec(command.toTypedArray())
-                val outputFuture =
-                    CompletableFuture.supplyAsync {
-                        process.inputStream.bufferedReader().readText()
-                    }
-                val completed = process.waitFor(LOGCAT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-
-                if (!completed) {
-                    process.destroyForcibly()
-                    throw McpToolException.Timeout("Logcat command timed out after ${LOGCAT_TIMEOUT_SECONDS}s")
-                }
-
-                val output = outputFuture.get(PROCESS_IO_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                val exitCode = process.exitValue()
-                if (exitCode != 0 && output.isEmpty()) {
-                    val errorOutput = process.errorStream.bufferedReader().readText()
-                    throw McpToolException.ActionFailed(
-                        "logcat command failed (exit $exitCode): $errorOutput",
-                    )
-                }
-
-                var allLines = output.lines().filter { it.isNotBlank() }
-                if (until != null) {
-                    allLines = filterByUntil(allLines, until)
-                }
-                val truncated = allLines.size > lastLines
-                val lines = if (truncated) allLines.take(lastLines) else allLines
-
-                val resultJson =
-                    buildJsonObject {
-                        put("logs", lines.joinToString("\n"))
-                        put("line_count", lines.size)
-                        put("truncated", truncated)
-                    }
-
-                McpToolUtils.untrustedTextResult(Json.encodeToString(resultJson))
-            } catch (e: McpToolException) {
-                throw e
-            } catch (e: Exception) {
-                throw McpToolException.ActionFailed(
-                    "Failed to retrieve device logs: ${e.message ?: "Unknown error"}",
-                )
-            }
-        }
-
-        @Suppress("SwallowedException", "TooGenericExceptionCaught")
-        private fun parseLastLines(params: JsonObject?): Int {
-            val element = params?.get("last_lines") ?: return DEFAULT_LAST_LINES
-            val lastLines =
-                try {
-                    element.jsonPrimitive.int
-                } catch (e: Exception) {
-                    throw McpToolException.InvalidParams(
-                        "last_lines must be an integer, got $element",
-                    )
-                }
-            if (lastLines < 1 || lastLines > MAX_LAST_LINES) {
-                throw McpToolException.InvalidParams(
-                    "last_lines must be between 1 and $MAX_LAST_LINES, got $lastLines",
-                )
-            }
-            return lastLines
-        }
-
-        private fun buildLogcatCommand(
-            lastLines: Int,
-            since: String?,
-            tag: String?,
-            level: String,
-            pid: Int?,
-        ): List<String> {
-            val cmd = mutableListOf("logcat", "-d")
-
-            if (since != null) {
-                cmd.addAll(listOf("-T", since))
-            } else {
-                cmd.addAll(listOf("-t", lastLines.toString()))
-            }
-
-            if (pid != null) {
-                cmd.addAll(listOf("--pid", pid.toString()))
-            }
-
-            if (tag != null) {
-                cmd.addAll(listOf("-s", "$tag:$level"))
-            } else {
-                cmd.add("*:$level")
-            }
-
-            return cmd
-        }
-
-        /**
-         * Resolves the PID of a running package via `pidof`.
-         *
-         * @return The PID, or null if the package is not running or pidof fails.
-         */
-        @Suppress("TooGenericExceptionCaught", "SwallowedException")
-        private fun resolvePid(packageName: String): Int? =
-            try {
-                val process = Runtime.getRuntime().exec(arrayOf("pidof", "-s", packageName))
-                val outputFuture =
-                    CompletableFuture.supplyAsync {
-                        process.inputStream
-                            .bufferedReader()
-                            .readText()
-                            .trim()
-                    }
-                val completed = process.waitFor(PIDOF_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                if (!completed) {
-                    process.destroyForcibly()
-                    null
-                } else {
-                    outputFuture.get(PROCESS_IO_TIMEOUT_SECONDS, TimeUnit.SECONDS).toIntOrNull()
-                }
-            } catch (e: Exception) {
-                null
-            }
-
-        /**
-         * Filters logcat lines to only include those with timestamps at or before [until].
-         *
-         * Expects [until] in ISO 8601 format (e.g., `2024-01-15T10:30:00`).
-         * Logcat timestamps are in `MM-DD HH:MM:SS.mmm` format. The comparison
-         * is best-effort: the year component from ISO 8601 is dropped, and
-         * the month-day + time portion is compared lexicographically.
-         *
-         * **Cross-year limitation**: Logcat timestamps do not include the year, so
-         * filtering across year boundaries (e.g., December 31 to January 1) may be
-         * inaccurate because the lexicographic comparison treats "01-01" as before
-         * "12-31" regardless of the actual year.
-         */
-        private fun filterByUntil(
-            lines: List<String>,
-            until: String,
-        ): List<String> {
-            val untilComparable = isoToLogcatTimestamp(until) ?: return lines
-            return lines.filter { line ->
-                val lineTimestamp = line.take(LOGCAT_TIMESTAMP_LENGTH).trim()
-                if (lineTimestamp.length < LOGCAT_TIMESTAMP_LENGTH) {
-                    return@filter true
-                }
-                lineTimestamp <= untilComparable
-            }
-        }
-
-        /**
-         * Converts an ISO 8601 timestamp to logcat's `MM-DD HH:MM:SS.mmm` format
-         * for lexicographic comparison.
-         *
-         * **Cross-year limitation**: The year component is dropped because logcat
-         * timestamps do not include the year. This means cross-year boundary
-         * comparisons (e.g., 2024-12-31 vs 2025-01-01) may be inaccurate.
-         *
-         * @return The converted timestamp, or null if parsing fails.
-         */
-        @Suppress("SwallowedException", "TooGenericExceptionCaught", "ReturnCount")
-        private fun isoToLogcatTimestamp(iso: String): String? {
-            return try {
-                val parts = iso.split("T")
-                if (parts.size != ISO_PARTS_COUNT) return null
-
-                val dateParts = parts[0].split("-")
-                if (dateParts.size != DATE_PARTS_COUNT) return null
-
-                val monthDay = "${dateParts[1]}-${dateParts[2]}"
-                val timePart =
-                    if (parts[1].contains(".")) parts[1] else "${parts[1]}.000"
-                "$monthDay $timePart"
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        fun register(
-            server: Server,
-            toolNamePrefix: String,
-        ) {
-            server.addTool(
-                name = "$toolNamePrefix$TOOL_NAME",
-                description =
-                    "Retrieves device logcat logs filtered by time range, tag, level, or package name. " +
-                        "Note: logcat timestamps do not include the year, so filtering across year " +
-                        "boundaries (e.g., December to January) may be inaccurate.",
-                inputSchema =
-                    ToolSchema(
-                        properties =
-                            buildJsonObject {
-                                putJsonObject("last_lines") {
-                                    put("type", "integer")
-                                    put("description", "Number of most recent log lines to return (1-1000)")
-                                    put("default", DEFAULT_LAST_LINES)
-                                }
-                                putJsonObject("since") {
-                                    put("type", "string")
-                                    put(
-                                        "description",
-                                        "ISO 8601 timestamp to filter logs from (e.g., 2024-01-15T10:30:00)",
-                                    )
-                                }
-                                putJsonObject("until") {
-                                    put("type", "string")
-                                    put("description", "ISO 8601 timestamp to filter logs until (used with since)")
-                                }
-                                putJsonObject("tag") {
-                                    put("type", "string")
-                                    put("description", "Filter by log tag (exact match, e.g., MCP:ServerService)")
-                                }
-                                putJsonObject("level") {
-                                    put("type", "string")
-                                    put(
-                                        "enum",
-                                        buildJsonArray {
-                                            VALID_LEVELS.forEach { add(JsonPrimitive(it)) }
-                                        },
-                                    )
-                                    put("description", "Minimum log level to include")
-                                    put("default", DEFAULT_LEVEL)
-                                }
-                                putJsonObject("package_name") {
-                                    put("type", "string")
-                                    put("description", "Filter logs by package name")
-                                }
-                            },
-                        required = listOf(),
-                    ),
-            ) { request -> execute(request.arguments) }
-        }
-
-        companion object {
-            const val TOOL_NAME = "get_device_logs"
-            private const val DEFAULT_LAST_LINES = 100
-            private const val MAX_LAST_LINES = 1000
-            private const val DEFAULT_LEVEL = "D"
-            private const val LOGCAT_TIMESTAMP_LENGTH = 18
-            private const val ISO_PARTS_COUNT = 2
-            private const val DATE_PARTS_COUNT = 3
-            private const val LOGCAT_TIMEOUT_SECONDS = 30L
-            private const val PROCESS_IO_TIMEOUT_SECONDS = 5L
-            private const val PIDOF_TIMEOUT_SECONDS = 5L
-            private val VALID_LEVELS = setOf("V", "D", "I", "W", "E", "F")
-            private val TAG_REGEX = Regex("^[a-zA-Z0-9._:*-]+$")
-            private val PACKAGE_NAME_REGEX = Regex("^[a-zA-Z][a-zA-Z0-9._]*$")
-            private val TIMESTAMP_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$")
         }
     }
 
@@ -655,10 +329,11 @@ class DismissKeyboardHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Closes the on-screen keyboard if open; no-op if none (never navigates back). " +
@@ -686,31 +361,28 @@ class DismissKeyboardHandler
  * Called from [McpServerService.startServer] during server startup.
  */
 fun registerSystemActionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     actionExecutor: ActionExecutor,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(PressBackHandler.TOOL_NAME)) {
-        PressBackHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressBackHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressHomeHandler.TOOL_NAME)) {
-        PressHomeHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressHomeHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(PressRecentsHandler.TOOL_NAME)) {
-        PressRecentsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        PressRecentsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(OpenNotificationsHandler.TOOL_NAME)) {
-        OpenNotificationsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        OpenNotificationsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(OpenQuickSettingsHandler.TOOL_NAME)) {
-        OpenQuickSettingsHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
+        OpenQuickSettingsHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(DismissKeyboardHandler.TOOL_NAME)) {
-        DismissKeyboardHandler(actionExecutor, accessibilityServiceProvider).register(server, toolNamePrefix)
-    }
-    if (perms.isToolEnabled(GetDeviceLogsHandler.TOOL_NAME)) {
-        GetDeviceLogsHandler().register(server, toolNamePrefix)
+        DismissKeyboardHandler(actionExecutor, accessibilityServiceProvider).register(registrar, toolNamePrefix)
     }
 }

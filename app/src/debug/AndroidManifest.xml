@@ -2,22 +2,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+        <!-- ADB-only debug controls. DUMP is held by the adb shell, not third-party apps. -->
         <receiver
             android:name=".services.mcp.AdbConfigReceiver"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
 
         <receiver
             android:name=".debug.E2EConfigReceiver"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
 
         <!-- Debug-only: lets E2E tests approve a pending OAuth authorization. Absent from release. -->
         <receiver
             android:name=".debug.OAuthApprovalTestReceiver"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
 
         <activity
             android:name=".services.mcp.AdbServiceTrampolineActivity"
             android:exported="true"
+            android:permission="android.permission.DUMP"
             android:theme="@android:style/Theme.NoDisplay"
             android:excludeFromRecents="true"
             android:noHistory="true" />

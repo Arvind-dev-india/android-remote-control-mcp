@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -104,8 +106,14 @@ fun PermissionsSettingsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
         ) {
+            // ---- Required ----
+            PermissionSectionHeader(
+                title = stringResource(R.string.permission_section_required_title),
+                subtitle = stringResource(R.string.permission_section_required_subtitle),
+            )
             PermissionRow(
                 label = stringResource(R.string.permission_accessibility),
+                rationale = stringResource(R.string.permission_accessibility_rationale),
                 isEnabled = isAccessibilityEnabled,
                 buttonText =
                     if (isAccessibilityEnabled) {
@@ -113,16 +121,20 @@ fun PermissionsSettingsScreen(
                     } else {
                         stringResource(R.string.permission_enable)
                     },
-                onAction = {
-                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                },
+                onAction = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                 actionEnabled = !isAccessibilityEnabled,
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // ---- Required if you use a feature ----
+            PermissionSectionHeader(
+                title = stringResource(R.string.permission_section_required_if_title),
+                subtitle = stringResource(R.string.permission_section_required_if_subtitle),
+            )
             PermissionRow(
                 label = stringResource(R.string.permission_notifications),
+                rationale = stringResource(R.string.permission_notifications_rationale),
                 isEnabled = isNotificationPermissionGranted,
                 buttonText =
                     if (isNotificationPermissionGranted) {
@@ -138,6 +150,7 @@ fun PermissionsSettingsScreen(
 
             PermissionRow(
                 label = stringResource(R.string.permission_notification_listener),
+                rationale = stringResource(R.string.permission_notification_listener_rationale),
                 isEnabled = isNotificationListenerEnabled,
                 buttonText =
                     if (isNotificationListenerEnabled) {
@@ -145,9 +158,7 @@ fun PermissionsSettingsScreen(
                     } else {
                         stringResource(R.string.permission_enable)
                     },
-                onAction = {
-                    PermissionUtils.openNotificationListenerSettings(context)
-                },
+                onAction = { PermissionUtils.openNotificationListenerSettings(context) },
                 actionEnabled = !isNotificationListenerEnabled,
             )
 
@@ -155,6 +166,7 @@ fun PermissionsSettingsScreen(
 
             PermissionRow(
                 label = stringResource(R.string.permission_camera),
+                rationale = stringResource(R.string.permission_camera_rationale),
                 isEnabled = isCameraPermissionGranted,
                 buttonText =
                     if (isCameraPermissionGranted) {
@@ -169,22 +181,8 @@ fun PermissionsSettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             PermissionRow(
-                label = stringResource(R.string.permission_microphone),
-                isEnabled = isMicrophonePermissionGranted,
-                buttonText =
-                    if (isMicrophonePermissionGranted) {
-                        stringResource(R.string.permission_granted)
-                    } else {
-                        stringResource(R.string.permission_grant)
-                    },
-                onAction = onRequestMicrophonePermission,
-                actionEnabled = !isMicrophonePermissionGranted,
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            PermissionRow(
                 label = stringResource(R.string.permission_location),
+                rationale = stringResource(R.string.permission_location_rationale),
                 isEnabled = isLocationPermissionGranted,
                 buttonText =
                     if (isLocationPermissionGranted) {
@@ -196,36 +194,38 @@ fun PermissionsSettingsScreen(
                 actionEnabled = !isLocationPermissionGranted,
             )
 
-            val isBackgroundLocationGranted by viewModel.isBackgroundLocationGranted.collectAsStateWithLifecycle()
+            // Background Location is geofence-only; rendered via a flavor seam (gms only).
+            // The gms seam owns its own leading spacer so foss shows no dangling gap.
+            BackgroundLocationPermissionRow()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ---- Optional ----
+            PermissionSectionHeader(
+                title = stringResource(R.string.permission_section_optional_title),
+                subtitle = stringResource(R.string.permission_section_optional_subtitle),
+            )
             PermissionRow(
-                label = "Background Location",
-                isEnabled = isBackgroundLocationGranted,
+                label = stringResource(R.string.permission_microphone),
+                rationale = stringResource(R.string.permission_microphone_rationale),
+                isEnabled = isMicrophonePermissionGranted,
                 buttonText =
-                    if (isBackgroundLocationGranted) {
+                    if (isMicrophonePermissionGranted) {
                         stringResource(R.string.permission_granted)
                     } else {
-                        "Open Settings"
+                        stringResource(R.string.permission_grant)
                     },
-                onAction = {
-                    // Background location cannot be requested via dialog — open app settings
-                    val intent =
-                        android.content
-                            .Intent(
-                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            ).apply {
-                                data = android.net.Uri.fromParts("package", context.packageName, null)
-                            }
-                    context.startActivity(intent)
-                },
-                actionEnabled = !isBackgroundLocationGranted,
+                onAction = onRequestMicrophonePermission,
+                actionEnabled = !isMicrophonePermissionGranted,
             )
         }
     }
 }
 
 @Composable
-private fun PermissionRow(
+internal fun PermissionRow(
     label: String,
+    rationale: String,
     isEnabled: Boolean,
     buttonText: String,
     onAction: () -> Unit,
@@ -240,26 +240,41 @@ private fun PermissionRow(
     ) {
         Icon(
             imageVector = if (isEnabled) Icons.Default.CheckCircle else Icons.Default.Error,
-            contentDescription =
-                if (isEnabled) {
-                    "$label enabled"
-                } else {
-                    "$label disabled"
-                },
+            contentDescription = if (isEnabled) "$label enabled" else "$label disabled",
             tint = if (isEnabled) enabledColor() else disabledColor(),
             modifier = Modifier.size(24.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        OutlinedButton(
-            onClick = onAction,
-            enabled = actionEnabled,
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = rationale,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        OutlinedButton(onClick = onAction, enabled = actionEnabled) {
             Text(text = buttonText)
         }
     }
+}
+
+@Composable
+private fun PermissionSectionHeader(
+    title: String,
+    subtitle: String,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.semantics { heading() },
+    )
+    Spacer(modifier = Modifier.height(2.dp))
+    Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
 }

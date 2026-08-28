@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import com.danielealbano.androidremotecontrolmcp.data.model.AppInfo
 import com.danielealbano.androidremotecontrolmcp.data.model.ChannelConnectionStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.EventChannelConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.GeofenceZone
 import com.danielealbano.androidremotecontrolmcp.data.model.NotificationFilterMode
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.di.IoDispatcher
@@ -177,31 +176,6 @@ class ChannelViewModel
         fun updateWifiNotifyOnDisconnected(enabled: Boolean) {
             viewModelScope.launch(ioDispatcher) {
                 settingsRepository.updateWifiNotifyOnDisconnected(enabled)
-            }
-        }
-
-        // Geofence settings
-        fun updateGeofenceChannelEnabled(enabled: Boolean) {
-            viewModelScope.launch(ioDispatcher) {
-                settingsRepository.updateGeofenceChannelEnabled(enabled)
-            }
-        }
-
-        fun addGeofenceZone(zone: GeofenceZone) {
-            viewModelScope.launch(ioDispatcher) {
-                settingsRepository.addGeofenceZone(zone)
-            }
-        }
-
-        fun removeGeofenceZone(zoneId: String) {
-            viewModelScope.launch(ioDispatcher) {
-                settingsRepository.removeGeofenceZone(zoneId)
-            }
-        }
-
-        fun updateGeofenceZone(zone: GeofenceZone) {
-            viewModelScope.launch(ioDispatcher) {
-                settingsRepository.updateGeofenceZone(zone)
             }
         }
 

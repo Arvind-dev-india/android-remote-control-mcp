@@ -8,7 +8,8 @@ import kotlinx.serialization.json.putJsonArray
 
 /**
  * OAuth discovery documents. PRM is RFC 9728; AS metadata is RFC 8414. The field sets are exactly those
- * the spike confirmed Claude.ai completes discovery + authorization against.
+ * the spike confirmed Claude.ai completes discovery + authorization against, plus the `offline_access`
+ * scope ChatGPT relies on to obtain and maintain refresh-token connectivity.
  */
 object OAuthMetadata {
     /** RFC 9728 Protected Resource Metadata for `<baseUrl>/mcp`. */
@@ -37,7 +38,11 @@ object OAuthMetadata {
                 }
                 putJsonArray("code_challenge_methods_supported") { add("S256") }
                 putJsonArray("token_endpoint_auth_methods_supported") { add("none") }
-                putJsonArray("scopes_supported") { add("mcp") }
+                putJsonArray("scopes_supported") {
+                    add("mcp")
+                    // Ported from the fix/chatgpt-oauth-redirect fork by GitHub user ciel051130.
+                    add("offline_access")
+                }
             },
         )
 }

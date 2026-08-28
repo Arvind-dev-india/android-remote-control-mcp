@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
@@ -44,15 +43,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChannelSettingsScreen(
     viewModel: ChannelViewModel,
+    navController: NavHostController,
     onNavigateToNotificationFilter: () -> Unit,
     onNavigateToWifiMonitor: () -> Unit,
-    onNavigateToGeofenceList: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val config by viewModel.eventChannelConfig.collectAsStateWithLifecycle()
@@ -180,23 +180,7 @@ fun ChannelSettingsScreen(
                     modifier = Modifier.clickable(onClick = onNavigateToWifiMonitor),
                 )
             }
-            item {
-                ListItem(
-                    headlineContent = { Text("Geofence Events") },
-                    leadingContent = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(
-                                checked = config.geofence.enabled,
-                                onCheckedChange = { viewModel.updateGeofenceChannelEnabled(it) },
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                        }
-                    },
-                    modifier = Modifier.clickable(onClick = onNavigateToGeofenceList),
-                )
-            }
+            geofenceEventSourceItem(navController)
         }
     }
 }

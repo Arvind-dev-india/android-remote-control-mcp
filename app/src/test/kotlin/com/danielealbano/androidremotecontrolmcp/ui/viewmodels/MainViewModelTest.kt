@@ -3,11 +3,11 @@ package com.danielealbano.androidremotecontrolmcp.ui.viewmodels
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import app.cash.turbine.test
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
-import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageLocation
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
@@ -15,6 +15,9 @@ import com.danielealbano.androidremotecontrolmcp.data.model.TunnelEndpoint
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelStatus
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.OAuthApprovalCoordinator
+import com.danielealbano.androidremotecontrolmcp.mcp.oauth.PendingApproval
+import com.danielealbano.androidremotecontrolmcp.services.power.BatteryOptimizationManager
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import com.danielealbano.androidremotecontrolmcp.services.tunnel.TunnelManager
 import com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils
@@ -29,6 +32,7 @@ import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,8 +57,11 @@ class MainViewModelTest {
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var tunnelManager: TunnelManager
     private lateinit var storageLocationProvider: StorageLocationProvider
+    private lateinit var batteryOptimizationManager: BatteryOptimizationManager
+    private lateinit var approvalCoordinator: OAuthApprovalCoordinator
     private lateinit var configFlow: MutableStateFlow<ServerConfig>
     private lateinit var tunnelStatusFlow: MutableStateFlow<TunnelStatus>
+    private lateinit var pendingApprovalsFlow: MutableStateFlow<List<PendingApproval>>
     private lateinit var viewModel: MainViewModel
 
     @BeforeEach
@@ -92,7 +99,21 @@ class MainViewModelTest {
 
         storageLocationProvider = mockk(relaxed = true)
 
-        viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+        batteryOptimizationManager = mockk(relaxed = true)
+
+        pendingApprovalsFlow = MutableStateFlow(emptyList())
+        approvalCoordinator = mockk(relaxed = true)
+        every { approvalCoordinator.observePending() } returns pendingApprovalsFlow
+
+        viewModel =
+            MainViewModel(
+                settingsRepository,
+                tunnelManager,
+                storageLocationProvider,
+                batteryOptimizationManager,
+                testDispatcher,
+                approvalCoordinator,
+            )
     }
 
     @AfterEach
@@ -100,6 +121,48 @@ class MainViewModelTest {
         Dispatchers.resetMain()
         unmockkStatic(Log::class)
     }
+
+    private fun pendingApproval(id: String): PendingApproval =
+        PendingApproval(
+            id = id,
+            clientName = "client-$id",
+            redirectHost = "example.com",
+            matchCode = "42",
+            expiresAtMs = 0L,
+        )
+
+    @Test
+    fun `pendingApprovalCount is zero when no pending approvals`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, expectMostRecentItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `pendingApprovalCount reflects list size`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
+                assertEquals(2, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `pendingApprovalCount updates on coordinator emission`() =
+        runTest {
+            viewModel.pendingApprovalCount.test {
+                assertEquals(0, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"))
+                assertEquals(1, awaitItem())
+                pendingApprovalsFlow.value = listOf(pendingApproval("a"), pendingApproval("b"))
+                assertEquals(2, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     @Test
     fun `initial state loads from repository`() =
@@ -229,6 +292,17 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `updateHideFromRecents calls repository`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.updateHideFromRecents(true)
+            advanceUntilIdle()
+
+            coVerify { settingsRepository.updateHideFromRecents(true) }
+        }
+
+    @Test
     fun `updateHttpsEnabled calls repository`() =
         runTest {
             advanceUntilIdle()
@@ -315,55 +389,6 @@ class MainViewModelTest {
         }
 
     @Test
-    fun `addServerLogEntry adds entry to logs`() =
-        runTest {
-            advanceUntilIdle()
-
-            val entry =
-                ServerLogEntry(
-                    timestamp = 1000L,
-                    type = ServerLogEntry.Type.TOOL_CALL,
-                    message = "screen_tap",
-                    toolName = "screen_tap",
-                    params = "x=100, y=200",
-                    durationMs = 42L,
-                )
-            viewModel.addServerLogEntry(entry)
-
-            assertEquals(1, viewModel.serverLogs.value.size)
-            assertEquals(entry, viewModel.serverLogs.value[0])
-        }
-
-    @Test
-    fun `addServerLogEntry trims list to max 100 entries`() =
-        runTest {
-            advanceUntilIdle()
-
-            repeat(105) { i ->
-                viewModel.addServerLogEntry(
-                    ServerLogEntry(
-                        timestamp = i.toLong(),
-                        type = ServerLogEntry.Type.TOOL_CALL,
-                        message = "tool_$i",
-                        toolName = "tool_$i",
-                        params = "",
-                        durationMs = i.toLong(),
-                    ),
-                )
-            }
-
-            assertEquals(100, viewModel.serverLogs.value.size)
-            assertEquals("tool_5", viewModel.serverLogs.value[0].toolName)
-            assertEquals("tool_104", viewModel.serverLogs.value[99].toolName)
-        }
-
-    @Test
-    fun `initial server logs list is empty`() =
-        runTest {
-            assertEquals(emptyList<ServerLogEntry>(), viewModel.serverLogs.value)
-        }
-
-    @Test
     fun `updateTunnelEnabled calls repository`() =
         runTest {
             advanceUntilIdle()
@@ -439,7 +464,15 @@ class MainViewModelTest {
                     ngrokAuthtoken = "my-authtoken",
                     ngrokDomain = "my.ngrok.app",
                 )
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                    approvalCoordinator,
+                )
             advanceUntilIdle()
 
             assertEquals("my-authtoken", viewModel.ngrokAuthtokenInput.value)
@@ -470,10 +503,30 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `updateCloudflareTunnelExtraArgs calls repository and updates input state`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844")
+            advanceUntilIdle()
+
+            assertEquals("--edge region1.v2.argotunnel.com:7844", viewModel.cloudflareExtraArgsInput.value)
+            coVerify { settingsRepository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844") }
+        }
+
+    @Test
     fun `serverConfig collection sets cloudflare token input`() =
         runTest {
             configFlow.value = configFlow.value.copy(cloudflareTunnelToken = "seeded-token")
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                    approvalCoordinator,
+                )
             advanceUntilIdle()
 
             assertEquals("seeded-token", viewModel.cloudflareTokenInput.value)
@@ -1028,7 +1081,15 @@ class MainViewModelTest {
         runTest {
             // Set deviceSlug BEFORE creating ViewModel so initial load picks it up
             configFlow.value = configFlow.value.copy(deviceSlug = "test_device")
-            viewModel = MainViewModel(settingsRepository, tunnelManager, storageLocationProvider, testDispatcher)
+            viewModel =
+                MainViewModel(
+                    settingsRepository,
+                    tunnelManager,
+                    storageLocationProvider,
+                    batteryOptimizationManager,
+                    testDispatcher,
+                    approvalCoordinator,
+                )
             advanceUntilIdle()
 
             assertEquals("test_device", viewModel.deviceSlugInput.value)
@@ -1096,6 +1157,74 @@ class MainViewModelTest {
                 unmockkStatic(androidx.core.content.ContextCompat::class)
                 unmockkObject(PermissionUtils)
             }
+        }
+
+    // ─── Battery Optimization Tests ─────────────────────────────────────
+
+    @Test
+    fun `refreshPermissionStatus reflects not-exempt`() =
+        runTest {
+            advanceUntilIdle()
+
+            val context = mockk<Context>()
+            mockkObject(PermissionUtils)
+            try {
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                every { PermissionUtils.isNotificationPermissionGranted(context) } returns false
+                every { PermissionUtils.isCameraPermissionGranted(context) } returns false
+                every { PermissionUtils.isMicrophonePermissionGranted(context) } returns false
+                every { PermissionUtils.isLocationPermissionGranted(context) } returns false
+                every { PermissionUtils.isNotificationListenerEnabled(context, any()) } returns false
+                coEvery { storageLocationProvider.getAllLocations() } returns emptyList()
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns false
+
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+
+                assertEquals(false, viewModel.isBatteryOptimizationIgnored.value)
+            } finally {
+                unmockkObject(PermissionUtils)
+            }
+        }
+
+    @Test
+    fun `refreshPermissionStatus reflects exempt after grant`() =
+        runTest {
+            advanceUntilIdle()
+
+            val context = mockk<Context>()
+            mockkObject(PermissionUtils)
+            try {
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                every { PermissionUtils.isNotificationPermissionGranted(context) } returns false
+                every { PermissionUtils.isCameraPermissionGranted(context) } returns false
+                every { PermissionUtils.isMicrophonePermissionGranted(context) } returns false
+                every { PermissionUtils.isLocationPermissionGranted(context) } returns false
+                every { PermissionUtils.isNotificationListenerEnabled(context, any()) } returns false
+                coEvery { storageLocationProvider.getAllLocations() } returns emptyList()
+
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns false
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+                assertEquals(false, viewModel.isBatteryOptimizationIgnored.value)
+
+                every { batteryOptimizationManager.isIgnoringBatteryOptimizations() } returns true
+                viewModel.refreshPermissionStatus(context)
+                advanceUntilIdle()
+                assertEquals(true, viewModel.isBatteryOptimizationIgnored.value)
+            } finally {
+                unmockkObject(PermissionUtils)
+            }
+        }
+
+    @Test
+    fun `requestBatteryOptimizationExemption delegates to manager`() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.requestBatteryOptimizationExemption()
+
+            verify { batteryOptimizationManager.requestExemption() }
         }
 
     // --- Tool Permissions Tests ---
@@ -1217,6 +1346,22 @@ class MainViewModelTest {
             advanceUntilIdle()
 
             assertEquals(updatedPerms, values.last())
+            job.cancel()
+        }
+
+    @Test
+    fun `hideFromRecents emits updated config`() =
+        runTest {
+            advanceUntilIdle()
+
+            val values = mutableListOf<Boolean>()
+            val job = launch { viewModel.hideFromRecents.collect { values.add(it) } }
+            advanceUntilIdle()
+
+            configFlow.value = configFlow.value.copy(hideFromRecents = true)
+            advanceUntilIdle()
+
+            assertEquals(true, values.last())
             job.cancel()
         }
 }

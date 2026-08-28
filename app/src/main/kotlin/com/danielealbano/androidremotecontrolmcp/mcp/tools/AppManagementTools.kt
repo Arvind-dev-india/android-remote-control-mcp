@@ -4,6 +4,7 @@ import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.AppFilter
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.apps.AppManager
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
@@ -51,10 +52,11 @@ class OpenAppHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Opens (launches) an application by its package ID. " +
@@ -97,6 +99,7 @@ class ListAppsHandler
     @Inject
     constructor(
         private val appManager: AppManager,
+        private val privacyToolGate: PrivacyToolGate,
     ) {
         @Suppress("TooGenericExceptionCaught")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -118,14 +121,15 @@ class ListAppsHandler
 
             Log.d(TAG, "Executing list_apps with filter=$filter, nameQuery=$nameQuery")
             val apps = appManager.listInstalledApps(filter, nameQuery)
+            val redactedNames = privacyToolGate.texts(apps.map { it.name to "app name" })
 
             val jsonResult =
                 buildJsonArray {
-                    apps.forEach { app ->
+                    apps.forEachIndexed { index, app ->
                         add(
                             buildJsonObject {
                                 put("package_id", app.packageId)
-                                put("name", app.name)
+                                put("name", redactedNames[index])
                                 if (app.versionName != null) {
                                     put("version_name", app.versionName)
                                 }
@@ -140,10 +144,11 @@ class ListAppsHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Lists installed applications on the device. " +
@@ -218,10 +223,11 @@ class CloseAppHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Kills a background application process. This only works for apps " +
@@ -257,12 +263,15 @@ class CloseAppHandler
  * Registers all app management tools with the given [Server].
  */
 fun registerAppManagementTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     appManager: AppManager,
+    privacyToolGate: PrivacyToolGate,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
-    if (perms.isToolEnabled(OpenAppHandler.TOOL_NAME)) OpenAppHandler(appManager).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(ListAppsHandler.TOOL_NAME)) ListAppsHandler(appManager).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(CloseAppHandler.TOOL_NAME)) CloseAppHandler(appManager).register(server, toolNamePrefix)
+    if (perms.isToolEnabled(OpenAppHandler.TOOL_NAME)) OpenAppHandler(appManager).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(ListAppsHandler.TOOL_NAME)) {
+        ListAppsHandler(appManager, privacyToolGate).register(registrar, toolNamePrefix)
+    }
+    if (perms.isToolEnabled(CloseAppHandler.TOOL_NAME)) CloseAppHandler(appManager).register(registrar, toolNamePrefix)
 }

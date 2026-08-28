@@ -1,15 +1,19 @@
 package com.danielealbano.androidremotecontrolmcp.services.mcp
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
+import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -19,6 +23,7 @@ import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -38,6 +43,7 @@ class AdbConfigHandlerTest {
     private lateinit var storageLocationProvider: StorageLocationProvider
     private lateinit var handler: AdbConfigHandler
     private lateinit var context: Context
+    private val serverLog = RecordingServerLogRepository()
 
     @BeforeEach
     fun setUp() {
@@ -98,7 +104,7 @@ class AdbConfigHandlerTest {
         coEvery { storageLocationProvider.isLocationAuthorized(any()) } returns false
 
         context = mockk(relaxed = true)
-        handler = AdbConfigHandler(settingsRepository, storageLocationProvider)
+        handler = AdbConfigHandler(settingsRepository, storageLocationProvider, serverLog)
     }
 
     @AfterEach
@@ -147,8 +153,8 @@ class AdbConfigHandlerTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("ACTION_CONFIGURE")
-    inner class ConfigureTests {
+    @DisplayName("ACTION_CONFIGURE - Basic Settings")
+    inner class ConfigureBasicTests {
         @Test
         @DisplayName("bearer_token is applied when provided")
         fun bearerTokenApplied() =
@@ -159,6 +165,18 @@ class AdbConfigHandlerTest {
                     }
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateBearerToken("my-test-token") }
+            }
+
+        @Test
+        @DisplayName("configure broadcast records ADB marker")
+        fun configureRecordsMarker() =
+            runTest {
+                val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
+                handler.handle(context, intent)
+
+                val entries = serverLog.ofType(ServerLogEntry.Type.SETTINGS)
+                assertEquals(1, entries.size)
+                assertEquals("Configuration update received via ADB", entries.first().message)
             }
 
         @Test
@@ -269,6 +287,57 @@ class AdbConfigHandlerTest {
             }
 
         @Test
+        @DisplayName("hide_from_recents true excludes existing app tasks from recents")
+        fun hideFromRecentsTrue() =
+            runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, true)
+                    }
+                handler.handle(context, intent)
+
+                coVerify { settingsRepository.updateHideFromRecents(true) }
+                verify { task.setExcludeFromRecents(true) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents false includes existing app tasks in recents")
+        fun hideFromRecentsFalse() =
+            runTest {
+                val task = mockk<ActivityManager.AppTask>(relaxed = true)
+                val activityManager =
+                    mockk<ActivityManager> {
+                        every { appTasks } returns listOf(task)
+                    }
+                every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        boolean(AdbConfigHandler.EXTRA_HIDE_FROM_RECENTS, false)
+                    }
+                handler.handle(context, intent)
+
+                coVerify { settingsRepository.updateHideFromRecents(false) }
+                verify { task.setExcludeFromRecents(false) }
+            }
+
+        @Test
+        @DisplayName("hide_from_recents is not applied when extra is absent")
+        fun hideFromRecentsAbsent() =
+            runTest {
+                val intent = createIntent(AdbConfigReceiver.ACTION_CONFIGURE)
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
+            }
+
+        @Test
         @DisplayName("https_enabled is applied")
         fun httpsEnabled() =
             runTest {
@@ -339,7 +408,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify(exactly = 0) { settingsRepository.updateCertificateHostname(any()) }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Tunnel Settings")
+    inner class ConfigureTunnelTests {
         @Test
         @DisplayName("tunnel_enabled is applied")
         fun tunnelEnabled() =
@@ -389,6 +462,93 @@ class AdbConfigHandlerTest {
             }
 
         @Test
+        @DisplayName("cloudflare_tunnel_mode FREE is applied")
+        fun cloudflareTunnelModeFree() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_MODE, "FREE")
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateCloudflareTunnelMode(CloudflareTunnelMode.FREE) }
+            }
+
+        @Test
+        @DisplayName("cloudflare_tunnel_mode TOKEN is applied")
+        fun cloudflareTunnelModeToken() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_MODE, "TOKEN")
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateCloudflareTunnelMode(CloudflareTunnelMode.TOKEN) }
+            }
+
+        @Test
+        @DisplayName("invalid cloudflare_tunnel_mode is rejected")
+        fun invalidCloudflareTunnelMode() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_MODE, "INVALID")
+                    }
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateCloudflareTunnelMode(any()) }
+            }
+
+        @Test
+        @DisplayName("cloudflare_tunnel_token is applied")
+        fun cloudflareTunnelToken() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_TOKEN, "eyJhIjoidGVzdCJ9")
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateCloudflareTunnelToken("eyJhIjoidGVzdCJ9") }
+            }
+
+        @Test
+        @DisplayName("empty cloudflare_tunnel_token is ignored")
+        fun emptyCloudflareTunnelToken() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_TOKEN, "")
+                    }
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateCloudflareTunnelToken(any()) }
+            }
+
+        @Test
+        @DisplayName("cloudflare_tunnel_extra_args is applied")
+        fun cloudflareTunnelExtraArgs() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(
+                            AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_EXTRA_ARGS,
+                            "--edge region1.v2.argotunnel.com:7844",
+                        )
+                    }
+                handler.handle(context, intent)
+                coVerify { settingsRepository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844") }
+            }
+
+        @Test
+        @DisplayName("missing cloudflare_tunnel_extra_args leaves setting untouched")
+        fun missingCloudflareTunnelExtraArgsIgnored() =
+            runTest {
+                val intent =
+                    createIntent(AdbConfigReceiver.ACTION_CONFIGURE) {
+                        string(AdbConfigHandler.EXTRA_CLOUDFLARE_TUNNEL_TOKEN, "eyJhIjoidGVzdCJ9")
+                    }
+                handler.handle(context, intent)
+                coVerify(exactly = 0) { settingsRepository.updateCloudflareTunnelExtraArgs(any()) }
+            }
+
+        @Test
         @DisplayName("ngrok_authtoken is applied")
         fun ngrokAuthtoken() =
             runTest {
@@ -411,7 +571,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateNgrokDomain("my-app.ngrok-free.app") }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Storage and Misc Settings")
+    inner class ConfigureStorageAndMiscTests {
         @Test
         @DisplayName("valid file_size_limit_mb is applied")
         fun validFileSizeLimit() =
@@ -519,7 +683,11 @@ class AdbConfigHandlerTest {
                 handler.handle(context, intent)
                 coVerify { settingsRepository.updateDeviceSlug("") }
             }
+    }
 
+    @Nested
+    @DisplayName("ACTION_CONFIGURE - Composite and Edge Cases")
+    inner class ConfigureCompositeTests {
         @Test
         @DisplayName("multiple settings are applied in single broadcast")
         fun multipleSettings() =
@@ -556,6 +724,7 @@ class AdbConfigHandlerTest {
                 coVerify(exactly = 0) { settingsRepository.updateBindingAddress(any()) }
                 coVerify(exactly = 0) { settingsRepository.updatePort(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateAutoStartOnBoot(any()) }
+                coVerify(exactly = 0) { settingsRepository.updateHideFromRecents(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateHttpsEnabled(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateSource(any()) }
                 coVerify(exactly = 0) { settingsRepository.updateCertificateHostname(any()) }

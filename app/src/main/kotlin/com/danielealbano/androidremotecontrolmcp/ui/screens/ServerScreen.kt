@@ -5,7 +5,9 @@ package com.danielealbano.androidremotecontrolmcp.ui.screens
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
@@ -41,41 +45,47 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
+import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
+import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
+import com.danielealbano.androidremotecontrolmcp.ui.components.CalloutCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ConnectionInfoCard
+import com.danielealbano.androidremotecontrolmcp.ui.components.PrivacyModeCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerLogsSection
 import com.danielealbano.androidremotecontrolmcp.ui.components.ServerStatusCard
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.ChannelViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.LogsViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
+import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.PrivacyViewModel
 import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerScreen(
     onNavigateToPermissions: () -> Unit,
+    onShowAllLogs: () -> Unit,
+    onNavigateToNetworkSettings: () -> Unit,
+    onNavigateToTunnelSettings: () -> Unit,
+    onOpenPrivacySettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainViewModel = hiltViewModel(),
     channelViewModel: ChannelViewModel = hiltViewModel(),
+    privacyViewModel: PrivacyViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val logsViewModel: LogsViewModel = hiltViewModel()
 
+    val privacyConfig by privacyViewModel.privacyConfig.collectAsStateWithLifecycle()
+    val privacyCardDismissed by privacyViewModel.privacyCardDismissed.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
     val serverStatus by viewModel.serverStatus.collectAsStateWithLifecycle()
-    val serverLogs by viewModel.serverLogs.collectAsStateWithLifecycle()
+    val recentServerLogs by logsViewModel.recentServerLogs.collectAsStateWithLifecycle()
     val tunnelStatus by viewModel.tunnelStatus.collectAsStateWithLifecycle()
 
     val isAccessibilityEnabled by viewModel.isAccessibilityEnabled.collectAsStateWithLifecycle()
-    val isNotificationPermissionGranted by viewModel.isNotificationPermissionGranted.collectAsStateWithLifecycle()
-    val isCameraPermissionGranted by viewModel.isCameraPermissionGranted.collectAsStateWithLifecycle()
-    val isMicrophonePermissionGranted by viewModel.isMicrophonePermissionGranted.collectAsStateWithLifecycle()
-    val isNotificationListenerEnabled by viewModel.isNotificationListenerEnabled.collectAsStateWithLifecycle()
-
-    val hasAllPermissions =
-        isAccessibilityEnabled &&
-            isNotificationPermissionGranted &&
-            isCameraPermissionGranted &&
-            isMicrophonePermissionGranted &&
-            isNotificationListenerEnabled
+    val isBatteryOptimizationIgnored by viewModel.isBatteryOptimizationIgnored.collectAsStateWithLifecycle()
+    val pendingApprovalCount by viewModel.pendingApprovalCount.collectAsStateWithLifecycle()
 
     val channelConfig by channelViewModel.eventChannelConfig.collectAsStateWithLifecycle()
     val channelStatus by channelViewModel.channelConnectionStatus.collectAsStateWithLifecycle()
@@ -96,13 +106,50 @@ fun ServerScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
         ) {
-            if (!hasAllPermissions) {
+            if (!isAccessibilityEnabled) {
                 PermissionWarningCard(onClick = onNavigateToPermissions)
                 Spacer(Modifier.height(16.dp))
             }
 
             if (!serverConfig.oauthEnabled && !serverConfig.bearerTokenEnabled) {
                 NoAuthWarningCard()
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (!isBatteryOptimizationIgnored) {
+                BatteryOptimizationCard(
+                    onRequestExemption = { viewModel.requestBatteryOptimizationExemption() },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (pendingApprovalCount > 0) {
+                PendingApprovalsCard(
+                    count = pendingApprovalCount,
+                    onClick = { context.startActivity(Intent(context, ApprovalActivity::class.java)) },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (serverConfig.bindingAddress == BindingAddress.LOCALHOST && !serverConfig.tunnelEnabled) {
+                NetworkAccessSuggestionCard(
+                    onEnableWifi = {
+                        viewModel.updateBindingAddress(BindingAddress.NETWORK)
+                        onNavigateToNetworkSettings()
+                    },
+                    onSetUpTunnel = {
+                        viewModel.updateTunnelEnabled(true)
+                        onNavigateToTunnelSettings()
+                    },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (!privacyConfig.enabled && !privacyCardDismissed) {
+                PrivacyModeCard(
+                    onSetupClick = onOpenPrivacySettings,
+                    onDismissClick = { privacyViewModel.dismissPrivacyCard() },
+                )
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -120,6 +167,7 @@ fun ServerScreen(
                     }
                 },
                 onChannelStopClick = { channelViewModel.stopChannel() },
+                startEnabled = isAccessibilityEnabled,
             )
 
             Spacer(Modifier.height(16.dp))
@@ -150,7 +198,8 @@ fun ServerScreen(
             Spacer(Modifier.height(16.dp))
 
             ServerLogsSection(
-                logs = serverLogs,
+                logs = recentServerLogs,
+                onShowMore = onShowAllLogs,
             )
         }
     }
@@ -171,46 +220,53 @@ fun ServerScreen(
 
 @Composable
 private fun NoAuthWarningCard() {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.access_no_auth_warning_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+    CalloutCard(
+        icon = Icons.Default.Warning,
+        title = stringResource(R.string.access_no_auth_warning_title),
+    )
+}
+
+@Composable
+private fun NetworkAccessSuggestionCard(
+    onEnableWifi: () -> Unit,
+    onSetUpTunnel: () -> Unit,
+) {
+    CalloutCard(
+        icon = Icons.Default.Info,
+        title = stringResource(R.string.server_network_access_suggestion_title),
+    ) {
+        TextButton(onClick = onEnableWifi) {
+            Text(stringResource(R.string.server_network_access_suggestion_wifi))
+        }
+        TextButton(onClick = onSetUpTunnel) {
+            Text(stringResource(R.string.server_network_access_suggestion_tunnel))
+        }
+    }
+}
+
+@Composable
+private fun PendingApprovalsCard(
+    count: Int,
+    onClick: () -> Unit,
+) {
+    CalloutCard(
+        icon = Icons.Default.Notifications,
+        title = stringResource(R.string.server_pending_approvals_title, count),
+    ) {
+        TextButton(onClick = onClick) {
+            Text(stringResource(R.string.server_pending_approvals_action))
         }
     }
 }
 
 @Composable
 private fun PermissionWarningCard(onClick: () -> Unit) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    CalloutCard(
+        icon = Icons.Default.Warning,
+        title = stringResource(R.string.permission_warning_title),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.permission_warning_message),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        TextButton(onClick = onClick) {
+            Text(stringResource(R.string.permission_warning_action))
         }
     }
 }

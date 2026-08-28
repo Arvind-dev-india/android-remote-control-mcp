@@ -19,6 +19,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementF
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementInfo
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.FindBy
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowData
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -136,7 +137,7 @@ class UtilityToolsTest {
     @Nested
     @DisplayName("GetClipboardTool")
     inner class GetClipboardToolTests {
-        private val tool = GetClipboardTool(mockAccessibilityServiceProvider)
+        private val tool = GetClipboardTool(mockAccessibilityServiceProvider, PrivacyToolTestDoubles.passthroughGate())
 
         @Test
         fun `returns clipboard text`() =
@@ -172,7 +173,8 @@ class UtilityToolsTest {
     @Nested
     @DisplayName("SetClipboardTool")
     inner class SetClipboardToolTests {
-        private val tool = SetClipboardTool(mockAccessibilityServiceProvider)
+        private val tool =
+            SetClipboardTool(mockAccessibilityServiceProvider, PrivacyToolTestDoubles.identitySubstitutor())
 
         @Test
         fun `sets clipboard text`() =
@@ -199,7 +201,14 @@ class UtilityToolsTest {
     @DisplayName("WaitForNodeTool")
     inner class WaitForNodeToolTests {
         private val tool =
-            WaitForNodeTool(mockTreeParser, mockElementFinder, mockAccessibilityServiceProvider, mockNodeCache)
+            WaitForNodeTool(
+                mockTreeParser,
+                mockElementFinder,
+                mockAccessibilityServiceProvider,
+                mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+                PrivacyToolTestDoubles.identitySubstitutor(),
+            )
 
         @Test
         fun `finds node on first attempt`() =

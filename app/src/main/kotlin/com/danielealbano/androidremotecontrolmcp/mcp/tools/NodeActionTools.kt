@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.accessibility.AccessibilityWindowInfo
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PlaceholderSubstitutor
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
@@ -48,6 +50,8 @@ class FindNodesTool
         private val elementFinder: ElementFinder,
         private val accessibilityServiceProvider: AccessibilityServiceProvider,
         private val nodeCache: AccessibilityNodeCache,
+        private val privacyToolGate: PrivacyToolGate,
+        private val substitutor: PlaceholderSubstitutor,
     ) {
         @Suppress("ThrowsCount")
         suspend fun execute(arguments: JsonObject?): CallToolResult {
@@ -56,13 +60,16 @@ class FindNodesTool
                 arguments?.get("by")?.jsonPrimitive?.contentOrNull
                     ?: throw McpToolException.InvalidParams("Missing required parameter 'by'")
 
-            val value =
+            val rawValue =
                 arguments["value"]?.jsonPrimitive?.contentOrNull
                     ?: throw McpToolException.InvalidParams("Missing required parameter 'value'")
 
-            if (value.isEmpty()) {
+            if (rawValue.isEmpty()) {
                 throw McpToolException.InvalidParams("Parameter 'value' must be non-empty")
             }
+
+            // Reverse any pseudonym placeholder so the search matches the real on-screen value.
+            val value = substitutor.substitute(rawValue)
 
             val exactMatch = arguments["exact_match"]?.jsonPrimitive?.booleanOrNull ?: false
 
@@ -78,14 +85,23 @@ class FindNodesTool
             // Search across all windows
             val elements = elementFinder.findElements(result.windows, findBy, value, exactMatch)
 
-            Log.d(TAG, "find_nodes: by=$byStr, value='$value', exactMatch=$exactMatch, found=${elements.size}")
+            Log.d(TAG, "find_nodes: by=$byStr, found=${elements.size}")
+
+            val redactedFields =
+                privacyToolGate.texts(
+                    elements.flatMap { listOf(it.text to "node text", it.contentDescription to "node description") },
+                )
+            val redactedElements =
+                elements.mapIndexed { index, element ->
+                    element.copy(text = redactedFields[index * 2], contentDescription = redactedFields[index * 2 + 1])
+                }
 
             val resultJson =
                 buildJsonObject {
                     put(
                         "nodes",
                         buildJsonArray {
-                            elements.forEach { element ->
+                            redactedElements.forEach { element ->
                                 add(McpToolUtils.buildNodeJson(element))
                             }
                         },
@@ -96,10 +112,11 @@ class FindNodesTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Find UI nodes matching the specified criteria " +
@@ -177,10 +194,11 @@ class ClickNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Click the specified accessibility node by node ID. " +
@@ -237,10 +255,11 @@ class LongClickNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Long-click the specified accessibility node by node ID. " +
@@ -343,10 +362,11 @@ class TapNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a gesture-based tap at a random point within the bounds of the " +
@@ -561,10 +581,11 @@ class ScrollToNodeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Scroll to make the specified node visible. Returns after the action is performed.",
                 inputSchema =
@@ -797,34 +818,36 @@ private fun getFreshWindowsLocked(
  */
 @Suppress("LongParameterList")
 fun registerNodeActionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     elementFinder: ElementFinder,
     actionExecutor: ActionExecutor,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     nodeCache: AccessibilityNodeCache,
+    privacyToolGate: PrivacyToolGate,
+    substitutor: PlaceholderSubstitutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(FindNodesTool.TOOL_NAME)) {
-        FindNodesTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+        FindNodesTool(treeParser, elementFinder, accessibilityServiceProvider, nodeCache, privacyToolGate, substitutor)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ClickNodeTool.TOOL_NAME)) {
         ClickNodeTool(treeParser, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(LongClickNodeTool.TOOL_NAME)) {
         LongClickNodeTool(treeParser, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(TapNodeTool.TOOL_NAME)) {
         TapNodeTool(treeParser, elementFinder, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
     if (perms.isToolEnabled(ScrollToNodeTool.TOOL_NAME)) {
         ScrollToNodeTool(treeParser, elementFinder, actionExecutor, accessibilityServiceProvider, nodeCache)
-            .register(server, toolNamePrefix)
+            .register(registrar, toolNamePrefix)
     }
 }
 

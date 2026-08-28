@@ -168,9 +168,9 @@ Plan <N>: <Short descriptive title>
 
 Releases are created automatically via GitHub Actions when a semantic version tag is pushed. The workflow creates a **draft** release (never auto-published) with:
 - Debug and release APKs attached with proper names
-- AI-generated release note summary (via GitHub Models)
-- Auto-generated list of merged PRs
-- Link to the full changelog diff
+- GitHub's native auto-generated release notes (list of merged PRs + link to the full changelog diff)
+
+The draft body is populated with GitHub's native release notes; you finalize it manually before publishing.
 
 ### Creating a Release
 
@@ -202,18 +202,15 @@ Tags MUST follow semantic versioning with a `v` prefix:
 
 ### VERSION_CODE Derivation
 
-The `VERSION_CODE` (Android integer version) is automatically computed from the tag:
+The Android `versionCode` is **derived from git history** by Gradle (`getGitVersionCode` in `app/build.gradle.kts`) — it is never hardcoded and is not taken from the tag:
 
-**Formula**: `MAJOR × 1,000,000 + MINOR × 10,000 + PATCH × 100 + OFFSET`
+**Formula**: `versionCode = (2,000,000 + <commits reachable from HEAD>) × 10 + (dirty ? 1 : 0)`
 
-| Pre-release type | Offset | Example tag | VERSION_CODE |
-|-----------------|--------|-------------|-------------|
-| `alpha` | 01 | `v1.2.3-alpha` | `1020301` |
-| `beta` | 10 | `v1.2.3-beta` | `1020310` |
-| `rc{N}` | 20+N | `v1.2.3-rc1` | `1020321` |
-| stable (no suffix) | 99 | `v1.2.3` | `1020399` |
+- The commit count (`git rev-list --count HEAD`) is strictly increasing on `main`, so every commit/merge auto-increments the code with no manual bumping.
+- The `2,000,000` base clears the ceiling of the previous scheme (max `1,090,099` for `v1.9.0`) so codes never regress below already-shipped builds.
+- The trailing digit marks a dirty working tree (uncommitted changes to tracked files) so a local dirty build sorts above the clean build at the same commit.
 
-This ensures correct ordering: `alpha < beta < rc1 < rc2 < ... < release`.
+Requires a **full git checkout**: a shallow clone or a git-less source tree cannot derive the code and the build fails at configuration (pass `-PVERSION_CODE=<integer>` to override). CI and release jobs check out with `fetch-depth: 0` for this reason.
 
 ### APK Naming
 
@@ -224,8 +221,8 @@ Attached APKs follow this naming convention:
 ### Pipeline Behavior
 
 1. **CI Gate**: The workflow waits for the CI pipeline (`Build Release` check) to pass on the tagged commit before proceeding. If CI hasn't completed yet, it polls until it finishes or the job timeout (150 minutes) is reached.
-2. **Build**: APKs are built with `VERSION_NAME` and `VERSION_CODE` injected from the tag.
-3. **Release Notes**: AI-generated summary + auto-generated PR list + changelog link. If AI generation fails, the release is created without the summary section.
+2. **Build**: APKs are built with `VERSION_NAME` injected from the tag; the `versionCode` is derived by Gradle from git history (not from the tag).
+3. **Release Notes**: GitHub's native auto-generated notes (`gh release create --generate-notes`) — merged PR list + full changelog link. Finalize the draft body manually before publishing.
 4. **Draft Release**: Created as draft — you must manually review and publish.
 
 ### Prerequisites and Limitations

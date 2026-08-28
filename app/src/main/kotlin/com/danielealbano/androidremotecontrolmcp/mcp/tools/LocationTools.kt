@@ -5,8 +5,8 @@ package com.danielealbano.androidremotecontrolmcp.mcp.tools
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.location.LocationProvider
-import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.JsonObject
@@ -23,6 +23,7 @@ class GetLocationHandler
     @Inject
     constructor(
         private val locationProvider: LocationProvider,
+        private val privacyToolGate: PrivacyToolGate,
     ) {
         suspend fun execute(
             arguments: JsonObject?,
@@ -46,23 +47,25 @@ class GetLocationHandler
             }
 
             val locationData = result.getOrThrow()
+            val redactedStreet = privacyToolGate.text(locationData.street, "address")
             val jsonResult =
                 buildJsonObject {
                     put("latitude", locationData.latitude)
                     put("longitude", locationData.longitude)
                     put("accuracy_meters", locationData.accuracyMeters)
-                    put("street", locationData.street)
+                    put("street", redactedStreet)
                 }
 
             return McpToolUtils.untrustedTextResult(jsonResult.toString())
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
             freshFixParamEnabled: Boolean,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Retrieves the device's current location including coordinates, accuracy, " +
@@ -99,14 +102,15 @@ class GetLocationHandler
     }
 
 fun registerLocationTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     locationProvider: LocationProvider,
+    privacyToolGate: PrivacyToolGate,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
     if (perms.isToolEnabled(GetLocationHandler.TOOL_NAME)) {
-        GetLocationHandler(locationProvider).register(
-            server,
+        GetLocationHandler(locationProvider, privacyToolGate).register(
+            registrar,
             toolNamePrefix,
             freshFixParamEnabled =
                 perms.isParamEnabled(

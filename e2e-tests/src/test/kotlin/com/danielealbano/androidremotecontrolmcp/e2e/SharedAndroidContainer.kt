@@ -17,9 +17,9 @@ object SharedAndroidContainer {
 
     /**
      * Path to the debug APK, relative to the project root.
-     * Must be built before running E2E tests: `./gradlew assembleDebug`
+     * Must be built before running E2E tests: `./gradlew assembleGmsDebug`
      */
-    private const val APK_RELATIVE_PATH = "app/build/outputs/apk/debug/app-debug.apk"
+    private const val APK_RELATIVE_PATH = "app/build/outputs/apk/gms/debug/app-gms-debug.apk"
 
     /**
      * Path to the compose test app APK, relative to the project root.
@@ -78,6 +78,10 @@ object SharedAndroidContainer {
 
             try {
                 println("[SharedAndroidContainer] Initializing shared container...")
+
+                // Expose the fixture HTTP server port to the container BEFORE it starts
+                // (Testcontainers requires exposeHostPorts before container start).
+                org.testcontainers.Testcontainers.exposeHostPorts(FixtureHttpServer.FIXTURE_HTTP_PORT)
 
                 val c = AndroidContainerSetup.createContainer()
                 c.start() // ADB-based boot wait strategy runs inside start()
@@ -157,6 +161,26 @@ object SharedAndroidContainer {
     fun ensureAccessibilityService() {
         ensureInitialized()
         AndroidContainerSetup.ensureAccessibilityService()
+    }
+
+    /**
+     * Replaces the cached MCP client with a freshly connected one. Required after the
+     * app process is killed (e.g. by a runtime-permission revoke): the cached client's
+     * MCP session dies with the process, and later test classes read [mcpClient].
+     */
+    fun refreshMcpClient(): McpClient {
+        ensureInitialized()
+        synchronized(lock) {
+            try {
+                runBlocking { _mcpClient?.close() }
+            } catch (_: Exception) {
+                // Best-effort close of a dead session
+            }
+            val client = McpClient(mcpServerUrl, AndroidContainerSetup.E2E_BEARER_TOKEN)
+            runBlocking { client.connect() }
+            _mcpClient = client
+            return client
+        }
     }
 
     init {

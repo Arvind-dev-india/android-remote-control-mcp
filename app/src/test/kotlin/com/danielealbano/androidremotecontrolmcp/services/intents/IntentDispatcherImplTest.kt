@@ -554,6 +554,62 @@ class IntentDispatcherImplTest {
             }
     }
 
+    // ─── sendIntent package tests ────────────────────────────────────────
+
+    @Nested
+    @DisplayName("sendIntent package")
+    inner class SendIntentPackage {
+        @Test
+        fun `sendIntent with package scopes intent via setPackage`() =
+            runTest {
+                val result =
+                    dispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "broadcast",
+                            action = "com.example.ACTION",
+                            packageName = "com.example.app",
+                        ),
+                    )
+
+                assertTrue(result.isSuccess)
+                verify(exactly = 1) { anyConstructed<Intent>().setPackage("com.example.app") }
+            }
+
+        @Test
+        fun `sendIntent without package does not call setPackage`() =
+            runTest {
+                val result =
+                    dispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "broadcast",
+                            action = "com.example.ACTION",
+                        ),
+                    )
+
+                assertTrue(result.isSuccess)
+                verify(exactly = 0) { anyConstructed<Intent>().setPackage(any()) }
+            }
+
+        @Test
+        fun `sendIntent with package and component applies both`() =
+            runTest {
+                every { anyConstructed<Intent>().setComponent(any()) } answers { self as Intent }
+
+                val result =
+                    dispatcher.sendIntent(
+                        SendIntentRequest(
+                            type = "activity",
+                            component = "com.example.app/com.example.app.MyActivity",
+                            packageName = "com.example.app",
+                        ),
+                    )
+
+                assertTrue(result.isSuccess)
+                verify(exactly = 1) { anyConstructed<Intent>().setComponent(any()) }
+                verify(exactly = 1) { anyConstructed<Intent>().setPackage("com.example.app") }
+            }
+    }
+
     // ─── sendIntent exception handling tests ─────────────────────────────
 
     @Nested

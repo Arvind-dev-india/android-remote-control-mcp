@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinAccessLevel
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.StorageBackend
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
@@ -144,8 +145,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — 4 builtins + 1 SAF location
-                assertEquals(5, result.size)
+                // Assert — 6 builtins + 1 SAF location
+                assertEquals(7, result.size)
                 val location = result.last()
                 assertEquals("com.test.provider/primary:Documents", location.id)
                 assertEquals("Documents", location.name)
@@ -169,8 +170,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — only 4 builtins, no SAF locations
-                assertEquals(4, result.size)
+                // Assert — only 6 builtins, no SAF locations
+                assertEquals(6, result.size)
                 assertTrue(result.all { it.isBuiltin })
             }
 
@@ -210,8 +211,8 @@ class StorageLocationProviderTest {
                 // Act
                 val result = provider.getAllLocations()
 
-                // Assert — 4 builtins + 1 SAF location
-                assertEquals(5, result.size)
+                // Assert — 6 builtins + 1 SAF location
+                assertEquals(7, result.size)
                 val location = result.last()
                 assertEquals("com.test.provider/primary:Documents", location.id)
                 assertEquals("Documents", location.name)
@@ -1189,19 +1190,21 @@ class StorageLocationProviderTest {
                 val result = provider.getAllLocations()
 
                 // Assert — builtins come first
-                assertEquals(5, result.size)
+                assertEquals(7, result.size)
                 assertTrue(result[0].isBuiltin)
                 assertTrue(result[1].isBuiltin)
                 assertTrue(result[2].isBuiltin)
                 assertTrue(result[3].isBuiltin)
-                assertFalse(result[4].isBuiltin)
-                assertEquals("com.test.provider/primary:Documents", result[4].id)
+                assertTrue(result[4].isBuiltin)
+                assertTrue(result[5].isBuiltin)
+                assertFalse(result[6].isBuiltin)
+                assertEquals("com.test.provider/primary:Documents", result[6].id)
 
                 unmockkStatic(Uri::class)
             }
 
         @Test
-        fun `getAllLocations returns 4 builtins when no SAF locations`() =
+        fun `getAllLocations returns six builtin locations`() =
             runTest {
                 // Arrange
                 coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
@@ -1210,12 +1213,14 @@ class StorageLocationProviderTest {
                 val result = provider.getAllLocations()
 
                 // Assert
-                assertEquals(4, result.size)
+                assertEquals(6, result.size)
                 assertTrue(result.all { it.isBuiltin })
                 assertEquals("builtin:downloads", result[0].id)
                 assertEquals("builtin:pictures", result[1].id)
                 assertEquals("builtin:movies", result[2].id)
                 assertEquals("builtin:music", result[3].id)
+                assertEquals("builtin:dcim", result[4].id)
+                assertEquals("builtin:recordings", result[5].id)
             }
 
         @Test
@@ -1311,43 +1316,7 @@ class StorageLocationProviderTest {
             }
 
         @Test
-        fun `isAllFilesMode returns false when permission not granted`() =
-            runTest {
-                // Arrange — pictures has readMediaPermission
-                every { mockPermissionChecker.hasPermission(any()) } returns false
-
-                // Act
-                val result = provider.isAllFilesMode("builtin:pictures")
-
-                // Assert
-                assertFalse(result)
-            }
-
-        @Test
-        fun `isAllFilesMode returns true when permission granted`() =
-            runTest {
-                // Arrange
-                every {
-                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
-                } returns true
-
-                // Act
-                val result = provider.isAllFilesMode("builtin:pictures")
-
-                // Assert
-                assertTrue(result)
-            }
-
-        @Test
-        fun `isAllFilesMode returns false for downloads`() =
-            runTest {
-                // Downloads has no readMediaPermission
-                val result = provider.isAllFilesMode("builtin:downloads")
-                assertFalse(result)
-            }
-
-        @Test
-        fun `builtin name shows Only owned files when permission not granted`() =
+        fun `builtin name is Only owned files when no permission granted`() =
             runTest {
                 // Arrange
                 coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
@@ -1359,13 +1328,34 @@ class StorageLocationProviderTest {
                 // Assert
                 val pictures = result.find { it.id == "builtin:pictures" }
                 assertNotNull(pictures)
-                assertTrue(pictures!!.name.contains("Only owned files"))
+                assertEquals("Pictures - Only owned files", pictures!!.name)
             }
 
         @Test
-        fun `builtin name shows All files when permission granted`() =
+        fun `builtin name is All files when all permissions granted`() =
             runTest {
                 // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals("Pictures - All files", pictures!!.name)
+            }
+
+        @Test
+        fun `builtin name enumerates types on partial grant`() =
+            runTest {
+                // Arrange — images granted, videos not
                 coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
                 every {
                     mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
@@ -1377,7 +1367,330 @@ class StorageLocationProviderTest {
                 // Assert
                 val pictures = result.find { it.id == "builtin:pictures" }
                 assertNotNull(pictures)
-                assertTrue(pictures!!.name.contains("All files"))
+                assertEquals("Pictures - All images, owned videos", pictures!!.name)
+            }
+
+        @Test
+        fun `downloads name is always Only owned files`() =
+            runTest {
+                // Arrange — even with every permission granted
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every { mockPermissionChecker.hasPermission(any()) } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val downloads = result.find { it.id == "builtin:downloads" }
+                assertNotNull(downloads)
+                assertEquals("Downloads - Only owned files", downloads!!.name)
+            }
+
+        @Test
+        fun `dcim location present with Camera display base`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val dcim = result.find { it.id == "builtin:dcim" }
+                assertNotNull(dcim)
+                assertTrue(dcim!!.name.startsWith("Camera (DCIM)"))
+                assertEquals("/DCIM", dcim.path)
+            }
+
+        @Test
+        fun `recordings name is Only owned files when audio not granted`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every { mockPermissionChecker.hasPermission(any()) } returns false
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("Recordings - Only owned files", recordings!!.name)
+            }
+
+        @Test
+        fun `recordings name is All files when audio granted`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("Recordings - All files", recordings!!.name)
+            }
+
+        @Test
+        fun `recordings location present with Recordings path`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val recordings = result.find { it.id == "builtin:recordings" }
+                assertNotNull(recordings)
+                assertEquals("/Recordings", recordings!!.path)
+            }
+
+        @Test
+        fun `pictures name is Selected files only under partial access`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals("Pictures - Selected files only", pictures!!.name)
+            }
+
+        @Test
+        fun `dcim name is Selected files only under partial access`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val dcim = result.find { it.id == "builtin:dcim" }
+                assertNotNull(dcim)
+                assertEquals("Camera (DCIM) - Selected files only", dcim!!.name)
+            }
+
+        @Test
+        fun `music name unaffected by partial visual access`() =
+            runTest {
+                // Arrange — visual selection granted, audio not granted
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val music = result.find { it.id == "builtin:music" }
+                assertNotNull(music)
+                assertEquals("Music - Only owned files", music!!.name)
+            }
+
+        @Test
+        fun `access level is full when all permissions granted`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals(BuiltinAccessLevel.FULL, pictures!!.accessLevel)
+            }
+
+        @Test
+        fun `full access wins over lingering user selected grant`() =
+            runTest {
+                // Arrange — all-granted must be checked before hasPartialVisualAccess
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
+                } returns true
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals(BuiltinAccessLevel.FULL, pictures!!.accessLevel)
+                assertEquals("Pictures - All files", pictures.name)
+            }
+
+        @Test
+        fun `access level is partial under visual selection`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals(BuiltinAccessLevel.PARTIAL, pictures!!.accessLevel)
+            }
+
+        @Test
+        fun `access level is partial on per-type mixed grant`() =
+            runTest {
+                // Arrange — images granted, videos not, no visual selection
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals(BuiltinAccessLevel.PARTIAL, pictures!!.accessLevel)
+            }
+
+        @Test
+        fun `access level is owned only without grants`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every { mockPermissionChecker.hasPermission(any()) } returns false
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val pictures = result.find { it.id == "builtin:pictures" }
+                assertNotNull(pictures)
+                assertEquals(BuiltinAccessLevel.OWNED_ONLY, pictures!!.accessLevel)
+                val downloads = result.find { it.id == "builtin:downloads" }
+                assertNotNull(downloads)
+                assertEquals(BuiltinAccessLevel.OWNED_ONLY, downloads!!.accessLevel)
+            }
+
+        @Test
+        fun `downloads access level ignores visual selection`() =
+            runTest {
+                // Arrange
+                coEvery { mockSettingsRepository.getStoredLocations() } returns emptyList()
+                every {
+                    mockPermissionChecker.hasPermission(
+                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    )
+                } returns true
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val downloads = result.find { it.id == "builtin:downloads" }
+                assertNotNull(downloads)
+                assertEquals(BuiltinAccessLevel.OWNED_ONLY, downloads!!.accessLevel)
+            }
+
+        @Test
+        fun `saf location has null access level`() =
+            runTest {
+                // Arrange
+                val treeUriString = "content://com.test.provider/tree/primary%3ADocuments"
+                val storedLocation =
+                    SettingsRepository.StoredLocation(
+                        id = "com.test.provider/primary:Documents",
+                        name = "Documents",
+                        path = "/Documents",
+                        description = "My documents",
+                        treeUri = treeUriString,
+                        allowWrite = true,
+                        allowDelete = false,
+                    )
+                coEvery { mockSettingsRepository.getStoredLocations() } returns listOf(storedLocation)
+
+                val mockTreeUri = mockk<Uri>()
+                mockkStatic(Uri::class)
+                every { Uri.parse(treeUriString) } returns mockTreeUri
+                every { mockTreeUri.authority } returns "com.test.provider"
+
+                every {
+                    DocumentsContract.getTreeDocumentId(mockTreeUri)
+                } returns "primary:Documents"
+
+                val mockRootsUri = mockk<Uri>()
+                every { DocumentsContract.buildRootsUri("com.test.provider") } returns mockRootsUri
+
+                val mockCursor = mockk<Cursor>()
+                every {
+                    mockContentResolver.query(eq(mockRootsUri), any(), any(), any(), any())
+                } returns mockCursor
+
+                every {
+                    mockCursor.getColumnIndex(DocumentsContract.Root.COLUMN_ROOT_ID)
+                } returns 0
+                every {
+                    mockCursor.getColumnIndex(DocumentsContract.Root.COLUMN_AVAILABLE_BYTES)
+                } returns 1
+                every { mockCursor.moveToNext() } returnsMany listOf(true, false)
+                every { mockCursor.getString(0) } returns "primary"
+                every { mockCursor.isNull(1) } returns false
+                every { mockCursor.getLong(1) } returns 5_000_000_000L
+                every { mockCursor.close() } just Runs
+
+                // Act
+                val result = provider.getAllLocations()
+
+                // Assert
+                val saf = result.last()
+                assertEquals("com.test.provider/primary:Documents", saf.id)
+                assertNull(saf.accessLevel)
+
+                unmockkStatic(Uri::class)
             }
 
         @Test

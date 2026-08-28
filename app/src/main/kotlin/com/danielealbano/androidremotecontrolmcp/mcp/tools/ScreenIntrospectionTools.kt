@@ -6,10 +6,12 @@ import android.graphics.Bitmap
 import android.util.Log
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.mcp.McpToolException
+import com.danielealbano.androidremotecontrolmcp.privacy.PrivacyToolGate
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeCache
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityNodeData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityServiceProvider
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.AccessibilityTreeParser
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.CompactTreeFormatter
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.MultiWindowResult
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ScreenInfo
@@ -22,6 +24,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.formatMu
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotRedactor
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
@@ -62,6 +65,8 @@ class GetScreenStateHandler
         private val nodeCache: AccessibilityNodeCache,
         private val screenStateSnapshotCache: ScreenStateSnapshotCache,
         private val webViewNodeMerger: WebViewNodeMerger,
+        private val privacyToolGate: PrivacyToolGate,
+        private val screenshotRedactor: ScreenshotRedactor,
     ) {
         @Volatile private var includeScreenshotEnabled: Boolean = true
 
@@ -96,14 +101,19 @@ class GetScreenStateHandler
             // The node cache (used by element/action tools) is populated by getFreshWindows from the
             // original tree; the merge only collapses the tree shown to the LLM. Merged anchors keep
             // their original ids, so taps still resolve.
-            val result = webViewNodeMerger.merge(getFreshWindows(treeParser, accessibilityServiceProvider, nodeCache))
+            val rawResult =
+                webViewNodeMerger.merge(getFreshWindows(treeParser, accessibilityServiceProvider, nodeCache))
+            // Redact the tree BEFORE anything downstream: the snapshot stores the REDACTED tree so paged
+            // output and pseudonym mappings stay consistent. Fail-closed errors propagate as a tool error.
+            val processed = privacyToolGate.tree(rawResult)
+            val result = processed.result
             val screenInfo = accessibilityServiceProvider.getScreenInfo()
             val totalKept = compactTreeFormatter.countKeptNodes(result)
             val totalPages = ceilDiv(totalKept, CompactTreeFormatter.PAGE_SIZE)
             val compactOutput = buildFreshPageText(result, screenInfo, totalKept, totalPages)
             Log.d(TAG, "get_screen_state: includeScreenshot=$includeScreenshot pages=$totalPages")
             return if (includeScreenshot) {
-                buildScreenshotResult(result, screenInfo, compactOutput)
+                buildScreenshotResult(result, screenInfo, compactOutput, processed.flaggedBounds)
             } else {
                 McpToolUtils.untrustedTextResult(compactOutput)
             }
@@ -173,6 +183,7 @@ class GetScreenStateHandler
             result: MultiWindowResult,
             screenInfo: ScreenInfo,
             compactOutput: String,
+            flaggedBounds: List<BoundsData>,
         ): CallToolResult {
             if (!screenCaptureProvider.isScreenCaptureAvailable()) {
                 throw McpToolException.PermissionDenied(
@@ -194,15 +205,18 @@ class GetScreenStateHandler
                     )
                 }
 
+            // Paint opaque boxes over flagged node bounds BEFORE annotation so PII never reaches the pixels.
+            val maskedBitmap =
+                screenshotRedactor.mask(resizedBitmap, flaggedBounds, screenInfo.width, screenInfo.height)
             var annotatedBitmap: Bitmap? = null
             try {
                 // Collect on-screen elements from ALL windows' trees
                 val onScreenElements = collectOnScreenElements(result.windows)
 
-                // Annotate the screenshot with bounding boxes
+                // Annotate the (masked) screenshot with bounding boxes
                 annotatedBitmap =
                     screenshotAnnotator.annotate(
-                        resizedBitmap,
+                        maskedBitmap,
                         onScreenElements,
                         screenInfo.width,
                         screenInfo.height,
@@ -229,6 +243,7 @@ class GetScreenStateHandler
                 )
             } finally {
                 annotatedBitmap?.recycle()
+                if (maskedBitmap !== resizedBitmap) maskedBitmap.recycle()
                 resizedBitmap.recycle()
             }
         }
@@ -258,12 +273,13 @@ class GetScreenStateHandler
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
             includeScreenshotParamEnabled: Boolean = true,
         ) {
             includeScreenshotEnabled = includeScreenshotParamEnabled
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Returns the current screen state: app info, screen dimensions, " +
@@ -345,7 +361,7 @@ class GetScreenStateHandler
  */
 @Suppress("LongParameterList")
 fun registerScreenIntrospectionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     treeParser: AccessibilityTreeParser,
     accessibilityServiceProvider: AccessibilityServiceProvider,
     screenCaptureProvider: ScreenCaptureProvider,
@@ -355,6 +371,8 @@ fun registerScreenIntrospectionTools(
     nodeCache: AccessibilityNodeCache,
     screenStateSnapshotCache: ScreenStateSnapshotCache,
     webViewNodeMerger: WebViewNodeMerger,
+    privacyToolGate: PrivacyToolGate,
+    screenshotRedactor: ScreenshotRedactor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
@@ -369,8 +387,10 @@ fun registerScreenIntrospectionTools(
             nodeCache,
             screenStateSnapshotCache,
             webViewNodeMerger,
+            privacyToolGate,
+            screenshotRedactor,
         ).register(
-            server,
+            registrar,
             toolNamePrefix,
             includeScreenshotParamEnabled = perms.isParamEnabled(GetScreenStateHandler.TOOL_NAME, "include_screenshot"),
         )

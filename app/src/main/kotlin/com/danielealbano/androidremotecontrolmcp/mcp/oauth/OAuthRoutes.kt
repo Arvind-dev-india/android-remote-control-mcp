@@ -1,5 +1,7 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.geo.GeoLocation
 import com.danielealbano.androidremotecontrolmcp.mcp.canonicalResource
 import com.danielealbano.androidremotecontrolmcp.mcp.effectiveBaseUrl
 import io.ktor.http.ContentType
@@ -67,7 +69,14 @@ private suspend fun ApplicationCall.handleRegister(deps: OAuthRouteDeps) {
         respondOAuthError(HttpStatusCode.BadRequest, "invalid_request")
         return
     }
-    if (redirectUris.isEmpty() || redirectUris.any { !OAuthPolicy.isAllowedRedirectUri(it) }) {
+    val rejectedRedirectUris = redirectUris.filterNot(OAuthPolicy::isAllowedRedirectUri)
+    if (redirectUris.isEmpty() || rejectedRedirectUris.isNotEmpty()) {
+        if (rejectedRedirectUris.isNotEmpty()) {
+            deps.serverLog.log(
+                ServerLogEntry.Type.OAUTH,
+                "OAuth client registration rejected redirect URI(s): ${rejectedRedirectUris.joinToString()}",
+            )
+        }
         respondOAuthError(HttpStatusCode.BadRequest, "invalid_redirect_uri")
         return
     }
@@ -95,6 +104,10 @@ private suspend fun ApplicationCall.handleRegister(deps: OAuthRouteDeps) {
             client.logoUri?.let { put("logo_uri", it) }
         }
     respondText(Json.encodeToString(json), ContentType.Application.Json, HttpStatusCode.Created)
+    deps.serverLog.log(
+        ServerLogEntry.Type.OAUTH,
+        "OAuth client registered: ${client.clientName ?: client.clientId}",
+    )
 }
 
 private suspend fun ApplicationCall.handleAuthorize(
@@ -143,6 +156,7 @@ private suspend fun ApplicationCall.handleAuthorize(
             ),
             deps.nowMs(),
         )
+    deps.logAuthorizationRequested(displayName, clientIp, clientGeo)
     pendingAuthorize.put(
         approval.id,
         PendingAuthorizeRequest(
@@ -157,6 +171,23 @@ private suspend fun ApplicationCall.handleAuthorize(
         deps.nowMs(),
     )
     respondConsentPage(approval, displayName, safeClient.logoUri, redirectHost, deps.nowMs())
+}
+
+/** Logs an OAUTH authorization-request entry annotated with the client's IP and geolocation (never tokens). */
+private fun OAuthRouteDeps.logAuthorizationRequested(
+    displayName: String,
+    clientIp: String?,
+    clientGeo: GeoLocation?,
+) {
+    val geoText =
+        clientGeo
+            ?.let { geo -> listOfNotNull(geo.city, geo.countryCode).joinToString(", ") }
+            ?.takeIf { it.isNotEmpty() }
+    val originText = listOfNotNull(clientIp, geoText).joinToString(" — ").takeIf { it.isNotEmpty() }
+    serverLog.log(
+        ServerLogEntry.Type.OAUTH,
+        "OAuth authorization requested by $displayName" + (originText?.let { " from $it" } ?: ""),
+    )
 }
 
 /** Validates the non-redirect authorize params; returns an OAuth error code, or null when valid. */

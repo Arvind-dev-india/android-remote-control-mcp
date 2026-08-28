@@ -23,6 +23,8 @@ sealed class SettingsRoute(
 
     data object Security : SettingsRoute("settings/security")
 
+    data object Privacy : SettingsRoute("settings/privacy")
+
     data object Tunnel : SettingsRoute("settings/tunnel")
 
     data object McpTools : SettingsRoute("settings/mcp_tools")
@@ -36,10 +38,12 @@ sealed class SettingsRoute(
     data object NotificationFilter : SettingsRoute("settings/channel/notification_filter")
 
     data object WifiMonitor : SettingsRoute("settings/channel/wifi_monitor")
+}
 
-    data object GeofenceList : SettingsRoute("settings/channel/geofence_list")
+sealed class ServerRoute(
+    val route: String,
+) {
+    data object Index : ServerRoute("server/index")
 
-    data object GeofenceMap : SettingsRoute("settings/channel/geofence_map/{zoneId}") {
-        fun createRoute(zoneId: String? = null): String = "settings/channel/geofence_map/${zoneId ?: ""}"
-    }
+    data object Logs : ServerRoute("server/logs")
 }

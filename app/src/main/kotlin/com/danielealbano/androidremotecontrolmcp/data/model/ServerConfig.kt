@@ -11,6 +11,7 @@ package com.danielealbano.androidremotecontrolmcp.data.model
  * @property bindingAddress The network binding address.
  * @property bearerToken The bearer token for MCP request authentication.
  * @property autoStartOnBoot Whether to start the MCP server on device boot.
+ * @property toolCallIndicatorEnabled Whether to show an on-device overlay during MCP tool calls.
  * @property httpsEnabled Whether HTTPS is enabled (disabled by default).
  * @property certificateSource The source of the HTTPS certificate.
  * @property certificateHostname The hostname for auto-generated certificates.
@@ -33,12 +34,14 @@ package com.danielealbano.androidremotecontrolmcp.data.model
  *   auto-generates a token.
  * @property publicUrlOverride Optional public base URL that pins the host used for OAuth metadata and
  *   share links (empty = auto-detect from the request).
+ * @property hideFromRecents Whether to exclude the app from Android's Recent Apps / Overview screen.
  */
 data class ServerConfig(
     val port: Int = DEFAULT_PORT,
     val bindingAddress: BindingAddress = BindingAddress.LOCALHOST,
     val bearerToken: String = "",
     val autoStartOnBoot: Boolean = false,
+    val toolCallIndicatorEnabled: Boolean = true,
     val httpsEnabled: Boolean = false,
     val certificateSource: CertificateSource = CertificateSource.AUTO_GENERATED,
     val certificateHostname: String = DEFAULT_CERTIFICATE_HOSTNAME,
@@ -48,6 +51,7 @@ data class ServerConfig(
     val ngrokDomain: String = "",
     val cloudflareTunnelMode: CloudflareTunnelMode = CloudflareTunnelMode.TOKEN,
     val cloudflareTunnelToken: String = "",
+    val cloudflareTunnelExtraArgs: String = "",
     val fileSizeLimitMb: Int = DEFAULT_FILE_SIZE_LIMIT_MB,
     val allowHttpDownloads: Boolean = false,
     val allowUnverifiedHttpsCerts: Boolean = false,
@@ -57,6 +61,8 @@ data class ServerConfig(
     val bearerTokenEnabled: Boolean = true,
     val publicUrlOverride: String = DEFAULT_PUBLIC_URL,
     val toolPermissionsConfig: ToolPermissionsConfig = ToolPermissionsConfig(),
+    val privacyModeConfig: PrivacyModeConfig = PrivacyModeConfig(),
+    val hideFromRecents: Boolean = false,
 ) {
     companion object {
         /** Default server port. */

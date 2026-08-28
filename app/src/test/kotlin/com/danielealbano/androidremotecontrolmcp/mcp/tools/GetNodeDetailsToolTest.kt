@@ -10,6 +10,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.Accessib
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.BoundsData
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementFinder
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowData
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
@@ -101,7 +102,14 @@ class GetNodeDetailsToolTest {
         every { mockAccessibilityServiceProvider.getCurrentActivityName() } returns ".Main"
         every { mockTreeParser.parseTree(mockRootNode, "root_w0", any()) } returns sampleTree
 
-        tool = GetNodeDetailsTool(mockTreeParser, mockElementFinder, mockAccessibilityServiceProvider, mockNodeCache)
+        tool =
+            GetNodeDetailsTool(
+                mockTreeParser,
+                mockElementFinder,
+                mockAccessibilityServiceProvider,
+                mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+            )
     }
 
     @AfterEach

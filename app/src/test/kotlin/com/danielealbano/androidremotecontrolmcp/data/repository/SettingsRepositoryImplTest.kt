@@ -12,9 +12,14 @@ import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
 import com.danielealbano.androidremotecontrolmcp.data.model.BuiltinPermissions
 import com.danielealbano.androidremotecontrolmcp.data.model.CertificateSource
 import com.danielealbano.androidremotecontrolmcp.data.model.CloudflareTunnelMode
+import com.danielealbano.androidremotecontrolmcp.data.model.PlaceholderFormat
+import com.danielealbano.androidremotecontrolmcp.data.model.PrivacyModeConfig
+import com.danielealbano.androidremotecontrolmcp.data.model.RedactionMode
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.ToolPermissionsConfig
 import com.danielealbano.androidremotecontrolmcp.data.model.TunnelProviderType
+import com.danielealbano.androidremotecontrolmcp.privacy.PiiCategory
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -65,7 +70,18 @@ class SettingsRepositoryImplTest {
                 scope = testScope.backgroundScope,
                 produceFile = { File(tempDir, "test_settings_$testFileCounter.preferences_pb") },
             )
-        repository = SettingsRepositoryImpl(dataStore)
+        val changeLogger =
+            SettingsChangeLogger(
+                RecordingServerLogRepository(),
+                testDispatcher,
+                SettingsChangeLogger.COALESCE_WINDOW_MS,
+            )
+        repository =
+            SettingsRepositoryImpl(
+                dataStore,
+                changeLogger,
+                EventChannelSettingsImpl(dataStore, changeLogger),
+            )
     }
 
     @AfterEach
@@ -84,6 +100,8 @@ class SettingsRepositoryImplTest {
                 assertEquals(ServerConfig.DEFAULT_PORT, config.port)
                 assertEquals(BindingAddress.LOCALHOST, config.bindingAddress)
                 assertFalse(config.autoStartOnBoot)
+                assertFalse(config.hideFromRecents)
+                assertTrue(config.toolCallIndicatorEnabled)
                 assertFalse(config.httpsEnabled)
                 assertEquals(CertificateSource.AUTO_GENERATED, config.certificateSource)
                 assertEquals(ServerConfig.DEFAULT_CERTIFICATE_HOSTNAME, config.certificateHostname)
@@ -267,6 +285,50 @@ class SettingsRepositoryImplTest {
                 val config = repository.getServerConfig()
 
                 assertFalse(config.autoStartOnBoot)
+            }
+    }
+
+    @Nested
+    @DisplayName("updateHideFromRecents")
+    inner class UpdateHideFromRecents {
+        @Test
+        fun `enables hide from recents`() =
+            testScope.runTest {
+                repository.updateHideFromRecents(true)
+                val config = repository.getServerConfig()
+
+                assertTrue(config.hideFromRecents)
+            }
+
+        @Test
+        fun `disables hide from recents`() =
+            testScope.runTest {
+                repository.updateHideFromRecents(true)
+                repository.updateHideFromRecents(false)
+                val config = repository.getServerConfig()
+
+                assertFalse(config.hideFromRecents)
+            }
+    }
+
+    @Nested
+    @DisplayName("updateToolCallIndicatorEnabled")
+    inner class UpdateToolCallIndicatorEnabled {
+        @Test
+        fun `disables tool call indicator`() =
+            testScope.runTest {
+                repository.updateToolCallIndicatorEnabled(false)
+
+                assertFalse(repository.getServerConfig().toolCallIndicatorEnabled)
+            }
+
+        @Test
+        fun `enables tool call indicator`() =
+            testScope.runTest {
+                repository.updateToolCallIndicatorEnabled(false)
+                repository.updateToolCallIndicatorEnabled(true)
+
+                assertTrue(repository.getServerConfig().toolCallIndicatorEnabled)
             }
     }
 
@@ -601,6 +663,27 @@ class SettingsRepositoryImplTest {
                 val config = repository.getServerConfig()
 
                 assertEquals("cf-token-xyz789", config.cloudflareTunnelToken)
+            }
+    }
+
+    @Nested
+    @DisplayName("updateCloudflareTunnelExtraArgs")
+    inner class UpdateCloudflareTunnelExtraArgs {
+        @Test
+        fun `defaults to empty when unset`() =
+            testScope.runTest {
+                val config = repository.getServerConfig()
+
+                assertEquals("", config.cloudflareTunnelExtraArgs)
+            }
+
+        @Test
+        fun `persists extra args`() =
+            testScope.runTest {
+                repository.updateCloudflareTunnelExtraArgs("--edge region1.v2.argotunnel.com:7844")
+                val config = repository.getServerConfig()
+
+                assertEquals("--edge region1.v2.argotunnel.com:7844", config.cloudflareTunnelExtraArgs)
             }
     }
 
@@ -1544,6 +1627,80 @@ class SettingsRepositoryImplTest {
                 assertTrue(repository.validatePublicUrlOverride("https://host.example").isSuccess)
                 assertTrue(repository.validatePublicUrlOverride("ftp://host.example").isFailure)
                 assertTrue(repository.validatePublicUrlOverride("not a url").isFailure)
+            }
+    }
+
+    @Nested
+    @DisplayName("Privacy Mode")
+    inner class PrivacyMode {
+        @Test
+        fun `privacy config defaults when unset`() =
+            testScope.runTest {
+                assertEquals(PrivacyModeConfig(), repository.getServerConfig().privacyModeConfig)
+            }
+
+        @Test
+        fun `updatePrivacyModeEnabled persists`() =
+            testScope.runTest {
+                repository.updatePrivacyModeEnabled(true)
+                assertTrue(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig.enabled,
+                )
+                repository.updatePrivacyModeEnabled(false)
+                assertFalse(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig.enabled,
+                )
+            }
+
+        @Test
+        fun `updatePrivacyCategoryEnabled adds and removes from disabled set`() =
+            testScope.runTest {
+                repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, false)
+                assertFalse(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig
+                        .isCategoryEnabled(PiiCategory.NAMES),
+                )
+
+                repository.updatePrivacyCategoryEnabled(PiiCategory.NAMES, true)
+                assertTrue(
+                    repository.serverConfig
+                        .first()
+                        .privacyModeConfig
+                        .isCategoryEnabled(PiiCategory.NAMES),
+                )
+            }
+
+        @Test
+        fun `updatePrivacyRedactionMode and placeholder format persist`() =
+            testScope.runTest {
+                repository.updatePrivacyRedactionMode(RedactionMode.REDACT)
+                repository.updatePrivacyPlaceholderFormat(PlaceholderFormat.NUMBERED)
+
+                val config = repository.serverConfig.first().privacyModeConfig
+                assertEquals(RedactionMode.REDACT, config.redactionMode)
+                assertEquals(PlaceholderFormat.NUMBERED, config.placeholderFormat)
+            }
+
+        @Test
+        fun `privacy benchmark estimate persists`() =
+            testScope.runTest {
+                assertEquals(null, repository.privacyBenchmarkEstimateSeconds.first())
+                repository.updatePrivacyBenchmarkEstimateSeconds(1.5)
+                assertEquals(1.5, repository.privacyBenchmarkEstimateSeconds.first())
+            }
+
+        @Test
+        fun `privacy card dismissal persists and defaults to false`() =
+            testScope.runTest {
+                assertFalse(repository.privacyModeCardDismissed.first())
+                repository.updatePrivacyModeCardDismissed(true)
+                assertTrue(repository.privacyModeCardDismissed.first())
             }
     }
 }

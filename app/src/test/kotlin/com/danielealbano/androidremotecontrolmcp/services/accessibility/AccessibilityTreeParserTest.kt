@@ -643,4 +643,59 @@ class AccessibilityTreeParserTest {
             assertEquals("UNKNOWN(99)", AccessibilityTreeParser.mapWindowType(99))
         }
     }
+
+    @Nested
+    @DisplayName("context enrichment")
+    inner class ContextEnrichment {
+        @Test
+        @DisplayName("parseNode reads isPassword")
+        fun parseNodeReadsIsPassword() {
+            val node = createMockNode()
+            every { node.isPassword } returns true
+
+            val result = parser.parseTree(node)
+
+            assertTrue(result.isPassword)
+        }
+
+        @Test
+        @DisplayName("parseNode reads hintText and drops empty")
+        fun parseNodeReadsHintTextAndDropsEmpty() {
+            val withHint = createMockNode()
+            every { withHint.hintText } returns "Enter card number"
+            assertEquals("Enter card number", parser.parseTree(withHint).hintText)
+
+            val emptyHint = createMockNode()
+            every { emptyHint.hintText } returns ""
+            assertNull(parser.parseTree(emptyHint).hintText)
+        }
+
+        @Test
+        @DisplayName("parseNode resolves labeledBy text with contentDescription fallback")
+        fun parseNodeResolvesLabeledByWithFallback() {
+            val labelWithText = mockk<AccessibilityNodeInfo>(relaxed = true)
+            every { labelWithText.text } returns "Card number"
+            val nodeWithTextLabel = createMockNode()
+            every { nodeWithTextLabel.labeledBy } returns labelWithText
+            assertEquals("Card number", parser.parseTree(nodeWithTextLabel).labeledByText)
+
+            val labelWithDesc = mockk<AccessibilityNodeInfo>(relaxed = true)
+            every { labelWithDesc.text } returns null
+            every { labelWithDesc.contentDescription } returns "Email address"
+            val nodeWithDescLabel = createMockNode()
+            every { nodeWithDescLabel.labeledBy } returns labelWithDesc
+            assertEquals("Email address", parser.parseTree(nodeWithDescLabel).labeledByText)
+        }
+
+        @Test
+        @DisplayName("parseNode labeledBy failure yields null")
+        fun parseNodeLabeledByFailureYieldsNull() {
+            val node = createMockNode()
+            every { node.labeledBy } throws IllegalStateException("stale node")
+
+            val result = parser.parseTree(node)
+
+            assertNull(result.labeledByText)
+        }
+    }
 }

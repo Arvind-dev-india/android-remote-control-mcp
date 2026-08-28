@@ -16,6 +16,9 @@ data class ToolPermissionsConfig(
 ) {
     fun isToolEnabled(toolName: String): Boolean = toolName in enabledTools
 
+    val disabledTools: Set<String>
+        get() = ALL_SUPPORTED_TOOLS - enabledTools
+
     fun isParamEnabled(
         toolName: String,
         paramName: String,

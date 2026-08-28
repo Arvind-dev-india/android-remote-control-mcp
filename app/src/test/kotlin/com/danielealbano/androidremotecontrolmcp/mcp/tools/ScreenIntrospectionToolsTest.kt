@@ -18,6 +18,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.WebViewN
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenCaptureProvider
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotAnnotator
 import com.danielealbano.androidremotecontrolmcp.services.screencapture.ScreenshotEncoder
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -167,6 +168,8 @@ class ScreenIntrospectionToolsTest {
                     mockNodeCache,
                     ScreenStateSnapshotCacheImpl(),
                     WebViewNodeMerger(),
+                    PrivacyToolTestDoubles.passthroughGate(),
+                    PrivacyToolTestDoubles.screenshotRedactor(),
                 )
         }
 
@@ -474,6 +477,8 @@ class ScreenIntrospectionToolsTest {
                     mockNodeCache,
                     realCache,
                     WebViewNodeMerger(),
+                    PrivacyToolTestDoubles.passthroughGate(),
+                    PrivacyToolTestDoubles.screenshotRedactor(),
                 )
         }
 

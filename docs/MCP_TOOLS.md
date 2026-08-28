@@ -28,17 +28,18 @@ This document provides a comprehensive reference for all MCP tools available in 
 15. [Intent Tools](#11-intent-tools)
 16. [Notification Tools](#12-notification-tools)
 17. [Location Tools](#13-location-tools)
+18. [Sharing Tools](#14-sharing-tools)
 
 ---
 
 ## Overview
 
-The MCP server exposes 56 tools via the JSON-RPC 2.0 protocol, organized into 13 categories:
+The MCP server exposes 57 tools via the JSON-RPC 2.0 protocol, organized into 14 categories:
 
 | Category | Tools | Plan |
 |----------|-------|------|
 | Screen Introspection | `android_get_screen_state` | 7, 15 |
-| System Actions | `android_press_back`, `android_press_home`, `android_press_recents`, `android_open_notifications`, `android_open_quick_settings`, `android_dismiss_keyboard`, `android_get_device_logs` | 7 |
+| System Actions | `android_press_back`, `android_press_home`, `android_press_recents`, `android_open_notifications`, `android_open_quick_settings`, `android_dismiss_keyboard` | 6 |
 | Touch Actions | `android_tap`, `android_long_press`, `android_double_tap`, `android_swipe`, `android_scroll` | 8 |
 | Gestures | `android_pinch`, `android_custom_gesture` | 8 |
 | Node Actions | `android_find_nodes`, `android_click_node`, `android_long_click_node`, `android_tap_node`, `android_scroll_to_node` | 9, 35 |
@@ -50,6 +51,7 @@ The MCP server exposes 56 tools via the JSON-RPC 2.0 protocol, organized into 13
 | Intent | `android_send_intent`, `android_open_uri` | 31 |
 | Notification | `android_notification_list`, `android_notification_open`, `android_notification_dismiss`, `android_notification_snooze`, `android_notification_action`, `android_notification_reply` | 32 |
 | Location | `android_get_location` | 43 |
+| Sharing | `android_get_shared_content`, `android_share_file_via_web` | 48 |
 
 ## Tool Naming Convention
 
@@ -630,99 +632,6 @@ When no keyboard was open, the response text is `"No keyboard was open"`.
 **Error Cases**:
 - **Permission denied**: Accessibility service not enabled
 - **Action failed**: Dismissing the keyboard failed
-
----
-
-### `android_get_device_logs`
-
-Retrieves device logcat logs filtered by time range, tag, level, or package name.
-
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "last_lines": {
-      "type": "integer",
-      "description": "Number of most recent log lines to return (1-1000)",
-      "default": 100
-    },
-    "since": {
-      "type": "string",
-      "description": "ISO 8601 timestamp to filter logs from (e.g., 2024-01-15T10:30:00)"
-    },
-    "until": {
-      "type": "string",
-      "description": "ISO 8601 timestamp to filter logs until (used with since)"
-    },
-    "tag": {
-      "type": "string",
-      "description": "Filter by log tag (exact match, e.g., MCP:ServerService)"
-    },
-    "level": {
-      "type": "string",
-      "enum": ["V", "D", "I", "W", "E", "F"],
-      "description": "Minimum log level to include",
-      "default": "D"
-    },
-    "package_name": {
-      "type": "string",
-      "description": "Filter logs by package name"
-    }
-  },
-  "required": []
-}
-```
-
-**Request Example** (default, last 100 lines):
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "method": "tools/call",
-  "params": {
-    "name": "android_get_device_logs",
-    "arguments": {}
-  }
-}
-```
-
-**Request Example** (filtered by tag and level):
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "method": "tools/call",
-  "params": {
-    "name": "android_get_device_logs",
-    "arguments": {
-      "last_lines": 50,
-      "tag": "MCP:ServerService",
-      "level": "W"
-    }
-  }
-}
-```
-
-**Response Example (Success)**:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"logs\":\"02-11 16:30:00.123 D/MCP:ServerService: Server started on port 8080\\n02-11 16:30:01.456 I/MCP:ServerService: Client connected\",\"line_count\":2,\"truncated\":false}"
-      }
-    ]
-  }
-}
-```
-
-**Error Cases**:
-- **Invalid params**: Invalid parameter (e.g., `last_lines` out of range 1-1000, invalid `level`)
-- **Action failed**: Logcat command execution failed
 
 ---
 
@@ -1889,7 +1798,17 @@ File operations on user-added storage locations. Storage locations must be added
 
 ### `android_list_storage_locations`
 
-Lists user-added storage locations with their metadata. Each location represents a directory the user granted access to via the app settings. Use the location ID from this list for all file operations.
+Lists all available storage locations: built-in MediaStore locations (always present, no setup required) and user-added locations granted via the app settings. Use the location ID from this list for all file operations. The `name` of a built-in location reflects the current read-access level per media type, e.g. `"Pictures - All files"`, `"Pictures - Only owned files"`, `"Pictures - Selected files only"`, or `"Pictures - All images, owned videos"` when permissions are partially granted. Partial access (Android 14+ "Allow limited access") means only the user-selected photos/videos plus app-created files are visible.
+
+**Built-in locations**:
+| ID | Directory | Content types | "All files" permission(s) |
+|----|-----------|---------------|---------------------------|
+| `builtin:downloads` | `Download/` | any (owned files only) | — |
+| `builtin:pictures` | `Pictures/` | images, videos | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
+| `builtin:movies` | `Movies/` | videos | `READ_MEDIA_VIDEO` |
+| `builtin:music` | `Music/` | audio | `READ_MEDIA_AUDIO` |
+| `builtin:dcim` | `DCIM/` | images, videos (camera roll) | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` |
+| `builtin:recordings` | `Recordings/` | audio | `READ_MEDIA_AUDIO` |
 
 **Input Schema**:
 ```json
@@ -1940,6 +1859,7 @@ Lists user-added storage locations with their metadata. Each location represents
 | `allow_read` | boolean | Always `true` — read access is always permitted |
 | `allow_write` | boolean | Whether write operations are permitted (write_file, append_file, file_replace, download_from_url) |
 | `allow_delete` | boolean | Whether delete operations are permitted (delete_file) |
+| `access_level` | string | Built-in locations only: `"full"`, `"partial"` (limited photo/video selection, or a per-type subset of permissions), or `"owned_only"`. Absent on user-added locations. |
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Action failed**: Failed to query storage locations
@@ -2109,6 +2029,7 @@ Writes text content to a file. Creates the file if it doesn't exist, creates par
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `location_id`, `path`, or `content`
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: Write not allowed
 - **Action failed**: Storage location not found, content exceeds file size limit, write operation failed
 
@@ -2281,6 +2202,7 @@ Downloads a file from a URL and saves it to a storage location.
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `location_id`, `path`, or `url`; invalid URL format
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. writing a text file to `builtin:pictures`; error lists the accepted types)
 - **Permission denied**: Write not allowed
 - **Action failed**: Storage location not found, download failed (network error, timeout, HTTP error status), file exceeds size limit, HTTP not allowed, unverified HTTPS not allowed
 
@@ -2773,6 +2695,7 @@ Captures a photo from the specified camera and saves it to a storage location. R
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, or `path`; invalid resolution format; quality out of range; invalid flash mode
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. saving a photo to `builtin:music`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; storage location not authorized; write not permitted
 - **Action failed**: Camera not found, capture failed
 
@@ -2848,6 +2771,7 @@ Records a video from the specified camera and saves it to a storage location. Ma
 
 **Error Cases** (returned as `CallToolResult(isError = true)`):
 - **Invalid params**: Missing `camera_id`, `location_id`, `path`, or `duration`; duration out of range (1-30); invalid resolution format; invalid flash mode
+- **Invalid params**: File MIME type not accepted by the built-in storage location (e.g. saving a video to `builtin:music`; error lists the accepted types)
 - **Permission denied**: CAMERA permission not granted; RECORD_AUDIO permission not granted (when audio=true); storage location not authorized; write not permitted
 - **Action failed**: Camera not found, recording failed
 
@@ -2867,6 +2791,7 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
 | `action` | string | No | Intent action (e.g., `"android.intent.action.VIEW"`) |
 | `data` | string | No | Data URI for the intent |
 | `component` | string | No | Target component as `"package/class"` (e.g., `"com.example.app/com.example.app.MyActivity"`) |
+| `package` | string | No | Target package scoping delivery (maps to `Intent.setPackage()`, equivalent to `am ... -p`). For broadcasts this reaches a manifest-declared receiver in that app without needing the receiver's class name (e.g., `"com.example.app"`) |
 | `extras` | object | No | Key-value extras. Values auto-typed: string→String, integer→Int/Long, decimal→Double, boolean→Boolean, string array→StringArrayList |
 | `extras_types` | object | No | Type overrides for extras keys. Supported: `"string"`, `"int"`, `"long"`, `"float"`, `"double"`, `"boolean"` |
 | `flags` | array | No | Intent flag names (e.g., `"FLAG_ACTIVITY_CLEAR_TOP"`). `FLAG_ACTIVITY_NEW_TASK` auto-added for activity type |
@@ -2880,6 +2805,7 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
     "action": { "type": "string", "description": "The intent action (e.g., 'android.intent.action.VIEW')" },
     "data": { "type": "string", "description": "Data URI for the intent" },
     "component": { "type": "string", "description": "Target component as 'package/class'" },
+    "package": { "type": "string", "description": "Target package scoping delivery (maps to Intent.setPackage())" },
     "extras": { "type": "object", "description": "Key-value extras with auto type inference" },
     "extras_types": { "type": "object", "description": "Type overrides for extras keys" },
     "flags": { "type": "array", "items": { "type": "string" }, "description": "Intent flag names" }
@@ -2934,6 +2860,39 @@ Sends an Android intent. Supports starting activities, sending broadcasts, and s
       {
         "type": "text",
         "text": "Intent sent successfully: type=activity, action=android.settings.WIFI_SETTINGS"
+      }
+    ]
+  }
+}
+```
+
+**Example Request** (broadcast scoped to a specific app's manifest receiver):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_send_intent",
+    "arguments": {
+      "type": "broadcast",
+      "action": "com.example.app.ACTION_REFRESH",
+      "package": "com.example.app"
+    }
+  }
+}
+```
+
+**Example Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Intent sent successfully: type=broadcast, action=com.example.app.ACTION_REFRESH"
       }
     ]
   }
@@ -3441,3 +3400,107 @@ Retrieves the device's current location including coordinates, accuracy, and str
 
 - **Location data exposure**: The `get_location` tool exposes the device's precise geographic coordinates to MCP clients. Ensure bearer token authentication is enabled in production to restrict access.
 - **Fresh GPS fix**: When `fresh_fix=true`, the tool actively queries the GPS hardware, which may have battery implications if called frequently.
+
+## 14. Sharing Tools
+
+Sharing tools bridge the Android Share sheet and MCP clients. The app is registered as an Android share target: content shared to it (text, images, files) lands in an in-memory inbox that MCP clients drain with `android_get_shared_content`. In the other direction, `android_share_file_via_web` exposes a device file as a temporary capability URL that clients (or the user) can fetch.
+
+**File**: `app/src/main/kotlin/.../mcp/tools/SharingTools.kt`
+**Services**: `SharedContentInbox`, `EphemeralFileLinkService`, `FileOperationProvider`
+**Permission**: None (share intents are user-initiated; file access uses the authorized storage locations)
+
+**Capability URLs**: Both tools can return temporary download URLs served by the MCP server itself. Each URL embeds a random single-purpose token, expires after 1 hour, allows multiple fetches, and is served from memory (total in-memory budget 64 MB).
+
+### `android_get_shared_content`
+
+Returns and clears all items shared to the app via the Android Share sheet since the last call. Read-once: the inbox is drained on read, so content must be re-shared to be read again.
+
+**Parameters**: None.
+
+**Returns**: One content block per shared item, prefixed by the untrusted-content warning:
+- **Text**: returned inline as text content.
+- **Textual files** (e.g., `.txt`, `.json`): returned inline with filename, MIME type, and size.
+- **Images**: a downscaled inline image plus a text block with a full-resolution capability URL (expires 1 hour).
+- **Other files** (e.g., PDF, binaries): a text block with filename, MIME type, size, and a capability URL (expires 1 hour); text/PDF URLs can be read via web fetch, other types are download-only.
+
+If nothing has been shared, returns a note explaining that content must first be shared to the app.
+
+**Example Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_get_shared_content",
+    "arguments": {}
+  }
+}
+```
+
+**Example Response** (shared text):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      { "type": "text", "text": "<untrusted-content warning>" },
+      { "type": "text", "text": "Meeting at 10am tomorrow" }
+    ]
+  }
+}
+```
+
+**Error Cases**: None specific — an empty inbox is a normal (non-error) response.
+
+### `android_share_file_via_web`
+
+Exposes an existing device file as a temporary capability URL. Use it to let an MCP client read a device PDF/text file via web fetch, or to hand the user a download link.
+
+**Parameters**:
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `location_id` | string | Yes | - | The authorized storage location identifier (from `android_list_storage_locations`) |
+| `path` | string | Yes | - | Relative path to the file within the location |
+
+**Returns**: A text block (prefixed by the untrusted-content warning) with the filename, MIME type, size in bytes, and the capability URL (expires 1 hour, multiple fetches allowed). The file is served from memory, so it is limited to 64 MB or the configured file size limit, whichever is smaller.
+
+**Example Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "android_share_file_via_web",
+    "arguments": {
+      "location_id": "loc_a1b2c3",
+      "path": "Documents/report.pdf"
+    }
+  }
+}
+```
+
+**Example Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      { "type": "text", "text": "<untrusted-content warning>\nFile 'report.pdf' application/pdf (204800 bytes) at https://device.example.com/s/<token> (expires 1h). web_fetch can read text/PDF; other types are download-only." }
+    ]
+  }
+}
+```
+
+**Error Cases** (returned as `CallToolResult(isError = true)`):
+- **Invalid params**: `location_id` or `path` missing or not a string
+- **Action failed**: file not found, location not authorized, or file exceeds the size limit (the smaller of the configured file size limit and the 64 MB in-memory budget)
+
+### Security Considerations
+
+- **Capability URLs are bearer links**: anyone holding the URL can fetch the file until it expires (1 hour). The random token is the only protection — treat returned URLs as sensitive.
+- **Privacy Mode**: when enabled, device-derived text (shared text, textual file contents, filenames) is redacted before being returned; inline images and served file bytes are not redacted.

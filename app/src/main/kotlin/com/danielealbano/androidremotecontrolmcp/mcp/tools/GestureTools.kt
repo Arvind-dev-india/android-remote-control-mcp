@@ -72,10 +72,11 @@ class PinchTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description = "Performs a pinch-to-zoom gesture. Returns after the gesture completes.",
                 inputSchema =
@@ -333,10 +334,11 @@ class CustomGestureTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Executes a custom multi-touch gesture defined by path points. " +
@@ -399,13 +401,13 @@ class CustomGestureTool
  * Called from [McpServerService.startServer] during server startup.
  */
 fun registerGestureTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     actionExecutor: ActionExecutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
-    if (perms.isToolEnabled(PinchTool.TOOL_NAME)) PinchTool(actionExecutor).register(server, toolNamePrefix)
+    if (perms.isToolEnabled(PinchTool.TOOL_NAME)) PinchTool(actionExecutor).register(registrar, toolNamePrefix)
     if (perms.isToolEnabled(CustomGestureTool.TOOL_NAME)) {
-        CustomGestureTool(actionExecutor).register(server, toolNamePrefix)
+        CustomGestureTool(actionExecutor).register(registrar, toolNamePrefix)
     }
 }

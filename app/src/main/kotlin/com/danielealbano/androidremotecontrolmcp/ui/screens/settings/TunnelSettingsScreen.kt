@@ -71,6 +71,7 @@ fun TunnelSettingsScreen(
     val ngrokAuthtokenInput by viewModel.ngrokAuthtokenInput.collectAsStateWithLifecycle()
     val ngrokDomainInput by viewModel.ngrokDomainInput.collectAsStateWithLifecycle()
     val cloudflareTokenInput by viewModel.cloudflareTokenInput.collectAsStateWithLifecycle()
+    val cloudflareExtraArgsInput by viewModel.cloudflareExtraArgsInput.collectAsStateWithLifecycle()
 
     val isEnabled =
         serverStatus !is ServerStatus.Running &&
@@ -218,6 +219,20 @@ fun TunnelSettingsScreen(
                                 serviceUrl = "http://localhost:${serverConfig.port}",
                                 enabled = sectionEnabled,
                                 onTokenChange = viewModel::updateCloudflareTunnelToken,
+                            )
+                        }
+                    }
+
+                    // Cloudflare extra arguments
+                    AnimatedVisibility(
+                        visible = serverConfig.tunnelProvider == TunnelProviderType.CLOUDFLARE,
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            CloudflareExtraArgsField(
+                                extraArgs = cloudflareExtraArgsInput,
+                                enabled = sectionEnabled,
+                                onExtraArgsChange = viewModel::updateCloudflareTunnelExtraArgs,
                             )
                         }
                     }
@@ -447,6 +462,37 @@ private fun CloudflareTokenFields(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CloudflareExtraArgsField(
+    extraArgs: String,
+    enabled: Boolean,
+    onExtraArgsChange: (String) -> Unit,
+) {
+    Column {
+        Text(
+            text = stringResource(R.string.remote_access_cloudflare_extra_args_label),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedTextField(
+            value = extraArgs,
+            onValueChange = onExtraArgsChange,
+            singleLine = true,
+            enabled = enabled,
+            placeholder = {
+                Text(text = stringResource(R.string.remote_access_cloudflare_extra_args_hint))
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.remote_access_cloudflare_extra_args_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.storage.StorageLocationProvider
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,9 +20,14 @@ import javax.inject.Inject
  *
  * This receiver is available in both debug and release builds, allowing headless
  * configuration of the MCP server settings via ADB. It is `exported=true` so that
- * ADB (running as the shell user) can send broadcasts to it. No sender UID check
- * is performed because [getSentFromUid] unreliably returns -1 for `am broadcast`
- * on API 34+; the real security boundary is having ADB access to the device.
+ * ADB (running as the shell user) can send broadcasts to it. The security boundary
+ * is the `android:permission="android.permission.DUMP"` requirement declared on this
+ * receiver in the manifest: DUMP is a signature/privileged platform permission held
+ * by the adb shell UID (com.android.shell) but not grantable to third-party apps.
+ * ActivityManager enforces it against the sender's real binder calling UID before
+ * delivery, so `adb shell am broadcast` still works while any ordinary app is
+ * rejected with a SecurityException — no in-code UID check is needed (and none is
+ * reliable anyway, since [getSentFromUid] returns -1 for `am broadcast` on API 34+).
  *
  * Only settings that do not require direct user interaction (e.g., SAF document
  * picker for storage locations) are supported. Each extra is optional; omitted
@@ -39,6 +45,7 @@ import javax.inject.Inject
  *   --es binding_address "0.0.0.0" \
  *   --ei port 8080 \
  *   --ez auto_start_on_boot true \
+ *   --ez hide_from_recents false \
  *   --ez https_enabled false \
  *   --es certificate_source "AUTO_GENERATED" \
  *   --es certificate_hostname "android-mcp.local" \
@@ -75,9 +82,16 @@ class AdbConfigReceiver : BroadcastReceiver() {
     @Inject
     lateinit var storageLocationProvider: StorageLocationProvider
 
-    // No sender UID check: the receiver is exported=true so ADB (shell UID 2000) can reach it,
-    // and getSentFromUid() unreliably returns -1 for `am broadcast` on API 34+. The real
-    // security boundary is having ADB access to the device itself.
+    @Inject
+    lateinit var serverLogRepository: ServerLogRepository
+
+    // No in-code sender UID check is needed: the manifest gates this exported receiver behind
+    // android:permission="android.permission.DUMP", which ActivityManager enforces against the
+    // real binder calling UID. DUMP is held by the adb shell UID (com.android.shell) but is not
+    // grantable to third-party apps, so `am broadcast` from adb shell reaches this receiver while
+    // an ordinary app is blocked with a SecurityException before onReceive() is ever invoked.
+    // (An in-code check would be unreliable regardless: getSentFromUid() returns -1 for
+    // `am broadcast` on API 34+.)
     @Suppress("TooGenericExceptionCaught")
     override fun onReceive(
         context: Context,
@@ -85,7 +99,7 @@ class AdbConfigReceiver : BroadcastReceiver() {
     ) {
         Log.i(TAG, "onReceive called with action: ${intent.action}")
 
-        val handler = AdbConfigHandler(settingsRepository, storageLocationProvider)
+        val handler = AdbConfigHandler(settingsRepository, storageLocationProvider, serverLogRepository)
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {

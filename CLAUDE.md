@@ -377,6 +377,17 @@ This project uses **DataStore** (not Room database) for persisting settings. The
 - When adding a new MCP tool, you MUST classify it as device-content or action-only and use the appropriate result helper. If uncertain, use the untrusted variant.
 - **Limitation**: Image content (screenshots, camera photos) cannot carry an inline text warning. The `untrustedImageResult` and `untrustedTextAndImageResult` helpers add the warning as a `TextContent` item before the `ImageContent`, which is the best available mitigation.
 
+### Privacy detection effectiveness table — ABSOLUTE RULE
+- The Privacy Mode settings screen publishes measured per-category detection rates
+  (`MEASURED_DETECTION_RATES` in `app/src/main/kotlin/.../ui/screens/settings/PrivacySettingsScreen.kt`).
+- Whenever ANY privacy detection logic changes — the deterministic detectors (`privacy/.../privacy/detectors/`),
+  `ContextKeywords`, `ContextExtractor`, `RedactionEngine` merge/filter logic, `BioDecoder`, the tokenizer,
+  `WindowPacker`, `OrtPiiModelRunner`, or the pinned model assets (`PrivacyModelAssets`) — you MUST re-run the
+  effectiveness benchmark (`make privacy-benchmark`) and update `MEASURED_DETECTION_RATES` with the new
+  corpus B (`ui-synthetic`) FULL-layer per-category recall values from the generated `report.md`.
+- If effectiveness numbers are also published in the README, they MUST be refreshed in the same change.
+- You MUST NEVER leave stale published numbers after a detection-logic change. There are ZERO exceptions.
+
 ---
 
 ## 8) Frontend Rules (Jetpack Compose + Material Design 3)
@@ -516,7 +527,7 @@ fun `tap with valid coordinates calls actionExecutor and returns success`() = ru
 
 ### E2E testing (Redroid + Podman + Testcontainers)
 - Use **Testcontainers Kotlin** for container orchestration via rootful podman.
-- Use **redroid/redroid:13.0.0-latest** container image (native Android in container via kernel modules).
+- Use **redroid/redroid:14.0.0-latest** container image (native Android in container via kernel modules).
 - Use **JUnit 5** for test framework.
 - Use **MCP Kotlin SDK client** with `StreamableHttpClientTransport` for MCP requests.
 - Organize tests in `e2e-tests/src/test/kotlin/` directory (separate Gradle module).
@@ -604,23 +615,22 @@ Local development requires Android SDK, emulator/device, and standard Android de
 ## 11) Deployment Rules (Android APK Building)
 
 ### APK building
-- **Debug APK**: Build with `make build` or `./gradlew assembleDebug`.
-  - Application ID: `com.danielealbano.androidremotecontrolmcp.debug`.
+- **Debug APK**: Build with `make build` or `./gradlew assembleGmsDebug`.
+  - Application ID: `com.yedhant.androidremotecontrolmcp.gms.debug`.
   - Debuggable: true.
   - Minify: false.
   - Signed with debug keystore.
-- **Release APK**: Build with `make build-release` or `./gradlew assembleRelease`.
-  - Application ID: `com.danielealbano.androidremotecontrolmcp`.
+- **Release APK**: Build with `make build-release` or `./gradlew assembleGmsRelease`.
+  - Application ID: `com.yedhant.androidremotecontrolmcp`.
   - Debuggable: false.
   - Minify: false (open source with MIT license, no ProGuard/R8).
   - Signed with release keystore (if configured in `keystore.properties`).
 
 ### Versioning
 - Follow **semantic versioning** (MAJOR.MINOR.PATCH).
-- Version defined in `gradle.properties`:
-  - `VERSION_NAME=1.0.0`
-  - `VERSION_CODE=1` (auto-increment for each release).
-- Bump version: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major`.
+- `VERSION_NAME` is derived from git tags, with a `gradle.properties` fallback for git-less builds.
+- `versionCode` is derived from git history by Gradle (`getGitVersionCode`) and is never hardcoded; a full git checkout is required or the build fails at configuration (override with `-PVERSION_CODE=<integer>`).
+- Bump the version name: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major` (the version code is git-derived, not bumped).
 
 ### Health check endpoint (MCP server)
 - Implement `/health` endpoint in Ktor server.

@@ -67,6 +67,10 @@ class IntentDispatcherImpl
                 intent.component = parseComponent(request.component).getOrThrow()
             }
 
+            if (request.packageName != null) {
+                intent.setPackage(request.packageName)
+            }
+
             applyFlags(intent, request)
             request.extras?.forEach { (key, value) ->
                 putExtraWithInference(intent, key, value, request.extrasTypes?.get(key))

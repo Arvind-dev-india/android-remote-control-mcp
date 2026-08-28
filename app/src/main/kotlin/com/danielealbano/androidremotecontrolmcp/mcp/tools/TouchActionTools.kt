@@ -48,10 +48,11 @@ class TapTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a single tap at the specified coordinates. " +
@@ -114,10 +115,11 @@ class LongPressTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a long press at the specified coordinates. " +
@@ -184,10 +186,11 @@ class DoubleTapTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a double tap at the specified coordinates. " +
@@ -255,10 +258,11 @@ class SwipeTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Performs a swipe gesture from one point to another. " +
@@ -370,10 +374,11 @@ class ScrollTool
         }
 
         fun register(
-            server: Server,
+            registrar: LoggedToolRegistrar,
             toolNamePrefix: String,
         ) {
-            server.addTool(
+            registrar.addTool(
+                toolName = TOOL_NAME,
                 name = "$toolNamePrefix$TOOL_NAME",
                 description =
                     "Scrolls in the specified direction. Applies random variance to " +
@@ -441,14 +446,14 @@ class ScrollTool
  * Registers all touch action tools with the given [Server].
  */
 fun registerTouchActionTools(
-    server: Server,
+    registrar: LoggedToolRegistrar,
     actionExecutor: ActionExecutor,
     toolNamePrefix: String,
     perms: ToolPermissionsConfig,
 ) {
-    if (perms.isToolEnabled(TapTool.TOOL_NAME)) TapTool(actionExecutor).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(LongPressTool.TOOL_NAME)) LongPressTool(actionExecutor).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(DoubleTapTool.TOOL_NAME)) DoubleTapTool(actionExecutor).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(SwipeTool.TOOL_NAME)) SwipeTool(actionExecutor).register(server, toolNamePrefix)
-    if (perms.isToolEnabled(ScrollTool.TOOL_NAME)) ScrollTool(actionExecutor).register(server, toolNamePrefix)
+    if (perms.isToolEnabled(TapTool.TOOL_NAME)) TapTool(actionExecutor).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(LongPressTool.TOOL_NAME)) LongPressTool(actionExecutor).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(DoubleTapTool.TOOL_NAME)) DoubleTapTool(actionExecutor).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(SwipeTool.TOOL_NAME)) SwipeTool(actionExecutor).register(registrar, toolNamePrefix)
+    if (perms.isToolEnabled(ScrollTool.TOOL_NAME)) ScrollTool(actionExecutor).register(registrar, toolNamePrefix)
 }

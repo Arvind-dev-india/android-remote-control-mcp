@@ -17,6 +17,43 @@ The app runs directly on your Android device (or emulator) and exposes an HTTP s
 
 ---
 
+## Contents
+
+- [Demo](#demo)
+- [Features](#features)
+- [Install](#install)
+- [Setup](#setup)
+- [Privacy Mode](#privacy-mode)
+- [Integrations](#integrations)
+- [Configuration](#configuration)
+- [Permissions Reference](#permissions-reference)
+- [Security](#security)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Demo
+
+<table>
+  <tr>
+    <td align="center" width="33%" valign="top">
+      <a href="docs/assets/demo-reddit-post.gif" title="Click for full resolution"><img src="docs/assets/demo-reddit-post-small.gif" alt="Posting on Reddit through the MCP server" width="240"></a>
+      <br><em>Posting on Reddit (sped up, ~6 min original)</em>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="docs/assets/demo-install-booking.gif" title="Click for full resolution"><img src="docs/assets/demo-install-booking-small.gif" alt="Installing the booking.com app through the MCP server" width="240"></a>
+      <br><em>Installing the booking.com app</em>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="docs/assets/demo-flight-search.gif" title="Click for full resolution"><img src="docs/assets/demo-flight-search-small.gif" alt="Skyscanner flight search from Zurich to Istanbul through the MCP server" width="240"></a>
+      <br><em>Flight search on Skyscanner, Zurich &rarr; Istanbul (sped up, ~4 min original)</em>
+    </td>
+  </tr>
+</table>
+
+<p align="center"><em>An AI model controlling an Android device through the MCP server &mdash; click any clip for full resolution.</em></p>
+
 ## Features
 
 ### MCP Server
@@ -28,9 +65,9 @@ The app runs directly on your Android device (or emulator) and exposes an HTTP s
 - Auto-start on boot
 - Remote access tunnels via Cloudflare Quick Tunnels or ngrok (public HTTPS URL)
 
-### 56 MCP Tools across 13 Categories
+### 57 MCP Tools across 14 Categories
 
-Screen introspection, system actions, touch actions, gestures, node actions, text input, utilities, file operations, app management, camera, intents, notifications, and location.
+Screen introspection, system actions, touch actions, gestures, node actions, text input, utilities, file operations, app management, camera, intents, notifications, location, and sharing.
 
 All tool names use the `android_` prefix by default (e.g., `android_tap`). When a device slug is configured (e.g., `pixel7`), the prefix becomes `android_pixel7_` (e.g., `android_pixel7_tap`).
 
@@ -51,7 +88,7 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for the full tool reference with inpu
 
 | Feature | This project | [mobile-mcp] | [Android-MCP] | [android-mcp-server] | [adb-mcp] | [droidrun-mcp] |
 |---------|:-:|:-:|:-:|:-:|:-:|:-:|
-| MCP tools | 56 | 21 | 11 | 5 | 10 | 11 |
+| MCP tools | 57 | 21 | 11 | 5 | 10 | 11 |
 | Runs on the phone (no ADB) | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 | Action latency | 10-100 ms | 1-4 s | 1-4 s | 1-4 s | 1-4 s | 1-4 s |
 | Works over the internet | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
@@ -77,6 +114,15 @@ On the token efficiency side, ADB-based tools typically return raw `uiautomator`
 
 ## Install
 
+### Which build to download: GMS or FOSS
+
+Each release provides two flavors of the APK — pick the one that matches your device:
+
+- **GMS** (`…-gms-release.apk`) — the full build. **Requires Google Mobile Services (Google Play Services)** installed on the phone. Choose this on standard devices/emulators that ship with Google services.
+- **FOSS** (`…-foss-release.apk`) — a Google-free build with **no dependency on Google Mobile Services**. Works on **any** Android phone, including de-Googled ROMs and devices where Google services are unavailable.
+
+If unsure, the GMS build is the right choice for a typical phone with the Play Store.
+
 ### Option A: Download on your phone (easiest)
 
 1. Open the [Releases](https://github.com/danielealbano/android-remote-control-mcp/releases) page on your phone's browser
@@ -87,9 +133,9 @@ On the token efficiency side, ADB-based tools typically return raw `uiautomator`
 
 1. Download the APK from the [Releases](https://github.com/danielealbano/android-remote-control-mcp/releases) page
 2. Connect your phone via USB (with USB Debugging enabled)
-3. Install the APK:
+3. Install the APK (use the GMS or FOSS file you downloaded):
 ```bash
-adb install app-release.apk
+adb install android-remote-control-mcp-<version>-gms-release.apk
 ```
 
 ### Option C: Build from sources
@@ -107,48 +153,70 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full build requirements and instructi
 
 ## Setup
 
-1. **Open the app** and go to Settings > Permissions
-2. **Enable Accessibility Service** (required for UI introspection, actions, and screenshots)
-3. **Grant additional permissions** as needed (Camera, Microphone, Location, Notifications)
-4. **Configure storage locations** in Settings > Storage if you plan to use file tools (includes automatic locations like Downloads, plus custom locations via SAF)
-5. Go back to the **Server tab** and tap **Start** to start the MCP server
+1. **Open the app.** The Server tab shows a permission warning banner; grant permissions from there or via Settings > Permissions.
+
+2. **Grant permissions:**
+
+   - **Accessibility Service** — **required.** Powers UI introspection, action execution, and screenshots; nothing works without it.
+     - **If the toggle is greyed out** (Android 13+, common on Samsung/One UI for apps installed from an APK): this is Android's "Restricted settings" protection. A dialog reads *"Restricted setting — For your security, this setting is currently unavailable."* To unblock it, go to **Settings → Apps → Android Remote Control MCP → App info**, tap the **⋮ menu** (top-right), choose **Allow restricted settings**, confirm with your PIN/pattern/biometric, then enable the Accessibility Service. (Play Store / F-Droid installs are not affected.)
+   - **Notifications** — **optional** (recommended for OAuth). OAuth sign-in approvals (Claude.ai / Claude Desktop, ChatGPT, or any third-party OAuth client) arrive as heads-up notifications you tap to confirm the 2-digit code and approve. It is **no longer required** for OAuth login, though: if you don't grant this permission, pending requests still appear as a **card on the app's Server screen** that you tap to review and approve/deny. The **Event Channel** push feature — e.g. pushing device events to Claude Code — runs as a foreground service that posts its status notification through this permission on Android 13+.
+   - **Other permissions** (optional) — Camera, Microphone, and Location enable their corresponding MCP tools. The app works without them; only the dependent features are disabled until granted. See the [Permissions Reference](#permissions-reference) below for the complete list.
+   - **Storage locations** — configure in Settings > Storage if you plan to use the file tools (automatic locations like Downloads, plus custom locations via SAF).
+
+3. **Start the server.** Go back to the **Server tab** and tap **Start**.
 
 The server starts on `http://127.0.0.1:8080` by default. The connection info (IP, port, token, URL) is displayed on the Server tab.
 
 > **Note**: `127.0.0.1` refers to the phone's localhost, not your computer. To connect from your computer, use [adb port forwarding](#using-with-adb-port-forwarding), bind to `0.0.0.0` (network mode), or enable a [remote access tunnel](#using-remote-access-tunnels).
 
-### Permissions Reference
+---
 
-The app declares the permissions below. **Normal** permissions are granted automatically at install. **Runtime** permissions and **Special access** require explicit user action (via the app's Settings > Permissions tab, or programmatically — see [Granting Permissions Programmatically](docs/PERMISSIONS.md)). All runtime permissions are optional: the app works without them, but the features that depend on them are disabled until granted.
+## Privacy Mode
 
-| Permission | Type | Used for |
-|------------|------|----------|
-| `INTERNET` | Normal | HTTP/HTTPS server and remote access tunnels |
-| `ACCESS_NETWORK_STATE` | Normal | Detect network connectivity |
-| `FOREGROUND_SERVICE` | Normal | Run the MCP server as a foreground service |
-| `FOREGROUND_SERVICE_SPECIAL_USE` | Normal | Foreground service type for the MCP server |
-| `FOREGROUND_SERVICE_LOCATION` | Normal | Foreground service type for the Event Channel (geofence/WiFi) |
-| `RECEIVE_BOOT_COMPLETED` | Normal | Auto-start the server on device boot |
-| `QUERY_ALL_PACKAGES` | Normal | Enumerate installed apps for app-management tools |
-| `KILL_BACKGROUND_PROCESSES` | Normal | Stop background apps via app-management tools |
-| `ACCESS_WIFI_STATE` | Normal | Read WiFi state for the Event Channel |
-| `CHANGE_WIFI_STATE` | Normal | Manage WiFi for the Event Channel |
-| `POST_NOTIFICATIONS` | Runtime | Show the foreground service notification (Android 13+) |
-| `CAMERA` | Runtime | Camera photo/video MCP tools |
-| `RECORD_AUDIO` | Runtime | Audio capture for camera video tools |
-| `ACCESS_FINE_LOCATION` | Runtime | Location tools and geofence events |
-| `ACCESS_COARSE_LOCATION` | Runtime | Approximate location |
-| `ACCESS_BACKGROUND_LOCATION` | Runtime | Location/geofence events while the app is in the background |
-| `NEARBY_WIFI_DEVICES` | Runtime | WiFi scanning for the Event Channel (Android 13+) |
-| `READ_MEDIA_IMAGES` | Runtime | "All files" mode for built-in image storage locations (Android 13+) |
-| `READ_MEDIA_VIDEO` | Runtime | "All files" mode for built-in video storage locations (Android 13+) |
-| `READ_MEDIA_AUDIO` | Runtime | "All files" mode for built-in audio storage locations (Android 13+) |
-| Accessibility Service | Special access | UI introspection, action execution, and screenshots — **required** for core functionality |
-| Notification Listener | Special access | Reading and managing notifications via notification tools |
+Privacy Mode detects and hides personal data — emails, credit cards and IBANs, credentials, phone
+numbers, national IDs, addresses, and names — in everything the MCP tools return (screen content,
+notifications, clipboard, files, …) **before it leaves the device** for the AI provider. Detection
+runs fully on-device: fast rule-based checks (checksums, formats, field context) combined with a
+local NER model — no cloud calls. Detected values are either pseudonymized with consistent
+placeholders (`EMAIL#a1b2c`, so AI tools keep working across screens) or fully redacted. Detection
+is best-effort mitigation, not a guarantee.
+
+The model is the [Ai4Privacy multilingual anonymiser](https://huggingface.co/ai4privacy/llama-ai4privacy-multilingual-categorical-anonymiser-openpii)
+(MIT license, Built with Llama), downloaded once on first enable (~150 MB) directly from the pinned
+Hugging Face revision and checksum-verified on device.
+
+### Measured detection rates
+
+Share of personal data items detected per category by the full pipeline, measured with the in-repo
+effectiveness benchmark (`make privacy-benchmark`) on realistic UI-style content across 8 languages:
+
+| Category | Detected |
+|---|---|
+| Addresses | 77.9% |
+| Cards & IBANs | 75.3% |
+| Credentials | 90.9% |
+| Emails | 100.0% |
+| Names | 0.8% |
+| National IDs | 93.0% |
+| Phone numbers | 84.4% |
+
+Names are the on-device model's known weak spot (it recognizes common Western names far better than
+the globally diverse names in the benchmark); improving name detection with a fine-tuned model is on
+the roadmap. Actual results vary with content and language.
+
+### Enabling Privacy Mode
+
+- **From the main Server screen**: tap **Set up Privacy Mode** on the Privacy Mode card (shown while
+  the mode is off).
+- **Or via Settings → Privacy**: turn on **Enable Privacy Mode** and confirm the one-time model
+  download. After the download and warm-up, a short on-device benchmark measures the expected
+  per-screen overhead and shows it on the same screen.
+- Protected categories, pseudonymize-vs-redact, and the placeholder format are configurable in
+  **Settings → Privacy**.
 
 ---
 
-## Connect
+## Integrations
 
 ### Claude Desktop / Claude Code
 
@@ -179,7 +247,7 @@ Claude.ai (web) and Claude Desktop connect as a **custom connector** (remote MCP
 1. **OAuth is enabled by default** — no action needed (if you previously disabled it, re-enable it under **Settings → Access**). The bearer token stays enabled too; both are accepted.
 2. Open **Settings → Tunnel**, enable **Remote Access** (Cloudflare Quick Tunnels needs no account), and start the server. Copy the public `https://…` URL from the Server tab and append `/mcp` (e.g. `https://your-tunnel.trycloudflare.com/mcp`).
 3. In Claude, open **[Customize → Connectors → Add custom connector](https://claude.ai/customize/connectors?modal=add-custom-connector)**, paste the `https://…/mcp` URL, and **leave the OAuth Client ID and Client Secret blank** (the app uses Dynamic Client Registration). Click **Add**.
-4. Claude opens a browser approval page showing a **2-digit code**. On the device, a heads-up notification appears — tap it to open the in-app approval screen, confirm the code matches, and **Approve**.
+4. Claude opens a browser approval page showing a **2-digit code**. On the device, tap the heads-up notification — or, if the Notifications permission is off, open the app's **Server** screen and tap the **pending approvals** card — to open the approval screen, confirm the code matches, and **Approve**.
 5. Manage or revoke connected clients any time under **Settings → Access → Connected clients**. Revoking immediately invalidates that client's tokens.
 
 > **Public URL override (optional):** if your tunnel/host topology needs a fixed public host (or you bind to `0.0.0.0` without a trusted proxy), set a **Public URL override** in Settings → Access so OAuth metadata and links use a stable host.
@@ -187,6 +255,18 @@ Claude.ai (web) and Claude Desktop connect as a **custom connector** (remote MCP
 Custom connectors are available on the Free (1 connector), Pro, Max, Team, and Enterprise plans (currently in beta).
 
 > ⚠️ **Security:** treat the public tunnel URL as sensitive, approve only connections you initiated (verify the 2-digit code), revoke clients you no longer use, and stop the tunnel and server when you are done. Never point it at a device holding sensitive data.
+
+### Connect from ChatGPT (Custom Connector, OAuth)
+
+ChatGPT connects to the server as a **custom MCP connector** using the same self-contained OAuth 2.1 flow. As with Claude, the server must be reachable over a **public HTTPS URL**, so enable a [remote access tunnel](#using-remote-access-tunnels) first — a `localhost`/LAN address or `adb` port-forward will **not** work. Custom connectors require a paid plan (Plus, Pro, Business, Enterprise, or Edu — not Free) and are set up from the **ChatGPT web app**.
+
+1. **Enable Developer mode** — in ChatGPT on the web, open **Settings → Connectors → Advanced settings** (labelled **Apps & Connectors** on some builds) and turn on **Developer mode**.
+2. **Start the tunnel** — same as the Claude flow above: OAuth stays enabled by default, turn on **Remote Access** under Settings → Tunnel, start the server, and copy the public `https://…/mcp` URL from the Server tab.
+3. **Add the connector** — open **Settings → Connectors → Create**, give it a name and description, paste the `https://…/mcp` URL, select **OAuth** as the authentication method, and leave any Client ID / Client Secret blank (the app self-registers clients via Dynamic Client Registration).
+4. **Approve on the device** — ChatGPT starts the OAuth flow. Tap the heads-up notification — or, if the Notifications permission is off, open the app's **Server** screen and tap the **pending approvals** card — confirm the 2-digit code matches, and **Approve** (identical to the Claude approval step).
+5. Manage or revoke the connected client any time under **Settings → Access → Connected clients** in the app.
+
+> ⚠️ **Security:** the same cautions apply — treat the tunnel URL as sensitive, approve only connections you initiated (verify the code), revoke unused clients, and stop the tunnel and server when you are done.
 
 ### Other MCP Clients
 
@@ -350,6 +430,11 @@ See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for the full reference and a copy
 
 All extras are optional — only the ones provided are updated. The app does **not** need to be open.
 
+> **Requires adb.** The configuration receiver and the service trampoline are gated on
+> `android.permission.DUMP`, which the adb shell UID holds but ordinary apps cannot obtain. The
+> commands below work unchanged from `adb shell`; an app on the device cannot use them to
+> reconfigure the server. See the [Security](#security) section.
+
 ```bash
 adb shell am broadcast \
   -a com.danielealbano.androidremotecontrolmcp.ADB_CONFIGURE \
@@ -358,11 +443,15 @@ adb shell am broadcast \
   --es binding_address "0.0.0.0" \
   --ei port 8080 \
   --ez auto_start_on_boot true \
+  --ez hide_from_recents false \
   --ez https_enabled false \
   --es certificate_source "AUTO_GENERATED" \
   --es certificate_hostname "mcp.local" \
   --ez tunnel_enabled false \
   --es tunnel_provider "CLOUDFLARE" \
+  --es cloudflare_tunnel_mode "TOKEN" \
+  --es cloudflare_tunnel_token "your-cloudflare-tunnel-token" \
+  --es cloudflare_tunnel_extra_args "--edge region1.v2.argotunnel.com:7844" \
   --es ngrok_authtoken "your-ngrok-token" \
   --es ngrok_domain "your-domain.ngrok-free.app" \
   --ei file_size_limit_mb 50 \
@@ -393,11 +482,15 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `binding_address` | string | `127.0.0.1` (localhost) or `0.0.0.0` (network) |
 | `port` | int | HTTP/HTTPS server port (1-65535) |
 | `auto_start_on_boot` | boolean | Start MCP server when device boots |
+| `hide_from_recents` | boolean | Exclude the app from the Android Recent Tasks list |
 | `https_enabled` | boolean | Enable HTTPS with TLS |
 | `certificate_source` | string | `AUTO_GENERATED` or `CUSTOM` |
 | `certificate_hostname` | string | Hostname for auto-generated certificate |
 | `tunnel_enabled` | boolean | Enable remote access tunnel |
 | `tunnel_provider` | string | `CLOUDFLARE` or `NGROK` |
+| `cloudflare_tunnel_mode` | string | `FREE` (Quick Tunnel, random `*.trycloudflare.com` URL) or `TOKEN` (named tunnel with static hostname) |
+| `cloudflare_tunnel_token` | string | Cloudflare named-tunnel token (used when `cloudflare_tunnel_mode` is `TOKEN`) |
+| `cloudflare_tunnel_extra_args` | string | Optional extra arguments passed to cloudflared (e.g. `--edge region1.v2.argotunnel.com:7844`) |
 | `ngrok_authtoken` | string | ngrok authentication token |
 | `ngrok_domain` | string | ngrok custom domain (optional) |
 | `file_size_limit_mb` | int | Max file size for file operations (1-500) |
@@ -406,6 +499,9 @@ Bearer enforcement is controlled by `--ez bearer_token_enabled <bool>`, NOT by c
 | `download_timeout_seconds` | int | Download timeout (10-300) |
 | `device_slug` | string | Device identifier for tool name prefix |
 | `tool_permissions` | string (JSON) | Per-tool and per-parameter permissions: `{"disabled_tools":["tool_name"],"disabled_params":{"tool_name":["param"]}}` |
+| `storage_location_id` | string | ID of an existing storage location (from `android_list_storage_locations` or Settings > Storage); required by the two extras below, unknown IDs are ignored |
+| `storage_allow_write` | boolean | Allow write operations on the location identified by `storage_location_id` |
+| `storage_allow_delete` | boolean | Allow delete operations on the location identified by `storage_location_id` |
 
 #### Start the MCP Server
 
@@ -424,6 +520,37 @@ adb shell am start \
   -n <app-id>/com.danielealbano.androidremotecontrolmcp.services.mcp.AdbServiceTrampolineActivity \
   --es action stop
 ```
+
+---
+
+## Permissions Reference
+
+The app declares the permissions below. **Normal** permissions are granted automatically at install. **Runtime** permissions and **Special access** require explicit user action (via the app's Settings > Permissions tab, or programmatically — see [Granting Permissions Programmatically](docs/PERMISSIONS.md)). All runtime permissions are optional: the app works without them, but the features that depend on them are disabled until granted.
+
+| Permission | Type | Used for |
+|------------|------|----------|
+| `INTERNET` | Normal | HTTP/HTTPS server and remote access tunnels |
+| `ACCESS_NETWORK_STATE` | Normal | Detect network connectivity |
+| `FOREGROUND_SERVICE` | Normal | Run the MCP server as a foreground service |
+| `FOREGROUND_SERVICE_SPECIAL_USE` | Normal | Foreground service type for the MCP server |
+| `FOREGROUND_SERVICE_LOCATION` | Normal | Foreground service type for the Event Channel (geofence/WiFi) |
+| `RECEIVE_BOOT_COMPLETED` | Normal | Auto-start the server on device boot |
+| `QUERY_ALL_PACKAGES` | Normal | Enumerate installed apps for app-management tools |
+| `KILL_BACKGROUND_PROCESSES` | Normal | Stop background apps via app-management tools |
+| `ACCESS_WIFI_STATE` | Normal | Read WiFi state for the Event Channel |
+| `CHANGE_WIFI_STATE` | Normal | Manage WiFi for the Event Channel |
+| `POST_NOTIFICATIONS` | Runtime | Show the foreground service notification (Android 13+) |
+| `CAMERA` | Runtime | Camera photo/video MCP tools |
+| `RECORD_AUDIO` | Runtime | Audio capture for camera video tools |
+| `ACCESS_FINE_LOCATION` | Runtime | Location tools and geofence events |
+| `ACCESS_COARSE_LOCATION` | Runtime | Approximate location |
+| `ACCESS_BACKGROUND_LOCATION` | Runtime | Location/geofence events while the app is in the background |
+| `NEARBY_WIFI_DEVICES` | Runtime | WiFi scanning for the Event Channel (Android 13+) |
+| `READ_MEDIA_IMAGES` | Runtime | "All files" mode for built-in image storage locations (Android 13+) |
+| `READ_MEDIA_VIDEO` | Runtime | "All files" mode for built-in video storage locations (Android 13+) |
+| `READ_MEDIA_AUDIO` | Runtime | "All files" mode for built-in audio storage locations (Android 13+) |
+| Accessibility Service | Special access | UI introspection, action execution, and screenshots — **required** for core functionality |
+| Notification Listener | Special access | Reading and managing notifications via notification tools |
 
 ---
 

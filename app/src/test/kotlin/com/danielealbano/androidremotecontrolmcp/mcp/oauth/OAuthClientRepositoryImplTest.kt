@@ -3,7 +3,9 @@ package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
 import com.danielealbano.androidremotecontrolmcp.data.repository.OAuthClientRepositoryImpl
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -28,6 +30,7 @@ class OAuthClientRepositoryImplTest {
 
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var repository: OAuthClientRepositoryImpl
+    private val serverLog = RecordingServerLogRepository()
     private var counter = 0
 
     @BeforeEach
@@ -38,7 +41,7 @@ class OAuthClientRepositoryImplTest {
                 scope = testScope.backgroundScope,
                 produceFile = { File(tempDir, "oauth_clients_$counter.preferences_pb") },
             )
-        repository = OAuthClientRepositoryImpl(dataStore)
+        repository = OAuthClientRepositoryImpl(dataStore, serverLog)
     }
 
     @Test
@@ -69,7 +72,7 @@ class OAuthClientRepositoryImplTest {
         testScope.runTest {
             val created =
                 repository.register("Claude", listOf("https://claude.ai/api/mcp/auth_callback"), "web", null, 1L)
-            val newRepo = OAuthClientRepositoryImpl(dataStore)
+            val newRepo = OAuthClientRepositoryImpl(dataStore, serverLog)
             assertNotNull(newRepo.getClient(created.clientId))
         }
 
@@ -115,6 +118,22 @@ class OAuthClientRepositoryImplTest {
                 repository.register("Claude", listOf("https://claude.ai/api/mcp/auth_callback"), "web", null, 1L)
             repository.revoke(created.clientId)
             assertNull(repository.getClient(created.clientId))
+        }
+
+    @Test
+    @DisplayName("revoke logs client name; unknown id logs nothing")
+    fun revokeLogsClientName() =
+        testScope.runTest {
+            val created =
+                repository.register("Claude", listOf("https://claude.ai/api/mcp/auth_callback"), "web", null, 1L)
+
+            repository.revoke("does-not-exist")
+            assertEquals(0, serverLog.ofType(ServerLogEntry.Type.OAUTH).size)
+
+            repository.revoke(created.clientId)
+            val entries = serverLog.ofType(ServerLogEntry.Type.OAUTH)
+            assertEquals(1, entries.size)
+            assertEquals("OAuth client revoked: Claude", entries.first().message)
         }
 
     @Test

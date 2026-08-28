@@ -20,6 +20,40 @@ import java.nio.channels.FileChannel
 import javax.inject.Inject
 import javax.net.ssl.HttpsURLConnection
 
+private val RELATIVE_PATH_CONTROL_CHAR_REGEX = Regex("[\\p{Cntrl}]")
+
+private fun validateRelativePath(
+    path: String,
+    allowEmpty: Boolean = false,
+) {
+    if (path.isEmpty() && allowEmpty) return
+    val error =
+        when {
+            path.isEmpty() -> {
+                "File path cannot be empty"
+            }
+
+            path.startsWith("/") || path.contains('\\') -> {
+                "Path must be relative; absolute paths and backslashes are not allowed"
+            }
+
+            path.split("/").any { segment ->
+                segment == "." ||
+                    segment == ".." ||
+                    RELATIVE_PATH_CONTROL_CHAR_REGEX.containsMatchIn(segment)
+            } -> {
+                "Path must not contain '.', '..', or control-character segments"
+            }
+
+            else -> {
+                null
+            }
+        }
+    if (error != null) {
+        throw McpToolException.InvalidParams(error)
+    }
+}
+
 /**
  * Default implementation of [FileOperationProvider] using the Storage Access Framework.
  *
@@ -49,6 +83,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.listFiles(locationId, path, offset, limit)
             }
+            BuiltinStorageLocation.validatePath(path)
             val directory =
                 resolveDocumentFile(locationId, path)
                     ?: throw McpToolException.ActionFailed(
@@ -104,18 +139,9 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFile(locationId, path, offset, limit)
             }
+            BuiltinStorageLocation.validatePath(path)
             require(offset >= 1) { "offset must be >= 1, got $offset" }
-            val documentFile =
-                resolveDocumentFile(locationId, path)
-                    ?: throw McpToolException.ActionFailed(
-                        "File not found: $path in location '$locationId'",
-                    )
-
-            if (!documentFile.isFile) {
-                throw McpToolException.ActionFailed(
-                    "Path is not a file: $path in location '$locationId'",
-                )
-            }
+            val documentFile = resolveRegularFileOrThrow(locationId, path)
 
             checkFileSize(documentFile)
 
@@ -168,17 +194,8 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.readFileBytes(locationId, path, maxBytes)
             }
-            val documentFile =
-                resolveDocumentFile(locationId, path)
-                    ?: throw McpToolException.ActionFailed(
-                        "File not found: $path in location '$locationId'",
-                    )
-
-            if (!documentFile.isFile) {
-                throw McpToolException.ActionFailed(
-                    "Path is not a file: $path in location '$locationId'",
-                )
-            }
+            BuiltinStorageLocation.validatePath(path)
+            val documentFile = resolveRegularFileOrThrow(locationId, path)
 
             val fileName = documentFile.name ?: path.substringAfterLast('/')
             return readFileBytesFromUri(
@@ -203,6 +220,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.writeFile(locationId, path, content)
             }
+            BuiltinStorageLocation.validatePath(path)
             val config = settingsRepository.getServerConfig()
             val contentBytes = content.toByteArray(Charsets.UTF_8)
             val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
@@ -239,32 +257,15 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.appendFile(locationId, path, content)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val config = settingsRepository.getServerConfig()
-            val documentFile =
-                resolveDocumentFile(locationId, path)
-                    ?: throw McpToolException.ActionFailed(
-                        "File not found: $path in location '$locationId'",
-                    )
-
-            if (!documentFile.isFile) {
-                throw McpToolException.ActionFailed(
-                    "Path is not a file: $path in location '$locationId'",
-                )
-            }
+            val documentFile = resolveRegularFileOrThrow(locationId, path)
 
             val existingSize = documentFile.length()
             val newContentBytes = content.toByteArray(Charsets.UTF_8)
-            val limitBytes = config.fileSizeLimitMb.toLong() * BYTES_PER_MB
-
-            if (existingSize + newContentBytes.size.toLong() > limitBytes) {
-                throw McpToolException.ActionFailed(
-                    "Appending this content would exceed the configured file size limit of " +
-                        "${config.fileSizeLimitMb} MB. Current file size: $existingSize bytes, " +
-                        "content to append: ${newContentBytes.size} bytes.",
-                )
-            }
+            checkAppendSizeLimit(existingSize, newContentBytes.size, config.fileSizeLimitMb)
 
             try {
                 context.contentResolver.openOutputStream(documentFile.uri, "wa")?.use { outputStream ->
@@ -272,22 +273,8 @@ class FileOperationProviderImpl
                 } ?: throw McpToolException.ActionFailed(
                     "Failed to open file for appending: $path in location '$locationId'",
                 )
-            } catch (e: McpToolException) {
-                throw e
-            } catch (e: UnsupportedOperationException) {
-                throw McpToolException.ActionFailed(
-                    "This storage provider does not support append mode. " +
-                        "Use write_file to write the entire file content instead.",
-                )
-            } catch (e: IllegalArgumentException) {
-                throw McpToolException.ActionFailed(
-                    "This storage provider does not support append mode. " +
-                        "Use write_file to write the entire file content instead.",
-                )
             } catch (e: Exception) {
-                throw McpToolException.ActionFailed(
-                    "Failed to append to file: ${e.message ?: "Unknown error"}",
-                )
+                throw appendFailure(e)
             }
 
             Log.d(TAG, "Appended ${newContentBytes.size} bytes to $locationId/$path")
@@ -309,19 +296,10 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.replaceInFile(locationId, path, oldString, newString, replaceAll)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
-            val documentFile =
-                resolveDocumentFile(locationId, path)
-                    ?: throw McpToolException.ActionFailed(
-                        "File not found: $path in location '$locationId'",
-                    )
-
-            if (!documentFile.isFile) {
-                throw McpToolException.ActionFailed(
-                    "Path is not a file: $path in location '$locationId'",
-                )
-            }
+            val documentFile = resolveRegularFileOrThrow(locationId, path)
 
             checkFileSize(documentFile)
 
@@ -369,6 +347,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.downloadFromUrl(locationId, path, url)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val config = settingsRepository.getServerConfig()
@@ -486,13 +465,10 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.deleteFile(locationId, path)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkDeletePermission(locationId)
-            val documentFile =
-                resolveDocumentFile(locationId, path)
-                    ?: throw McpToolException.ActionFailed(
-                        "File not found: $path in location '$locationId'",
-                    )
+            val documentFile = resolveFileOrThrow(locationId, path)
 
             if (documentFile.isDirectory) {
                 throw McpToolException.ActionFailed(
@@ -524,6 +500,7 @@ class FileOperationProviderImpl
             if (BuiltinStorageLocation.isBuiltinId(locationId)) {
                 return mediaStoreFileOperations.createFileUri(locationId, path, mimeType)
             }
+            BuiltinStorageLocation.validatePath(path)
             checkAuthorization(locationId)
             checkWritePermission(locationId)
             val documentFile = ensureParentDirectoriesAndCreateFile(locationId, path, mimeType)
@@ -533,38 +510,6 @@ class FileOperationProviderImpl
         // ─────────────────────────────────────────────────────────────────────
         // Private helpers
         // ─────────────────────────────────────────────────────────────────────
-
-        private fun validateRelativePath(
-            path: String,
-            allowEmpty: Boolean = false,
-        ) {
-            if (path.isEmpty() && allowEmpty) return
-            val error =
-                when {
-                    path.isEmpty() -> {
-                        "File path cannot be empty"
-                    }
-
-                    path.startsWith("/") || path.contains('\\') -> {
-                        "Path must be relative to the selected storage location"
-                    }
-
-                    path.split("/").any { segment ->
-                        segment == "." ||
-                            segment == ".." ||
-                            CONTROL_CHAR_REGEX.containsMatchIn(segment)
-                    } -> {
-                        "Path must not contain '.', '..', or control-character segments"
-                    }
-
-                    else -> {
-                        null
-                    }
-                }
-            if (error != null) {
-                throw McpToolException.InvalidParams(error)
-            }
-        }
 
         /**
          * Checks that the given location is authorized.
@@ -600,6 +545,84 @@ class FileOperationProviderImpl
                 throw McpToolException.PermissionDenied("Delete not allowed")
             }
         }
+
+        /**
+         * Resolves [path] within [locationId] to an existing [DocumentFile], or throws.
+         *
+         * @throws McpToolException.ActionFailed if the path does not resolve to an existing entry.
+         */
+        private suspend fun resolveFileOrThrow(
+            locationId: String,
+            path: String,
+        ): DocumentFile =
+            resolveDocumentFile(locationId, path)
+                ?: throw McpToolException.ActionFailed(
+                    "File not found: $path in location '$locationId'",
+                )
+
+        /**
+         * Resolves [path] within [locationId] to an existing regular file, or throws.
+         *
+         * @throws McpToolException.ActionFailed if the path does not resolve or is not a regular file.
+         */
+        private suspend fun resolveRegularFileOrThrow(
+            locationId: String,
+            path: String,
+        ): DocumentFile {
+            val documentFile = resolveFileOrThrow(locationId, path)
+            if (!documentFile.isFile) {
+                throw McpToolException.ActionFailed(
+                    "Path is not a file: $path in location '$locationId'",
+                )
+            }
+            return documentFile
+        }
+
+        /**
+         * Verifies that appending [addBytes] bytes to a file currently [existingSize] bytes long
+         * stays within the configured [fileSizeLimitMb] limit.
+         *
+         * @throws McpToolException.ActionFailed if the resulting size would exceed the limit.
+         */
+        private fun checkAppendSizeLimit(
+            existingSize: Long,
+            addBytes: Int,
+            fileSizeLimitMb: Int,
+        ) {
+            val limitBytes = fileSizeLimitMb.toLong() * BYTES_PER_MB
+            if (existingSize + addBytes.toLong() > limitBytes) {
+                throw McpToolException.ActionFailed(
+                    "Appending this content would exceed the configured file size limit of " +
+                        "$fileSizeLimitMb MB. Current file size: $existingSize bytes, " +
+                        "content to append: $addBytes bytes.",
+                )
+            }
+        }
+
+        /**
+         * Maps an exception caught while appending into the [McpToolException] to surface.
+         * Existing [McpToolException]s pass through unchanged; unsupported-append signals are
+         * reported as such; anything else becomes a generic append failure.
+         */
+        private fun appendFailure(e: Exception): McpToolException =
+            when (e) {
+                is McpToolException -> {
+                    e
+                }
+
+                is UnsupportedOperationException, is IllegalArgumentException -> {
+                    McpToolException.ActionFailed(
+                        "This storage provider does not support append mode. " +
+                            "Use write_file to write the entire file content instead.",
+                    )
+                }
+
+                else -> {
+                    McpToolException.ActionFailed(
+                        "Failed to append to file: ${e.message ?: "Unknown error"}",
+                    )
+                }
+            }
 
         /**
          * Resolves a [DocumentFile] for the given virtual path within an authorized location.

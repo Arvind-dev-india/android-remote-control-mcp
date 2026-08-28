@@ -1,6 +1,9 @@
 package com.danielealbano.androidremotecontrolmcp.mcp.oauth
 
+import com.danielealbano.androidremotecontrolmcp.data.model.ServerLogEntry
+import com.danielealbano.androidremotecontrolmcp.data.repository.ServerLogRepository
 import com.danielealbano.androidremotecontrolmcp.geo.GeoLocation
+import com.danielealbano.androidremotecontrolmcp.testutil.RecordingServerLogRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -9,7 +12,7 @@ import org.junit.jupiter.api.Test
 
 @DisplayName("OAuthApprovalCoordinatorImpl")
 class OAuthApprovalCoordinatorImplTest {
-    private fun newCoordinator() = OAuthApprovalCoordinatorImpl()
+    private fun newCoordinator(serverLog: ServerLogRepository) = OAuthApprovalCoordinatorImpl(serverLog)
 
     private fun req(
         logoUri: String? = null,
@@ -21,7 +24,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending appears in pending flow with 2-digit code")
     fun createPendingAppears() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             assertEquals(2, approval.matchCode.length)
             assertTrue(coordinator.observePending().value.any { it.id == approval.id })
@@ -31,7 +34,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending carries logoUri onto the pending approval")
     fun createPendingCarriesLogoUri() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(logoUri = "https://cdn.example/logo.png"), 0L)
             assertEquals("https://cdn.example/logo.png", approval.logoUri)
         }
@@ -40,7 +43,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("createPending carries the client IP and geolocation onto the pending approval")
     fun createPendingCarriesIpAndGeo() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val geo = GeoLocation("US", "Mountain View")
             val approval = coordinator.createPending(req(clientIp = "8.8.8.8", clientGeo = geo), 0L)
             assertEquals("8.8.8.8", approval.clientIp)
@@ -51,7 +54,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("approve transitions and clears pending")
     fun approveTransitions() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.approve(approval.id, 1L)
             assertEquals(ApprovalState.APPROVED, coordinator.stateOf(approval.id, 1L))
@@ -62,7 +65,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("approve after the window has lapsed yields EXPIRED, not APPROVED")
     fun approveAfterExpiryYieldsExpired() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.approve(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
             assertEquals(ApprovalState.EXPIRED, coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1))
@@ -72,7 +75,7 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("deny transitions to DENIED")
     fun denyTransitions() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             coordinator.deny(approval.id)
             assertEquals(ApprovalState.DENIED, coordinator.stateOf(approval.id, 1L))
@@ -83,9 +86,86 @@ class OAuthApprovalCoordinatorImplTest {
     @DisplayName("expiry yields EXPIRED")
     fun expiryYieldsExpired() =
         runTest {
-            val coordinator = newCoordinator()
+            val coordinator = newCoordinator(RecordingServerLogRepository())
             val approval = coordinator.createPending(req(), 0L)
             assertEquals(ApprovalState.EXPIRED, coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1))
             assertTrue(coordinator.observePending().value.none { it.id == approval.id })
+        }
+
+    @Test
+    @DisplayName("approve logs approved")
+    fun approveLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.approve(approval.id, 1L)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("approved for Claude"))
+        }
+
+    @Test
+    @DisplayName("late approve logs expired")
+    fun lateApproveLogsExpired() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.approve(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("expired"))
+        }
+
+    @Test
+    @DisplayName("deny logs denied")
+    fun denyLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.deny(approval.id)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("denied for Claude"))
+        }
+
+    @Test
+    @DisplayName("stateOf lazy expiry logs expired")
+    fun stateOfLazyExpiryLogs() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            val approval = coordinator.createPending(req(), 0L)
+            coordinator.stateOf(approval.id, OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entry = serverLog.ofType(ServerLogEntry.Type.OAUTH).single()
+            assertTrue(entry.message.contains("expired"))
+        }
+
+    @Test
+    @DisplayName("cap eviction logs nothing")
+    fun capEvictionLogsNothing() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            repeat(OAuthPolicy.MAX_PENDING_APPROVALS + 1) { coordinator.createPending(req(), 0L) }
+
+            assertTrue(serverLog.ofType(ServerLogEntry.Type.OAUTH).isEmpty())
+        }
+
+    @Test
+    @DisplayName("purge of stale pending logs expired")
+    fun purgeStalePendingLogsExpired() =
+        runTest {
+            val serverLog = RecordingServerLogRepository()
+            val coordinator = newCoordinator(serverLog)
+            coordinator.createPending(req(), 0L)
+            coordinator.createPending(req(), OAuthPolicy.APPROVAL_WINDOW_MS + 1)
+
+            val entries = serverLog.ofType(ServerLogEntry.Type.OAUTH)
+            assertEquals(1, entries.size)
+            assertTrue(entries.first().message.contains("expired"))
         }
 }

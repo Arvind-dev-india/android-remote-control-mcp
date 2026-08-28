@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
+import com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -51,9 +53,7 @@ class PermissionUtilsTest {
             assertTrue(
                 PermissionUtils.isAccessibilityServiceEnabled(
                     mockContext,
-                    Class.forName(
-                        "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService",
-                    ),
+                    McpAccessibilityService::class.java,
                 ),
             )
         }
@@ -77,6 +77,167 @@ class PermissionUtilsTest {
 
             assertFalse(
                 PermissionUtils.isAccessibilityServiceEnabled(mockContext, Any::class.java),
+            )
+        }
+
+        @Test
+        fun `returns true when service is enabled via short-form component name`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                ".services.accessibility.McpAccessibilityService"
+
+            assertTrue(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns true when short-form service is among multiple entries`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.other.package/com.other.Service:" +
+                "com.danielealbano.androidremotecontrolmcp/" +
+                ".services.accessibility.McpAccessibilityService"
+
+            assertTrue(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for malformed entry without component separator`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for entry with empty class part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for entry with empty package part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "/com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false when short-form resolves to a different class in the same package`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/.services.accessibility.OtherService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false when the class name casing differs`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "com.danielealbano.androidremotecontrolmcp.services.accessibility.MCPAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for entry with a duplicated component separator`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp//" +
+                "services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for entry with a component separator inside the class part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "services/accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false for short-form entry with an empty package part`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "/.services.accessibility.McpAccessibilityService"
+
+            assertFalse(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns true when short-form service follows an empty leading entry`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns ":com.danielealbano.androidremotecontrolmcp/" +
+                ".services.accessibility.McpAccessibilityService"
+
+            assertTrue(
+                PermissionUtils.isAccessibilityServiceEnabled(
+                    mockContext,
+                    McpAccessibilityService::class.java,
+                ),
             )
         }
     }
@@ -147,13 +308,59 @@ class PermissionUtilsTest {
                 Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
             } returns serviceName
 
-            val serviceClass =
-                Class.forName(
-                    "com.danielealbano.androidremotecontrolmcp" +
-                        ".services.notifications.McpNotificationListenerService",
-                )
             assertTrue(
-                PermissionUtils.isNotificationListenerEnabled(mockContext, serviceClass),
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns true when service is enabled via short-form component name`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                ".services.notifications.McpNotificationListenerService"
+
+            assertTrue(
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns true when short-form service follows a non-matching and an empty entry`() {
+            // The non-matching entry and the empty entry precede the match, so `any`
+            // must evaluate both (including componentMatches("")) before matching.
+            every {
+                Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
+            } returns "com.other.package/com.other.Service::" +
+                "com.danielealbano.androidremotecontrolmcp/" +
+                ".services.notifications.McpNotificationListenerService"
+
+            assertTrue(
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `returns false when the class name casing differs`() {
+            every {
+                Settings.Secure.getString(mockContentResolver, "enabled_notification_listeners")
+            } returns "com.danielealbano.androidremotecontrolmcp/" +
+                "com.danielealbano.androidremotecontrolmcp.services.notifications.MCPNotificationListenerService"
+
+            assertFalse(
+                PermissionUtils.isNotificationListenerEnabled(
+                    mockContext,
+                    McpNotificationListenerService::class.java,
+                ),
             )
         }
 

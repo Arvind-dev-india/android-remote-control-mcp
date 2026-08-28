@@ -9,7 +9,9 @@ Usage:
   python3 build_location_db.py --out app/src/main/assets/geo/location-db.bin.gz
   python3 build_location_db.py --csv /path/to/dbip-city-lite.csv.gz --out out.bin.gz
 
-By default the current month's CSV is downloaded (and cached) if --csv is not given.
+By default the newest available monthly CSV is downloaded (and cached) if --csv is not
+given: the current month is tried first, then earlier months in sequence (up to 6 months
+total), since DB-IP publishes each month's file a few days into the month.
 Both IPv4 and IPv6 are ingested at city granularity.
 
 Attribution: this product includes IP geolocation data created by DB-IP.com,
@@ -25,6 +27,7 @@ import gzip
 import io
 import ipaddress
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -32,24 +35,69 @@ from location_db import LocationDbBuilder, LocationDbReader
 
 DBIP_URL = "https://download.db-ip.com/free/dbip-city-lite-{month}.csv.gz"
 
+# DB-IP publishes the new monthly DB a few days into the month, so the current month's
+# file is often absent (HTTP 404) at build time. Try the current month, then walk back up
+# to this many months total, using the newest one that is actually available.
+FALLBACK_MONTHS = 6
+
 
 def _default_month() -> str:
     return datetime.date.today().strftime("%Y-%m")
 
 
-def _download(month: str, dest: Path) -> Path:
-    url = DBIP_URL.format(month=month)
+def _previous_month(month: str) -> str:
+    """Return the YYYY-MM string for the calendar month before [month]."""
+    year, mon = (int(p) for p in month.split("-"))
+    if mon == 1:
+        return f"{year - 1:04d}-12"
+    return f"{year:04d}-{mon - 1:02d}"
+
+
+def _candidate_months(start_month: str, count: int) -> list[str]:
+    """[start_month] and the [count]-1 preceding months, newest first."""
+    months = [start_month]
+    for _ in range(count - 1):
+        months.append(_previous_month(months[-1]))
+    return months
+
+
+def _download(month: str, dest: Path) -> Path | None:
+    """Fetch the DB-IP CSV for [month] into [dest]. Return the path, or None if that
+    month is not published yet (HTTP 404)."""
     if dest.exists():
         print(f"using cached {dest} ({dest.stat().st_size:,} bytes)")
         return dest
+    url = DBIP_URL.format(month=month)
     print(f"downloading {url} ...")
     dest.parent.mkdir(parents=True, exist_ok=True)
     # DB-IP rejects the default urllib user-agent (403), so present a browser-like one.
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (location-db build)"})
-    with urllib.request.urlopen(req) as resp, open(dest, "wb") as f:  # noqa: S310 (trusted host)
-        f.write(resp.read())
+    try:
+        with urllib.request.urlopen(req) as resp, open(dest, "wb") as f:  # noqa: S310 (trusted host)
+            f.write(resp.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print(f"  {month} not published yet (HTTP 404)")
+            return None
+        raise
     print(f"saved {dest} ({dest.stat().st_size:,} bytes)")
     return dest
+
+
+def _resolve_csv(start_month: str, cache_dir: Path) -> Path:
+    """Return the newest available DB-IP CSV, trying [start_month] then earlier months.
+
+    Fails only when none of the last [FALLBACK_MONTHS] months is available.
+    """
+    candidates = _candidate_months(start_month, FALLBACK_MONTHS)
+    for month in candidates:
+        result = _download(month, cache_dir / f"dbip-city-lite-{month}.csv.gz")
+        if result is not None:
+            return result
+    raise SystemExit(
+        f"No DB-IP City Lite database available for any of the last {FALLBACK_MONTHS} months "
+        f"({', '.join(candidates)}). DB-IP may be delayed; retry later or pass --csv explicitly."
+    )
 
 
 def _open_csv(path: Path) -> io.TextIOBase:
@@ -118,7 +166,7 @@ def main() -> int:
     ap.add_argument("--cache-dir", type=Path, default=Path("/tmp/dbip-cache"))
     args = ap.parse_args()
 
-    csv_path = args.csv or _download(args.month, args.cache_dir / f"dbip-city-lite-{args.month}.csv.gz")
+    csv_path = args.csv or _resolve_csv(args.month, args.cache_dir)
     blob = build(csv_path)
     gz = gzip.compress(blob, mtime=0)
 

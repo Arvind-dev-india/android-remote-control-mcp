@@ -16,6 +16,7 @@ import com.danielealbano.androidremotecontrolmcp.services.accessibility.ElementI
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.FindBy
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.ScreenInfo
 import com.danielealbano.androidremotecontrolmcp.services.accessibility.WindowData
+import com.danielealbano.androidremotecontrolmcp.testutil.PrivacyToolTestDoubles
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -184,7 +185,14 @@ class NodeActionToolsTest {
     @DisplayName("FindNodesTool")
     inner class FindNodesToolTests {
         private val tool =
-            FindNodesTool(mockTreeParser, mockElementFinder, mockAccessibilityServiceProvider, mockNodeCache)
+            FindNodesTool(
+                mockTreeParser,
+                mockElementFinder,
+                mockAccessibilityServiceProvider,
+                mockNodeCache,
+                PrivacyToolTestDoubles.passthroughGate(),
+                PrivacyToolTestDoubles.identitySubstitutor(),
+            )
 
         @Test
         fun `returns matching nodes`() =

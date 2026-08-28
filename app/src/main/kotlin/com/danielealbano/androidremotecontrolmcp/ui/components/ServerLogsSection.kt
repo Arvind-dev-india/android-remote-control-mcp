@@ -2,20 +2,19 @@
 
 package com.danielealbano.androidremotecontrolmcp.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -31,12 +30,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val MAX_LOG_LIST_HEIGHT_DP = 300
 private const val TIME_FORMAT_PATTERN = "HH:mm:ss"
 
 @Composable
 fun ServerLogsSection(
     logs: List<ServerLogEntry>,
+    onShowMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -60,17 +59,21 @@ fun ServerLogsSection(
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
             } else {
-                val reversedLogs = remember(logs) { logs.reversed() }
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = MAX_LOG_LIST_HEIGHT_DP.dp),
-                ) {
-                    items(reversedLogs) { entry ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    logs.forEach { entry ->
                         ServerLogEntryRow(entry = entry)
                         HorizontalDivider()
                     }
+                }
+            }
+
+            // Always shown: an empty recent card must still allow opening the full Logs page.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onShowMore) {
+                    Text(stringResource(R.string.server_logs_show_more))
                 }
             }
         }
@@ -111,20 +114,24 @@ private fun ServerLogEntryRow(entry: ServerLogEntry) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!entry.params.isNullOrEmpty()) {
+            if (entry.message.isNotEmpty()) {
                 Text(
-                    text = entry.params,
+                    text = entry.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.error,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 56.dp, bottom = 4.dp),
                 )
             }
         }
 
         ServerLogEntry.Type.TUNNEL,
         ServerLogEntry.Type.SERVER,
+        ServerLogEntry.Type.OAUTH,
+        ServerLogEntry.Type.AUTH,
+        ServerLogEntry.Type.CHANNEL,
+        ServerLogEntry.Type.SETTINGS,
+        ServerLogEntry.Type.PRIVACY,
         -> {
             Row(
                 modifier =
@@ -163,7 +170,6 @@ private fun ServerLogsSectionPreview() {
                         type = ServerLogEntry.Type.TOOL_CALL,
                         message = "tap",
                         toolName = "tap",
-                        params = """{"x": 500, "y": 800}""",
                         durationMs = 42,
                     ),
                     ServerLogEntry(
@@ -172,6 +178,7 @@ private fun ServerLogsSectionPreview() {
                         message = "Tunnel connected: https://random-words.trycloudflare.com",
                     ),
                 ),
+            onShowMore = {},
         )
     }
 }

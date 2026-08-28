@@ -99,7 +99,7 @@ The typical startup flow: User opens app → enables Accessibility Service in An
 - **DataStore**: Settings persistence (modern replacement for SharedPreferences)
 - **Hilt**: Dependency injection (Dagger-based, official Android DI)
 - **Ktor Server**: HTTP/HTTPS server (Kotlin-native, async, coroutine-based)
-- **MCP Kotlin SDK**: Official Model Context Protocol implementation v0.8.3 (from Anthropic/ModelContextProtocol), including `Server`, `StreamableHttpServerTransport`, and type-safe tool registration via `Server.addTool()`
+- **MCP Kotlin SDK**: Official Model Context Protocol implementation v0.15.0 (from Anthropic/ModelContextProtocol), including `Server`, the stateless Streamable HTTP transport (`mcpStatelessStreamableHttp`), and type-safe tool registration via `Server.addTool()`
 - **SLF4J-Android**: Routes MCP SDK internal SLF4J logs to `android.util.Log`
 - **Kotlinx Serialization**: JSON serialization for MCP protocol
 - **Kotlinx Coroutines**: Async/concurrency
@@ -136,7 +136,7 @@ The typical startup flow: User opens app → enables Accessibility Service in An
   - `services/location/` — `LocationProvider.kt`, `LocationProviderImpl.kt`
   - `services/mcp/` — `McpServerService.kt`, `BootCompletedReceiver.kt`, `AdbConfigHandler.kt`, `AdbConfigReceiver.kt`, `AdbServiceTrampolineActivity.kt`
   - `services/tunnel/` — `TunnelProvider.kt`, `TunnelManager.kt`, `CloudflareTunnelProvider.kt`, `CloudflaredBinaryResolver.kt`, `AndroidCloudflareBinaryResolver.kt`, `NgrokTunnelProvider.kt`
-  - `mcp/` — `McpServer.kt`, `McpStreamableHttpExtension.kt`, `McpToolException.kt`, `CertificateManager.kt`
+  - `mcp/` — `McpServer.kt`, `McpStatelessTransport.kt`, `McpToolException.kt`, `CertificateManager.kt`
   - `mcp/tools/` — `McpToolUtils.kt`, `TreeFingerprint.kt`, `ScreenIntrospectionTools.kt`, `TouchActionTools.kt`, `NodeActionTools.kt`, `TextInputTools.kt`, `SystemActionTools.kt`, `GestureTools.kt`, `UtilityTools.kt`, `FileTools.kt`, `AppManagementTools.kt`, `CameraTools.kt`, `LocationTools.kt`
   - `mcp/auth/` — `BearerTokenAuth.kt`
   - `ui/` — `MainActivity.kt`
@@ -147,7 +147,7 @@ The typical startup flow: User opens app → enables Accessibility Service in An
   - `data/repository/` — `SettingsRepository.kt`, `SettingsRepositoryImpl.kt`
   - `data/model/` — `ServerConfig.kt`, `ServerStatus.kt`, `ServerLogEntry.kt`, `BindingAddress.kt`, `CertificateSource.kt`, `ScreenshotData.kt`, `TunnelProviderType.kt`, `TunnelStatus.kt`, `StorageLocation.kt`, `FileInfo.kt`, `AppInfo.kt`, `AppFilter.kt`, `CameraInfo.kt`, `CameraResolution.kt`, `LocationData.kt`
   - `di/` — `AppModule.kt`
-  - `utils/` — `NetworkUtils.kt`, `PermissionUtils.kt`, `Logger.kt`
+  - `utils/` — `NetworkUtils.kt`, `PermissionUtils.kt`, `Logger.kt`, `RecentsUtils.kt`
 - `app/src/main/res/` — `values/strings.xml`, `values/themes.xml`, `drawable/`, `mipmap/`, `xml/accessibility_service_config.xml`
 - `app/src/main/AndroidManifest.xml`
 - `app/src/debug/` — `AndroidManifest.xml` (debug overlay), `kotlin/.../debug/E2EConfigReceiver.kt`
@@ -199,7 +199,7 @@ Tool errors are returned as `CallToolResult(isError = true)` with an error messa
 
 ## MCP Tools Specification
 
-The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
+The MCP server exposes 57 tools across 14 categories. For full JSON-RPC schemas, detailed usage examples, and implementation notes, see [MCP_TOOLS.md](MCP_TOOLS.md).
 
 > **Tool Naming Convention**: All tool names are prefixed with `android_` by default (e.g., `android_tap`, `android_find_nodes`). When a device slug is configured (e.g., `pixel7`), the prefix becomes `android_pixel7_` (e.g., `android_pixel7_tap`). See [MCP_TOOLS.md](MCP_TOOLS.md) for details.
 
@@ -225,13 +225,14 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 
 **Errors**: Returns `CallToolResult(isError = true)` if accessibility not enabled or action execution failed.
 
-### 3. Node Action Tools (4 tools)
+### 3. Node Action Tools (5 tools)
 
 | Tool | Description | Required Params | Optional Params |
 |------|-------------|-----------------|-----------------|
 | `android_find_nodes` | Find UI nodes by criteria | `by` (string: text/content_desc/resource_id/class_name), `value` (string) | `exact_match` (boolean, default false) |
 | `android_click_node` | Click an accessibility node | `node_id` (string) | — |
 | `android_long_click_node` | Long-click an accessibility node | `node_id` (string) | — |
+| `android_tap_node` | Gesture-based tap at a random point within node bounds (unlike `android_click_node`, which uses ACTION_CLICK) | `node_id` (string) | `inset_percentage` (number: 0.0-45.0, default 5.0) |
 | `android_scroll_to_node` | Scroll to make node visible | `node_id` (string) | — |
 
 **Errors**: Returns `CallToolResult(isError = true)` if node not found (ID invalid or stale) or node not clickable. `android_find_nodes` returns empty array (not error) when no matches found.
@@ -246,7 +247,7 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 | `android_type_clear_text` | Clear all text from field via select-all + delete | `node_id` (string) | — |
 | `android_press_key` | Press a specific key | `key` (string: ENTER/BACK/DEL/HOME/TAB/SPACE) | — |
 
-### 5. System Action Tools (7 tools)
+### 5. System Action Tools (6 tools)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
@@ -256,7 +257,6 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 | `android_open_notifications` | Pull down notification shade | None |
 | `android_open_quick_settings` | Open quick settings panel | None |
 | `android_dismiss_keyboard` | Dismiss the on-screen soft keyboard if open | None |
-| `android_get_device_logs` | Retrieve filtered logcat logs | `last_lines` (int, 1-1000, default 100), `since`/`until` (ISO 8601 timestamp), `tag` (string), `level` (string: V/D/I/W/E/F, default D), `package_name` (string) — all optional |
 
 ### 6. Gesture Tools (2 tools)
 
@@ -325,7 +325,7 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 
 | Tool | Description | Required Params | Optional Params |
 |------|-------------|-----------------|-----------------|
-| `android_send_intent` | Send an Android intent (activity, broadcast, or service) | `type` (string: activity/broadcast/service) | `action` (string), `data` (string), `component` (string, package/class), `extras` (object), `extras_types` (object), `flags` (string[]) |
+| `android_send_intent` | Send an Android intent (activity, broadcast, or service) | `type` (string: activity/broadcast/service) | `action` (string), `data` (string), `component` (string, package/class), `package` (string, target package / setPackage), `extras` (object), `extras_types` (object), `flags` (string[]) |
 | `android_open_uri` | Open a URI using ACTION_VIEW | `uri` (string) | `package_name` (string), `mime_type` (string) |
 
 **Extras type inference**: String values → `String`, integers fitting Int range → `Int`, integers exceeding Int range → `Long`, decimals → `Double`, booleans → `Boolean`, string arrays → `StringArrayList`. Use `extras_types` to override (supported: `"string"`, `"int"`, `"long"`, `"float"`, `"double"`, `"boolean"`).
@@ -351,6 +351,27 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 
 **Errors**: All tools return `McpToolException.PermissionDenied` if notification listener is not enabled. ID-based tools return `McpToolException.ActionFailed` if the notification/action is not found. `android_notification_snooze` validates `duration_ms` (positive, max 604800000 = 7 days).
 
+### 13. Location Tools (1 tool)
+
+| Tool | Description | Required Params | Optional Params |
+|------|-------------|-----------------|-----------------|
+| `android_get_location` | Get current location (coordinates, accuracy, reverse-geocoded street address) | — | `fresh_fix` (boolean, default false: request a fresh GPS fix instead of last known location) |
+
+**Permission**: Requires `ACCESS_FINE_LOCATION` runtime permission. `fresh_fix` may take up to 10 seconds and can be force-disabled by the user via the MCP Tools settings toggle.
+
+**Errors**: Returns `McpToolException.PermissionDenied` if location permission not granted. Returns `McpToolException.ActionFailed` if location services are unavailable, no last known location exists, or the fresh fix times out (10 seconds).
+
+### 14. Sharing Tools (2 tools)
+
+| Tool | Description | Required Params | Optional Params |
+|------|-------------|-----------------|-----------------|
+| `android_get_shared_content` | Return and clear items shared to the app via the Android Share sheet (read-once inbox) | — | — |
+| `android_share_file_via_web` | Expose a device file as a temporary capability URL | `location_id` (string), `path` (string) | — |
+
+**Capability URLs**: Random single-purpose token, expires after 1 hour, multiple fetches allowed, served from memory (total in-memory budget 64 MB). `android_share_file_via_web` is limited to the smaller of the configured file size limit and 64 MB.
+
+**Errors**: `android_get_shared_content` has no specific errors — an empty inbox is a normal (non-error) response. `android_share_file_via_web` returns `McpToolException.InvalidParams` for missing/invalid `location_id` or `path`, and `McpToolException.ActionFailed` if the file is not found, the location is not authorized, or the file exceeds the size limit.
+
 ---
 
 ## Android-Specific Conventions
@@ -369,6 +390,12 @@ The MCP server exposes 56 tools across 13 categories. For full JSON-RPC schemas,
 - Check `node.refresh()` before using cached nodes (stale detection)
 - All node operations MUST happen on main thread
 - Use `performAction()` for element actions, `performGlobalAction()` for system actions, `dispatchGesture()` for complex touch sequences (API 24+)
+
+### `isAccessibilityTool` and `accessibilityDataSensitive` (Android 14+ / API 34)
+
+- `accessibility_service_config.xml` declares `android:isAccessibilityTool="true"`. On API 34+, apps can mark UI subtrees `accessibilityDataSensitive`; those nodes are delivered **only** to services that declare `isAccessibilityTool="true"` (and to the system `UiAutomation`). Without the flag, such subtrees are silently filtered out of the tree we receive — e.g. the GitHub app renders as an empty `main_activity_container` in `get_screen_state`/`find_nodes` even though the content is fully present in the framework tree (confirmed via `uiautomator dump`). The flag is what lets this tool introspect and control apps that mark their content sensitive.
+- **Security implication**: this intentionally bypasses the `accessibilityDataSensitive` anti-scraping protection that security-conscious apps (banking, password managers) rely on. This is acceptable for a user-installed, user-enabled remote-control tool, but is a deliberate trade-off that MUST stay documented.
+- **Google Play implication (deferred)**: Play considers only genuine assistive tools eligible to declare `isAccessibilityTool`; declaring it on a remote-control app risks rejection. Current distribution is sideload / GitHub Releases / F-Droid, where the manifest is never reviewed, so the flag is fine. If Play distribution is pursued later, split into per-distribution build variants — a `play` flavor overriding `accessibility_service_config.xml` **without** the flag (plus the required prominent disclosure/consent flow), keeping the flag only in the sideload/F-Droid variant.
 
 ### Permission Handling
 
@@ -520,14 +547,14 @@ HomeScreen contains a TopAppBar, then a scrollable layout with: ServerStatusCard
 
 - **Framework**: Ktor `testApplication`, JUnit 5, MockK
 - **Scope**: Full HTTP stack (authentication, JSON-RPC protocol, tool dispatch) via in-process Ktor test server; all 11 tool categories, error code propagation
-- **Mocking**: Mock Android services (`ActionExecutor`, `AccessibilityServiceProvider`, `ScreenCaptureProvider`, `AccessibilityTreeParser`, `ElementFinder`, `TypeInputController`, `StorageLocationProvider`, `FileOperationProvider`, `AppManager`, `CameraProvider`, `LocationProvider`) via interfaces; real SDK `Server` with `McpStreamableHttp` routing and `BearerTokenAuth`
+- **Mocking**: Mock Android services (`ActionExecutor`, `AccessibilityServiceProvider`, `ScreenCaptureProvider`, `AccessibilityTreeParser`, `ElementFinder`, `TypeInputController`, `StorageLocationProvider`, `FileOperationProvider`, `AppManager`, `CameraProvider`, `LocationProvider`) via interfaces; real SDK `Server` with stateless Streamable HTTP routing (`mcpStatelessStreamableHttp`) and `BearerTokenAuth`
 - **Infrastructure**: `McpIntegrationTestHelper` configures `testApplication` with same routing as production `McpServer`; uses SDK `Client` + `StreamableHttpClientTransport` for type-safe MCP communication
 - **Run**: `make test-integration` or `./gradlew :app:testDebugUnitTest --tests "com.danielealbano.androidremotecontrolmcp.integration.*"`
 - **Note**: JVM-based, no emulator or device required. Runs as part of `make test-unit` since both are under `app/src/test/`
 
 ### E2E Tests
 
-- **Framework**: Testcontainers Kotlin (`redroid/redroid:13.0.0-latest`), JUnit 5, MCP Kotlin SDK Client
+- **Framework**: Testcontainers Kotlin (`redroid/redroid:14.0.0-latest`), JUnit 5, MCP Kotlin SDK Client
 - **Scope**: Full MCP client → server → Android → action flow, Calculator app test (7 + 3 = 10), screenshot capture validation, error handling (auth, unknown tool, invalid params, node not found)
 - **Infrastructure**: `SharedAndroidContainer` singleton shares one container across all test classes (avoids ~2-4 min boot per class); `McpClient` test utility wraps SDK `Client` + `StreamableHttpClientTransport` with trust-all TLS for self-signed certs; `E2EConfigReceiver` debug-only BroadcastReceiver injects test settings via `adb shell am broadcast`
 - **Run**: `make test-e2e` or `./gradlew :e2e-tests:test`
@@ -552,16 +579,22 @@ HomeScreen contains a TopAppBar, then a scrollable layout with: ServerStatusCard
 
 ### Build Variants
 
+Two product flavors under the `distribution` dimension: **`gms`** (full app, GitHub/Play — includes Google
+Play Services location + geofencing) and **`foss`** (F-Droid — no Google Play Services; `get_location` uses the
+framework `LocationManager` and geofencing is excluded). The release applicationId is identical across flavors;
+debug builds get a per-flavor suffix so both can be installed side by side.
+
 | Variant | Application ID | Debuggable | Minify | Logging |
 |---------|---------------|-----------|--------|---------|
-| Debug | `com.danielealbano.androidremotecontrolmcp.debug` | true | false | Verbose |
-| Release | `com.danielealbano.androidremotecontrolmcp` | false | false (open source) | Info+ |
+| gmsDebug | `com.yedhant.androidremotecontrolmcp.gms.debug` | true | false | Verbose |
+| fossDebug | `com.yedhant.androidremotecontrolmcp.foss.debug` | true | false | Verbose |
+| gmsRelease / fossRelease | `com.yedhant.androidremotecontrolmcp` | false | false (open source) | Info+ |
 
 ### Versioning
 
 - **Semantic versioning** (MAJOR.MINOR.PATCH): MAJOR for breaking MCP protocol changes, MINOR for new features, PATCH for bug fixes
-- Version defined in `gradle.properties` (`VERSION_NAME`, `VERSION_CODE`)
-- Bump via Makefile: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major`
+- `VERSION_NAME` is derived from git tags (with a `gradle.properties` fallback for git-less builds); the `versionCode` is derived from git history by Gradle, never hardcoded (see [TOOLS.md](TOOLS.md) → VERSION_CODE Derivation)
+- Bump the version name via Makefile: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major` (the version code is git-derived, not bumped)
 
 ### APK Signing
 
@@ -629,6 +662,8 @@ Tunnel architecture:
 | USB Tethered | Not accessible | Accessible to tethered device |
 | Device as Hotspot | Not accessible | Accessible to hotspot clients |
 | ADB Port Forward | Accessible via host | Accessible via host |
+
+**CORS (browser clients)**: The server sends permissive CORS (`Access-Control-Allow-Origin: *`, no credentials mode) so browser-based MCP clients (e.g. MCP Inspector) can complete the OAuth flow and `/mcp` exchange. This does not weaken authentication — `/mcp` still requires a bearer/OAuth token that a cross-origin page cannot obtain, and non-browser clients send no `Origin` so CORS is a no-op for them. **Trade-off**: the wildcard removes the browser same-origin barrier, so in OPEN mode (both auth methods disabled) on a network-reachable or DNS-rebindable binding, a malicious web page in the victim's browser could drive the tool surface. No `Origin`/`Host` allowlist is enforced because the device's public host is dynamic (changing IPs, Cloudflare/ngrok tunnels, `public_url_override`); any static allowlist would break remote access. Mitigation: stay on the loopback binding and keep at least one auth method enabled unless the network is trusted.
 
 ### Permission Security
 
@@ -715,8 +750,8 @@ All common development tasks are accessible via `make <target>`. Run `make help`
 
 | Target | Description | Underlying Command |
 |--------|-------------|-------------------|
-| `build` | Build debug APK | `./gradlew assembleDebug` |
-| `build-release` | Build release APK | `./gradlew assembleRelease` |
+| `build` | Build gms debug APK | `./gradlew assembleGmsDebug` |
+| `build-release` | Build gms + foss release APKs | `./gradlew assembleGmsRelease assembleFossRelease` |
 | `clean` | Clean build artifacts | `./gradlew clean` |
 
 ### Testing
@@ -774,7 +809,7 @@ All common development tasks are accessible via `make <target>`. Run `make help`
 
 - **[TOOLS.md](TOOLS.md)** — Git branching conventions, commit format, PR creation, GitHub CLI commands, and local CI testing with `act`
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Detailed application architecture: component interactions, service lifecycle diagrams, threading model, inter-service communication patterns
-- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 56 tools
+- **[MCP_TOOLS.md](MCP_TOOLS.md)** — Full MCP tools documentation with JSON-RPC schemas, usage examples, error codes, and implementation notes for all 57 tools
 
 ---
 

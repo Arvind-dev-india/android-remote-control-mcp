@@ -82,7 +82,7 @@ The following script grants every runtime permission and enables both special-ac
 set -euo pipefail
 
 # Set to com.danielealbano.androidremotecontrolmcp for a release build
-APP_ID="com.danielealbano.androidremotecontrolmcp.debug"
+APP_ID="com.yedhant.androidremotecontrolmcp.gms.debug"
 
 ACCESSIBILITY_SERVICE="$APP_ID/com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService"
 NOTIFICATION_LISTENER="$APP_ID/com.danielealbano.androidremotecontrolmcp.services.notifications.McpNotificationListenerService"
