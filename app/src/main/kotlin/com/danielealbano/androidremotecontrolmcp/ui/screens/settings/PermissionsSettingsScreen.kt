@@ -45,6 +45,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 import com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils
 
@@ -121,7 +122,9 @@ fun PermissionsSettingsScreen(
                     } else {
                         stringResource(R.string.permission_enable)
                     },
-                onAction = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                onAction = {
+                    PermissionUtils.openAccessibilitySettings(context, McpAccessibilityService::class.java)
+                },
                 actionEnabled = !isAccessibilityEnabled,
             )
 

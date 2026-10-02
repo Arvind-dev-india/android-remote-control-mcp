@@ -42,6 +42,37 @@ class PermissionUtilsTest {
     @DisplayName("isAccessibilityServiceEnabled")
     inner class IsAccessibilityServiceEnabled {
         @Test
+        fun `matches Yedhant release package with the original service namespace`() {
+            every { mockContext.packageName } returns "com.yedhant.androidremotecontrolmcp"
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.other.package/com.other.Service:" +
+                "com.yedhant.androidremotecontrolmcp/${McpAccessibilityService::class.java.name}"
+
+            assertTrue(PermissionUtils.isAccessibilityServiceEnabled(mockContext, McpAccessibilityService::class.java))
+        }
+
+        @Test
+        fun `matches Yedhant GMS debug package with the original service namespace`() {
+            every { mockContext.packageName } returns "com.yedhant.androidremotecontrolmcp.gms.debug"
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.yedhant.androidremotecontrolmcp.gms.debug/${McpAccessibilityService::class.java.name}"
+
+            assertTrue(PermissionUtils.isAccessibilityServiceEnabled(mockContext, McpAccessibilityService::class.java))
+        }
+
+        @Test
+        fun `upstream installation does not enable the Yedhant service`() {
+            every { mockContext.packageName } returns "com.yedhant.androidremotecontrolmcp"
+            every {
+                Settings.Secure.getString(mockContentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            } returns "com.danielealbano.androidremotecontrolmcp/${McpAccessibilityService::class.java.name}"
+
+            assertFalse(PermissionUtils.isAccessibilityServiceEnabled(mockContext, McpAccessibilityService::class.java))
+        }
+
+        @Test
         fun `returns true when service is in enabled list`() {
             val serviceName =
                 "com.danielealbano.androidremotecontrolmcp/" +

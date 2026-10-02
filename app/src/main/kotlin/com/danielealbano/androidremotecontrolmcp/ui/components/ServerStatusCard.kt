@@ -15,10 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -47,6 +49,8 @@ fun ServerStatusCard(
     onChannelStartClick: () -> Unit,
     onChannelStopClick: () -> Unit,
     startEnabled: Boolean,
+    onEnableAccessibilityClick: () -> Unit,
+    onRestrictedSettingsHelpClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -72,6 +76,10 @@ fun ServerStatusCard(
                 onButtonClick = if (serverStatus is ServerStatus.Running) onMcpStopClick else onMcpStartClick,
             )
 
+            accessibilityRequiredMessage(startEnabled)?.let { message ->
+                AccessibilityAccessPrompt(message, onEnableAccessibilityClick, onRestrictedSettingsHelpClick)
+            }
+
             Spacer(Modifier.height(8.dp))
 
             // Event Channel row
@@ -83,6 +91,9 @@ fun ServerStatusCard(
                 buttonEnabled = channelStartStopButtonEnabled(channelEnabled, startEnabled),
                 onButtonClick = if (channelEnabled) onChannelStopClick else onChannelStartClick,
             )
+            accessibilityRequiredMessage(startEnabled)?.let { message ->
+                AccessibilityAccessPrompt(message, onEnableAccessibilityClick, onRestrictedSettingsHelpClick)
+            }
         }
     }
 }
@@ -109,6 +120,39 @@ internal fun channelStartStopButtonEnabled(
     channelEnabled: Boolean,
     startEnabled: Boolean,
 ): Boolean = if (channelEnabled) true else startEnabled
+
+internal fun accessibilityRequiredMessage(startEnabled: Boolean): Int? =
+    if (startEnabled) {
+        null
+    } else {
+        R.string.accessibility_access_required
+    }
+
+@Composable
+private fun AccessibilityAccessPrompt(
+    message: Int,
+    onEnableClick: () -> Unit,
+    onHelpClick: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text(
+            text = stringResource(message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onEnableClick) {
+            Text(stringResource(R.string.permission_enable))
+        }
+        Text(
+            text = stringResource(R.string.accessibility_restricted_settings_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onHelpClick) {
+            Text(stringResource(R.string.accessibility_open_app_info))
+        }
+    }
+}
 
 @Composable
 private fun ServiceRow(
@@ -250,6 +294,8 @@ private fun ServerStatusCardStoppedPreview() {
             onChannelStartClick = {},
             onChannelStopClick = {},
             startEnabled = true,
+            onEnableAccessibilityClick = {},
+            onRestrictedSettingsHelpClick = {},
         )
     }
 }

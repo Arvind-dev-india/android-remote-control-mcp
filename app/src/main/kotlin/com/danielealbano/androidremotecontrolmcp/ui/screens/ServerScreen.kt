@@ -46,6 +46,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.BindingAddress
+import com.danielealbano.androidremotecontrolmcp.services.accessibility.McpAccessibilityService
 import com.danielealbano.androidremotecontrolmcp.ui.ApprovalActivity
 import com.danielealbano.androidremotecontrolmcp.ui.components.BatteryOptimizationCard
 import com.danielealbano.androidremotecontrolmcp.ui.components.CalloutCard
@@ -58,6 +59,7 @@ import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.LogsViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.MainViewModel
 import com.danielealbano.androidremotecontrolmcp.ui.viewmodels.PrivacyViewModel
 import com.danielealbano.androidremotecontrolmcp.utils.NetworkUtils
+import com.danielealbano.androidremotecontrolmcp.utils.PermissionUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,6 +170,10 @@ fun ServerScreen(
                 },
                 onChannelStopClick = { channelViewModel.stopChannel() },
                 startEnabled = isAccessibilityEnabled,
+                onEnableAccessibilityClick = {
+                    PermissionUtils.openAccessibilitySettings(context, McpAccessibilityService::class.java)
+                },
+                onRestrictedSettingsHelpClick = { PermissionUtils.openAppInfo(context) },
             )
 
             Spacer(Modifier.height(16.dp))

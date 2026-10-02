@@ -1,7 +1,10 @@
 package com.danielealbano.androidremotecontrolmcp.ui.components
 
+import com.danielealbano.androidremotecontrolmcp.R
 import com.danielealbano.androidremotecontrolmcp.data.model.ServerStatus
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -41,5 +44,19 @@ class ServerStatusCardTest {
     fun `channel stop always enabled`() {
         assertTrue(channelStartStopButtonEnabled(channelEnabled = true, startEnabled = false))
         assertTrue(channelStartStopButtonEnabled(channelEnabled = true, startEnabled = true))
+    }
+
+    @Test
+    fun `accessibility off disables both starts and explains the required access`() {
+        assertFalse(mcpStartStopButtonEnabled(ServerStatus.Stopped, startEnabled = false))
+        assertFalse(channelStartStopButtonEnabled(channelEnabled = false, startEnabled = false))
+        assertEquals(R.string.accessibility_access_required, accessibilityRequiredMessage(startEnabled = false))
+    }
+
+    @Test
+    fun `accessibility on enables both starts and removes the explanation`() {
+        assertTrue(mcpStartStopButtonEnabled(ServerStatus.Stopped, startEnabled = true))
+        assertTrue(channelStartStopButtonEnabled(channelEnabled = false, startEnabled = true))
+        assertNull(accessibilityRequiredMessage(startEnabled = true))
     }
 }

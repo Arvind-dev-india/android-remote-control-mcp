@@ -1,9 +1,11 @@
 package com.danielealbano.androidremotecontrolmcp.utils
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 
@@ -14,6 +16,10 @@ object PermissionUtils {
     private const val ENABLED_SERVICES_SEPARATOR = ':'
     private const val COMPONENT_SEPARATOR = '/'
     private const val SHORT_FORM_CLASS_PREFIX = '.'
+
+    // These Android Settings intent constants are not exposed in the public SDK.
+    private const val ACTION_ACCESSIBILITY_DETAILS_SETTINGS = "android.settings.ACCESSIBILITY_DETAILS_SETTINGS"
+    private const val EXTRA_COMPONENT_NAME = "android.intent.extra.COMPONENT_NAME"
 
     /**
      * Checks whether a specific accessibility service is currently enabled.
@@ -39,14 +45,45 @@ object PermissionUtils {
     }
 
     /**
-     * Opens the Android Accessibility Settings screen.
+     * Opens the service's Accessibility settings on Android 13+ (the minimum SDK),
+     * falling back to the service list when the device does not support the details action.
      *
      * @param context Application context. Uses [Intent.FLAG_ACTIVITY_NEW_TASK]
      *   so this can be called from non-Activity contexts.
      */
-    fun openAccessibilitySettings(context: Context) {
+    fun openAccessibilitySettings(
+        context: Context,
+        serviceClass: Class<*>? = null,
+    ) {
+        if (serviceClass != null) {
+            val detailsIntent =
+                Intent().apply {
+                    action = ACTION_ACCESSIBILITY_DETAILS_SETTINGS
+                    putExtra(EXTRA_COMPONENT_NAME, "${context.packageName}/${serviceClass.name}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            try {
+                context.startActivity(detailsIntent)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // Some OEM Settings apps only support the accessibility service list.
+            } catch (_: SecurityException) {
+                // An OEM may restrict the details action while still allowing the service list.
+            }
+        }
         val intent =
-            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            Intent().apply {
+                action = Settings.ACTION_ACCESSIBILITY_SETTINGS
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        context.startActivity(intent)
+    }
+
+    fun openAppInfo(context: Context) {
+        val intent =
+            Intent().apply {
+                action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                data = Uri.parse("package:${context.packageName}")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
         context.startActivity(intent)

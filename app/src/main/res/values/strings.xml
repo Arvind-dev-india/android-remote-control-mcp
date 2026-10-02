@@ -121,6 +121,9 @@
     <string name="permission_section_optional_subtitle">Nice to have; everything works without it.</string>
     <!-- Permissions screen: per-permission rationale (default / foss values) -->
     <string name="permission_accessibility_rationale">Reads the screen and performs taps, swipes, and typing.</string>
+    <string name="accessibility_access_required">Accessibility access is off — required to control the phone</string>
+    <string name="accessibility_restricted_settings_help">Enable blocked? On Android 13+ (including Samsung One UI), open App info → ⋮ → Allow restricted settings, then return to Accessibility settings. Only grant access if you trust this app.</string>
+    <string name="accessibility_open_app_info">Restricted settings help — open App info</string>
     <string name="permission_notifications_rationale">OAuth approval prompts, Event Channel alerts, and server status.</string>
     <string name="permission_notification_listener_rationale">Read and act on device notifications.</string>
     <string name="permission_camera_rationale">Take photos and record video.</string>

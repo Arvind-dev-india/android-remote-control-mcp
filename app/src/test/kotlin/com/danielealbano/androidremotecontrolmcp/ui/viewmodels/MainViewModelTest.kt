@@ -1098,6 +1098,36 @@ class MainViewModelTest {
     // ─── Notification Listener Permission Tests ─────────────────────────
 
     @Test
+    fun `refreshPermissionStatus immediately reflects accessibility granted and revoked`() =
+        runTest {
+            advanceUntilIdle()
+            val context = mockk<Context>()
+            mockkObject(PermissionUtils)
+            try {
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                every { PermissionUtils.isNotificationPermissionGranted(context) } returns false
+                every { PermissionUtils.isCameraPermissionGranted(context) } returns false
+                every { PermissionUtils.isMicrophonePermissionGranted(context) } returns false
+                every { PermissionUtils.isLocationPermissionGranted(context) } returns false
+                every { PermissionUtils.isNotificationListenerEnabled(context, any()) } returns false
+                coEvery { storageLocationProvider.getAllLocations() } returns emptyList()
+
+                viewModel.refreshPermissionStatus(context)
+                assertEquals(false, viewModel.isAccessibilityEnabled.value)
+
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns true
+                viewModel.refreshPermissionStatus(context)
+                assertEquals(true, viewModel.isAccessibilityEnabled.value)
+
+                every { PermissionUtils.isAccessibilityServiceEnabled(context, any()) } returns false
+                viewModel.refreshPermissionStatus(context)
+                assertEquals(false, viewModel.isAccessibilityEnabled.value)
+            } finally {
+                unmockkObject(PermissionUtils)
+            }
+        }
+
+    @Test
     fun `refreshPermissionStatus updates isNotificationListenerEnabled when service is enabled`() =
         runTest {
             advanceUntilIdle()
