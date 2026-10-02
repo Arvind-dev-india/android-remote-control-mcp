@@ -593,7 +593,10 @@ debug builds get a per-flavor suffix so both can be installed side by side.
 ### Versioning
 
 - **Semantic versioning** (MAJOR.MINOR.PATCH): MAJOR for breaking MCP protocol changes, MINOR for new features, PATCH for bug fixes
-- `VERSION_NAME` is derived from git tags (with a `gradle.properties` fallback for git-less builds); the `versionCode` is derived from git history by Gradle, never hardcoded (see [TOOLS.md](TOOLS.md) → VERSION_CODE Derivation)
+- On `homelab`, a Yedhant `VERSION_NAME` in `gradle.properties` pins the planned fork release without
+  creating a git tag; explicit `-PVERSION_NAME` overrides it. Non-Yedhant names retain git-tag
+  derivation with the property as a git-less fallback. Local `versionCode` remains git-history-derived
+  (see [TOOLS.md](TOOLS.md) → VERSION_CODE Derivation); release CI explicitly overrides it from the tag.
 - Bump the version name via Makefile: `make version-bump-patch`, `make version-bump-minor`, `make version-bump-major` (the version code is git-derived, not bumped)
 
 ### APK Signing

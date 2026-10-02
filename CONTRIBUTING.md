@@ -54,14 +54,33 @@ make check-deps
 
 ```bash
 make build
-# APK: app/build/outputs/apk/debug/app-debug.apk
+# GMS APK: app/build/outputs/apk/gms/debug/app-gms-debug.apk
 ```
 
 ### Release Build
 
 ```bash
 make build-release
-# APK: app/build/outputs/apk/release/app-release.apk
+# GMS APK (without release signing configuration):
+# app/build/outputs/apk/gms/release/app-gms-release-unsigned.apk
+```
+
+For GMS-only builds after compiling the native dependencies, use
+`./gradlew assembleGmsDebug assembleGmsRelease`. Do not use install targets unless a test device is
+explicitly approved. Release APKs are unsigned when `keystore.properties` is absent; the debug APK
+uses the standard Android debug key.
+
+On `homelab`, `VERSION_NAME` in `gradle.properties` pins the next Yedhant release
+(`1.12.0-yedhant.2`) so local builds need no new git tag. An explicit `-PVERSION_NAME=...` still takes
+precedence, as in the release workflow introduced by **Support Yedhant release versions**. Local
+`versionCode` remains derived from full git history (see `docs/TOOLS.md`); the release workflow
+explicitly supplies its tag-derived code (for this version, `1120052`). Do not override the local code
+with a lower code when upgrading a device that already runs a git-history-coded build.
+
+To reproduce the planned release workflow's metadata for both GMS APKs (without creating a tag):
+```bash
+./gradlew assembleGmsDebug assembleGmsRelease \
+  -PVERSION_NAME=1.12.0-yedhant.2 -PVERSION_CODE=1120052
 ```
 
 For signed release builds, create `keystore.properties` in the project root:

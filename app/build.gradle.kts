@@ -148,7 +148,11 @@ val isExplicitVersion =
         .containsKey("VERSION_NAME")
 val fallbackVersion = project.findProperty("VERSION_NAME") as String? ?: "1.0.0"
 val versionNameProp =
-    if (isExplicitVersion) fallbackVersion else (getGitDescribeVersion() ?: fallbackVersion)
+    if (isExplicitVersion || Regex("""^\d+\.\d+\.\d+-yedhant\.\d+$""").matches(fallbackVersion)) {
+        fallbackVersion
+    } else {
+        getGitDescribeVersion() ?: fallbackVersion
+    }
 val isExplicitVersionCode =
     project.gradle.startParameter
         .projectProperties
