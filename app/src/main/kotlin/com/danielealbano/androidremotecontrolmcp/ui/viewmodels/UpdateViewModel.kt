@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.danielealbano.androidremotecontrolmcp.data.model.AvailableUpdate
 import com.danielealbano.androidremotecontrolmcp.data.repository.SettingsRepository
 import com.danielealbano.androidremotecontrolmcp.services.update.AppVersionProvider
+import com.danielealbano.androidremotecontrolmcp.services.update.GithubReleaseSource
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckCoordinator
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckOutcome
 import com.danielealbano.androidremotecontrolmcp.services.update.UpdateCheckTrigger
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,11 +52,13 @@ class UpdateViewModel
         val currentVersion: String = versionProvider.versionName
 
         val availableUpdate: StateFlow<AvailableUpdate?> =
-            settingsRepository.availableUpdate.stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-                null,
-            )
+            settingsRepository.availableUpdate
+                .map { update -> update?.takeIf { GithubReleaseSource.isForkReleaseUrl(it.releaseUrl) } }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                    null,
+                )
 
         val autoCheckEnabled: StateFlow<Boolean> =
             settingsRepository.autoUpdateCheckEnabled.stateIn(

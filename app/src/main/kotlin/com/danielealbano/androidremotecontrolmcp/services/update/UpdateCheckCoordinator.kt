@@ -111,7 +111,7 @@ class UpdateCheckCoordinator
                 settingsRepository.setAvailableUpdate(null)
                 UpdateCheckOutcome.UpToDate
             } else {
-                applyUpdate(AvailableUpdate(version.toCoreString(), release.htmlUrl), manual)
+                applyUpdate(AvailableUpdate(version.toVersionString(), release.htmlUrl), manual)
             }
         }
 

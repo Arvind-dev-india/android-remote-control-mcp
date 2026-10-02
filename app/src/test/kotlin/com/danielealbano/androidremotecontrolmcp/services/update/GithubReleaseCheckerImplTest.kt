@@ -20,6 +20,8 @@ import java.io.IOException
 @OptIn(ExperimentalCoroutinesApi::class)
 @DisplayName("GithubReleaseCheckerImpl")
 class GithubReleaseCheckerImplTest {
+    private val releaseUrl = "${GithubReleaseSource.RELEASE_URL_PREFIX}v1.12.0-yedhant.2"
+
     private fun checkerWith(handler: () -> HttpClient): GithubReleaseCheckerImpl =
         GithubReleaseCheckerImpl(UnconfinedTestDispatcher()).apply { clientProvider = handler }
 
@@ -43,14 +45,14 @@ class GithubReleaseCheckerImplTest {
             val checker =
                 checkerWith(
                     jsonClient(
-                        """{"tag_name":"v1.11.0","html_url":"https://github.com/x/y/releases/tag/v1.11.0"}""",
+                        """{"tag_name":"v1.12.0-yedhant.2","html_url":"$releaseUrl"}""",
                     ),
                 )
 
             val result = checker.fetchLatestRelease()
 
-            assertEquals("v1.11.0", result?.tagName)
-            assertEquals("https://github.com/x/y/releases/tag/v1.11.0", result?.htmlUrl)
+            assertEquals("v1.12.0-yedhant.2", result?.tagName)
+            assertEquals(releaseUrl, result?.htmlUrl)
         }
 
     @Test
@@ -59,7 +61,7 @@ class GithubReleaseCheckerImplTest {
             val checker =
                 checkerWith(
                     jsonClient(
-                        """{"tag_name":"v1.11.0","html_url":"https://x/rel","name":"Release","draft":false}""",
+                        """{"tag_name":"v1.11.0","html_url":"$releaseUrl","name":"Release","draft":false}""",
                     ),
                 )
             assertEquals("v1.11.0", checker.fetchLatestRelease()?.tagName)
@@ -82,14 +84,14 @@ class GithubReleaseCheckerImplTest {
     @Test
     fun `returns null when tag_name is missing`() =
         runTest {
-            val checker = checkerWith(jsonClient("""{"html_url":"https://x/rel"}"""))
+            val checker = checkerWith(jsonClient("""{"html_url":"$releaseUrl"}"""))
             assertNull(checker.fetchLatestRelease())
         }
 
     @Test
     fun `returns null when tag_name is blank`() =
         runTest {
-            val checker = checkerWith(jsonClient("""{"tag_name":"   ","html_url":"https://x/rel"}"""))
+            val checker = checkerWith(jsonClient("""{"tag_name":"   ","html_url":"$releaseUrl"}"""))
             assertNull(checker.fetchLatestRelease())
         }
 
@@ -98,6 +100,7 @@ class GithubReleaseCheckerImplTest {
         runTest {
             var userAgent: String? = null
             var accept: String? = null
+            var requestUrl: String? = null
             val checker =
                 checkerWith {
                     HttpClient(MockEngine) {
@@ -105,8 +108,9 @@ class GithubReleaseCheckerImplTest {
                             addHandler { request ->
                                 userAgent = request.headers[HttpHeaders.UserAgent]
                                 accept = request.headers[HttpHeaders.Accept]
+                                requestUrl = request.url.toString()
                                 respond(
-                                    """{"tag_name":"v1.11.0","html_url":"https://x/rel"}""",
+                                    """{"tag_name":"v1.11.0","html_url":"$releaseUrl"}""",
                                     HttpStatusCode.OK,
                                     headersOf(HttpHeaders.ContentType, "application/json"),
                                 )
@@ -121,6 +125,10 @@ class GithubReleaseCheckerImplTest {
             assertNotNull(userAgent)
             assertEquals("android-remote-control-mcp", userAgent)
             assertTrue(accept?.contains("application/vnd.github") == true)
+            assertEquals(
+                "https://api.github.com/repos/Arvind-dev-india/android-remote-control-mcp/releases/latest",
+                requestUrl,
+            )
         }
 
     @Test
@@ -136,6 +144,21 @@ class GithubReleaseCheckerImplTest {
             val checker =
                 checkerWith(jsonClient("""{"tag_name":"v1.11.0","html_url":"javascript:alert(1)"}"""))
             assertNull(checker.fetchLatestRelease())
+        }
+
+    @Test
+    fun `rejects upstream releases and unexpected web hosts`() =
+        runTest {
+            for (
+            url in
+            listOf(
+                "https://github.com/danielealbano/android-remote-control-mcp/releases/tag/v1.12.0",
+                "https://example.com/releases/tag/v1.12.0-yedhant.2",
+            )
+            ) {
+                val checker = checkerWith(jsonClient("""{"tag_name":"v1.12.0","html_url":"$url"}"""))
+                assertNull(checker.fetchLatestRelease())
+            }
         }
 
     @Test

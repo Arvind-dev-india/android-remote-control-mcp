@@ -25,6 +25,9 @@ data class SemanticVersion(
     /** The canonical `major.minor.patch` string, without a leading `v` or any pre-release/build suffix. */
     fun toCoreString(): String = "$major.$minor.$patch"
 
+    /** Keeps the Yedhant revision (and other release identifiers) in banners and notification identities. */
+    fun toVersionString(): String = toCoreString() + if (preRelease.isEmpty()) "" else "-$preRelease"
+
     companion object {
         // Optional leading `v`, then the numeric core, then an optional `-pre-release` segment and an
         // optional `+build` metadata segment (either/both may be absent).

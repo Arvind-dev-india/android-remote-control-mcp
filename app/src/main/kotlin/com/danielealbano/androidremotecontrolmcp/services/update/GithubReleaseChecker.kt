@@ -24,6 +24,13 @@ data class LatestRelease(
     val htmlUrl: String,
 )
 
+object GithubReleaseSource {
+    const val API_URL = "https://api.github.com/repos/Arvind-dev-india/android-remote-control-mcp/releases/latest"
+    const val RELEASE_URL_PREFIX = "https://github.com/Arvind-dev-india/android-remote-control-mcp/releases/tag/"
+
+    fun isForkReleaseUrl(url: String): Boolean = url.startsWith(RELEASE_URL_PREFIX)
+}
+
 /** Fetches the latest published release of the project from the GitHub REST API. */
 interface GithubReleaseChecker {
     /**
@@ -50,7 +57,7 @@ class GithubReleaseCheckerImpl
             withContext(ioDispatcher) {
                 try {
                     val response =
-                        clientProvider().get(LATEST_RELEASE_URL) {
+                        clientProvider().get(GithubReleaseSource.API_URL) {
                             header(HttpHeaders.Accept, GITHUB_ACCEPT)
                             header(HttpHeaders.UserAgent, USER_AGENT)
                         }
@@ -60,9 +67,9 @@ class GithubReleaseCheckerImpl
                     }
                     val dto = json.decodeFromString(GithubReleaseDto.serializer(), response.bodyAsText())
                     val tag = dto.tagName?.takeIf { it.isNotBlank() } ?: return@withContext null
-                    // The URL is a network-derived value later handed to ACTION_VIEW — accept only http(s)
-                    // so a tampered/unexpected payload can never smuggle in another scheme (intent:, javascript:).
-                    val url = dto.htmlUrl?.takeIf { isWebUrl(it) } ?: return@withContext null
+                    val url =
+                        dto.htmlUrl?.takeIf { GithubReleaseSource.isForkReleaseUrl(it) }
+                            ?: return@withContext null
                     LatestRelease(tag, url)
                 } catch (
                     @Suppress("TooGenericExceptionCaught") e: Exception,
@@ -73,8 +80,6 @@ class GithubReleaseCheckerImpl
                     null
                 }
             }
-
-        private fun isWebUrl(url: String): Boolean = url.startsWith("https://") || url.startsWith("http://")
 
         private fun buildClient(): HttpClient =
             HttpClient(OkHttp) {
@@ -92,8 +97,6 @@ class GithubReleaseCheckerImpl
 
         companion object {
             private const val TAG = "MCP:UpdateChecker"
-            private const val LATEST_RELEASE_URL =
-                "https://api.github.com/repos/danielealbano/android-remote-control-mcp/releases/latest"
             private const val GITHUB_ACCEPT = "application/vnd.github+json"
             private const val USER_AGENT = "android-remote-control-mcp"
             private const val REQUEST_TIMEOUT_MS = 15_000L

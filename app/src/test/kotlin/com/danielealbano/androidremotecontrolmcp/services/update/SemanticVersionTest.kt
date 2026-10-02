@@ -75,4 +75,21 @@ class SemanticVersionTest {
     fun `toCoreString drops prefix and suffixes`() {
         assertEquals("1.11.0", SemanticVersion.parse("v1.11.0-dev.3+abc")!!.toCoreString())
     }
+
+    @Test
+    fun `Yedhant revision compares numerically within the upstream core`() {
+        assertTrue(SemanticVersion.parse("1.12.0-yedhant.2")!! > SemanticVersion.parse("v1.12.0-yedhant.1")!!)
+        assertTrue(SemanticVersion.parse("1.12.0-yedhant.10")!! > SemanticVersion.parse("1.12.0-yedhant.2")!!)
+        assertTrue(SemanticVersion.parse("1.13.0-yedhant.1")!! > SemanticVersion.parse("1.12.0-yedhant.10")!!)
+        assertEquals(
+            0,
+            SemanticVersion.parse("1.12.0-yedhant.2")!!.compareTo(SemanticVersion.parse("v1.12.0-yedhant.2+meta")!!),
+        )
+    }
+
+    @Test
+    fun `toVersionString retains the Yedhant revision without build metadata`() {
+        assertEquals("1.12.0-yedhant.2", SemanticVersion.parse("v1.12.0-yedhant.2+abc")!!.toVersionString())
+        assertEquals("1.12.0", SemanticVersion.parse("v1.12.0")!!.toVersionString())
+    }
 }

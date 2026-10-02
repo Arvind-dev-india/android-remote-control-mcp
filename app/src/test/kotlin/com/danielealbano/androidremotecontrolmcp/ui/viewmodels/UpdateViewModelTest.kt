@@ -36,7 +36,7 @@ class UpdateViewModelTest {
     private lateinit var versionProvider: AppVersionProvider
     private lateinit var viewModel: UpdateViewModel
 
-    private val releaseUrl = "https://github.com/danielealbano/android-remote-control-mcp/releases/tag/v1.11.0"
+    private val releaseUrl = "https://github.com/Arvind-dev-india/android-remote-control-mcp/releases/tag/v1.11.0"
 
     @BeforeEach
     fun setUp() {
@@ -126,6 +126,31 @@ class UpdateViewModelTest {
                 assertEquals(update, value)
                 cancelAndIgnoreRemainingEvents()
             }
+
+            @Test
+            fun `cached upstream banner is hidden even when offline or automatic checks are disabled`() =
+                runTest {
+                    val updates =
+                        MutableStateFlow<AvailableUpdate?>(
+                            AvailableUpdate(
+                                "1.12.0",
+                                "https://github.com/danielealbano/android-remote-control-mcp/releases/tag/v1.12.0",
+                            ),
+                        )
+                    every { settings.availableUpdate } returns updates
+                    every { settings.autoUpdateCheckEnabled } returns flowOf(false)
+                    val vm = UpdateViewModel(settings, coordinator, versionProvider)
+
+                    vm.availableUpdate.test {
+                        assertEquals(null, awaitItem())
+                        expectNoEvents()
+                        val forkUpdate = AvailableUpdate("1.12.0-yedhant.3", "$releaseUrl-yedhant.3")
+                        updates.value = forkUpdate
+                        assertEquals(forkUpdate, awaitItem())
+                        cancelAndIgnoreRemainingEvents()
+                    }
+                    coVerify(exactly = 0) { coordinator.check(any()) }
+                }
         }
 
     @Test

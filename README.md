@@ -125,13 +125,13 @@ If unsure, the GMS build is the right choice for a typical phone with the Play S
 
 ### Option A: Download on your phone (easiest)
 
-1. Open the [Releases](https://github.com/danielealbano/android-remote-control-mcp/releases) page on your phone's browser
+1. Open the [Yedhant fork releases](https://github.com/Arvind-dev-india/android-remote-control-mcp/releases) page on your phone's browser
 2. Download the APK from the latest release
 3. Open the downloaded APK and follow the prompts to install it (you may need to allow installation from unknown sources)
 
 ### Option B: Download on your PC and install via ADB
 
-1. Download the APK from the [Releases](https://github.com/danielealbano/android-remote-control-mcp/releases) page
+1. Download the APK from the [Yedhant fork releases](https://github.com/Arvind-dev-india/android-remote-control-mcp/releases) page
 2. Connect your phone via USB (with USB Debugging enabled)
 3. Install the APK (use the GMS or FOSS file you downloaded):
 ```bash
@@ -141,7 +141,7 @@ adb install android-remote-control-mcp-<version>-gms-release.apk
 ### Option C: Build from sources
 
 ```bash
-git clone https://github.com/danielealbano/android-remote-control-mcp.git
+git clone https://github.com/Arvind-dev-india/android-remote-control-mcp.git
 cd android-remote-control-mcp
 make build
 make install  # installs on connected device/emulator
@@ -163,7 +163,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full build requirements and instructi
    - **Other permissions** (optional) — Camera, Microphone, and Location enable their corresponding MCP tools. The app works without them; only the dependent features are disabled until granted. See the [Permissions Reference](#permissions-reference) below for the complete list.
    - **Storage locations** — configure in Settings > Storage if you plan to use the file tools (automatic locations like Downloads, plus custom locations via SAF).
 
-3. **Start the server.** Go back to the **Server tab** and tap **Start**.
+3. **Start the server.** Go back to the **Server tab** and tap **Start**. If Accessibility access is off,
+   both the MCP Server and Event Channel Start buttons stay disabled with an inline explanation.
+   Tap **Enable** under either row to open this app's Accessibility settings directly. If Android blocks
+   enabling it, use **Restricted settings help — open App info** and follow the instructions above
+   (the installed app is named **Yedhant Android MCP**). Returning from settings immediately refreshes the buttons.
+
+Update checks use this fork's releases (`v1.12.0-yedhant.N`), not upstream releases. Yedhant revisions
+are compared numerically and retained in update banners; cached upstream banners are hidden.
 
 The server starts on `http://127.0.0.1:8080` by default. The connection info (IP, port, token, URL) is displayed on the Server tab.
 

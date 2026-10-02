@@ -217,4 +217,34 @@ class UpdateCheckCoordinatorTest {
 
             assertEquals(UpdateCheckOutcome.UpdateAvailable(AvailableUpdate("1.11.0", releaseUrl)), outcome)
         }
+
+    @Test
+    fun `equal or older Yedhant releases do not offer an update`() =
+        runTest {
+            every { versionProvider.versionName } returns "1.12.0-yedhant.2"
+            for (tag in listOf("v1.12.0-yedhant.1", "v1.12.0-yedhant.2")) {
+                coEvery { checker.fetchLatestRelease() } returns LatestRelease(tag, releaseUrl)
+                assertEquals(UpdateCheckOutcome.UpToDate, coordinator.check(UpdateCheckTrigger.MANUAL))
+            }
+            verify(exactly = 0) { notifier.notifyUpdateAvailable(any(), any()) }
+        }
+
+    @Test
+    fun `new Yedhant revision retains full version in banner and notification deduplication`() =
+        runTest {
+            every { versionProvider.versionName } returns "1.12.0-yedhant.1"
+            val url = "${GithubReleaseSource.RELEASE_URL_PREFIX}v1.12.0-yedhant.2"
+            coEvery { checker.fetchLatestRelease() } returns LatestRelease("v1.12.0-yedhant.2", url)
+            coEvery { settings.getNotifiedUpdateVersion() } returns "1.12.0-yedhant.1"
+
+            val update = AvailableUpdate("1.12.0-yedhant.2", url)
+            assertEquals(UpdateCheckOutcome.UpdateAvailable(update), coordinator.check(UpdateCheckTrigger.PERIODIC))
+            coVerify { settings.setAvailableUpdate(update) }
+            verify(exactly = 1) { notifier.notifyUpdateAvailable("1.12.0-yedhant.2", url) }
+            coVerify { settings.setNotifiedUpdateVersion("1.12.0-yedhant.2") }
+
+            coEvery { settings.getNotifiedUpdateVersion() } returns "1.12.0-yedhant.2"
+            coordinator.check(UpdateCheckTrigger.PERIODIC)
+            verify(exactly = 1) { notifier.notifyUpdateAvailable(any(), any()) }
+        }
 }
